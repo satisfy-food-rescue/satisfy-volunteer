@@ -11,4 +11,4 @@ allowBuilds:
   sharp: true
   unrs-resolver: true
   better-sqlite3: true
-  workerd: set this to true or false
+  workerd: false
