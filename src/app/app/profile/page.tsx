@@ -1,0 +1,66 @@
+import Link from "next/link";
+import { CalendarCheck, LogOut, RefreshCw, Sprout, ChevronRight } from "lucide-react";
+import { requireVolunteer } from "@/lib/session";
+import { formatInstant, formatDate, dateToISO } from "@/lib/dates";
+import { ROLE_LABEL, parseRoles, fullName } from "@/lib/domain";
+import { AvatarBadge } from "@/components/shared/avatar-badge";
+import { Chip } from "@/components/shared/status-chip";
+import { ProfileForm } from "@/components/app/profile-form";
+import { signOut } from "@/app/sign-in/actions";
+import { Button } from "@/components/ui/button";
+
+export const metadata = { title: "My profile" };
+
+export default async function ProfilePage() {
+  const me = await requireVolunteer();
+  return (
+    <div className="flex flex-col gap-6 px-5 pb-6 pt-5">
+      <header className="flex items-center gap-4">
+        <AvatarBadge person={me} size="lg" />
+        <div className="min-w-0">
+          <h1 className="text-[1.75rem] leading-tight text-ink">{fullName(me)}</h1>
+          <p className="text-sm text-muted-foreground">Volunteer since {formatDate(dateToISO(me.joinedAt))}</p>
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            {parseRoles(me.roles).map((r) => <Chip key={r} tone="good" size="sm">{ROLE_LABEL[r]}</Chip>)}
+            {me.inHarvestPool && <Chip tone="info" size="sm" icon={Sprout}>Harvest pool</Chip>}
+          </div>
+        </div>
+      </header>
+
+      <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3">
+        <RefreshCw className="size-5 shrink-0 text-green-text" aria-hidden />
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold text-ink">Synced with Infoodle</p>
+          <p className="text-sm text-muted-foreground">
+            {me.infoodleSyncedAt ? `Last synced ${formatInstant(me.infoodleSyncedAt)}` : "Not yet synced"} · record {me.infoodleId}
+          </p>
+        </div>
+      </div>
+
+      <nav aria-label="Profile sections" className="overflow-hidden rounded-2xl border border-border bg-card">
+        {[
+          { href: "/app/slot", label: "My regular slot and absences", icon: CalendarCheck },
+          { href: "/app/harvest", label: "Harvest pool", icon: Sprout },
+        ].map((l) => (
+          <Link key={l.href} href={l.href} className="flex min-h-14 items-center gap-3 border-b border-border px-4 last:border-b-0 hover:bg-muted">
+            <l.icon className="size-5 text-green-text" aria-hidden />
+            <span className="flex-1 font-semibold text-ink">{l.label}</span>
+            <ChevronRight className="size-5 text-muted-foreground" aria-hidden />
+          </Link>
+        ))}
+      </nav>
+
+      <ProfileForm
+        email={me.email}
+        initial={{ phone: me.phone ?? "", suburb: me.suburb ?? "", emergencyName: me.emergencyName ?? "", emergencyPhone: me.emergencyPhone ?? "", availabilityNote: me.availabilityNote ?? "", lastMinuteOk: me.lastMinuteOk }}
+      />
+
+      <form action={signOut} className="flex flex-col gap-2 border-t border-border pt-5">
+        <Button type="submit" variant="outline" size="lg" className="h-12 text-base">
+          <LogOut className="size-5" aria-hidden /> Switch persona
+        </Button>
+        <p className="text-center text-xs text-muted-foreground">Demo only: returns to the persona picker.</p>
+      </form>
+    </div>
+  );
+}

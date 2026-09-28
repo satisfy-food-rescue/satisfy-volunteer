@@ -1,36 +1,74 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Satisfy Volunteers
 
-## Getting Started
+Demo volunteer management app for Satisfy Food Rescue (Rangiora, North Canterbury), built by Awhina Tech as a sales prototype and a credible base for the full build. Two surfaces in one codebase: a mobile-first volunteer app and a desktop coordinator admin.
 
-First, run the development server:
+## Run it
+
+Requires Node 20+ and pnpm (Corepack picks the pinned version).
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000. The first `pnpm dev` creates a SQLite database and seeds it. Every seed date is relative to today, and the pre-dev script reseeds automatically when the date rolls over, so the demo never looks stale. To force a fresh seed:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+pnpm db:reset
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Other scripts: `pnpm lint`, `pnpm typecheck`, `pnpm build`.
 
-## Learn More
+## Persona switcher
 
-To learn more about Next.js, take a look at the following resources:
+There is no real authentication. The sign-in page lists four personas; picking one sets a cookie and everything downstream calls `requireVolunteer()` or `requireAdmin()` from `src/lib/session.ts`, which is the one file to replace with real sessions later.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Persona | Who | What they show |
+| --- | --- | --- |
+| Philippa | Coordinator (admin) | Dashboard gaps, overdue training, applications, Outbox, settings |
+| Margaret Fairweather | Regular warehouse volunteer | Tue and Thu regular slot, one refresher due soon |
+| Tony Ratana | Driver's assistant | Manual Handling overdue: route shifts blocked until the online refresher is done |
+| Jess Moorhouse | New volunteer | Approved two days ago, no training, must book induction first |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+"Switch persona" is on the volunteer Me tab and in the admin sidebar footer.
 
-## Deploy on Vercel
+## The theme file
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Satisfy is mid brand refresh, so every colour, radius and font is a token in one place: `src/app/globals.css`. Fonts are loaded in `src/app/layout.tsx` (Suez One for headlines, Nunito Sans for body). Change the values in the `:root` block and the whole app, including chips, charts and email previews, follows. No component contains a raw hex value.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Contrast was checked numerically: the bright brand green is used as a fill with deep green text, a darker green carries text on white, and the magenta fill is deepened slightly so white labels pass WCAG AA. Body text is 16px minimum, tap targets 44px, and status is always icon plus label, never colour alone.
+
+## What is mocked
+
+- **Auth**: persona cookie, see above. Production uses email sign-in with passkeys, the same as the Fair Food portal.
+- **Email**: nothing is sent. Every message the system would send is written to the `Email` table and shown in Admin > Outbox with a branded preview. Templates are pure functions in `src/lib/email-templates.ts`, shared by the seed and the server actions.
+- **Reminders**: the rules are real code in `src/lib/reminders.ts` and can be run on demand from Admin > Training > Reminders. In production they run nightly.
+- **Infoodle**: sync status, record ids and the application feed are sample data. The settings page describes what would sync in each direction once API access is confirmed.
+- **Database**: SQLite via Prisma 7 for zero setup. The schema avoids SQLite-only features (enums are strings with TypeScript unions in `src/lib/domain.ts`) so production is a datasource swap to Postgres.
+
+## Stack and layout
+
+Next.js 16 App Router, React 19, TypeScript, Tailwind CSS v4, shadcn/ui on Base UI, Prisma 7, Zod, lucide-react, sonner. Conventions mirror the Fair Food volunteer portal so this can grow into the real build.
+
+```
+prisma/schema.prisma        data model (Postgres-compatible)
+prisma/seed.ts              relative-to-today demo data
+scripts/ensure-db.ts        first-run push and seed, daily reseed
+src/app/sign-in             persona picker
+src/app/app/*               volunteer app (bottom tab bar, max width 30rem)
+src/app/admin/*             coordinator admin (sidebar)
+src/app/*/actions.ts        server actions, Zod-validated
+src/lib/training.ts         module status and the booking gate
+src/lib/roster.ts           shift views, gap detection, available volunteers
+src/lib/email-templates.ts  every email, as pure builders
+src/components/ui           shadcn primitives (owned source)
+```
+
+## Domain rules worth knowing
+
+- A shift has a `capacity` (maximum) and a `needed` (minimum crew). Confirmed below needed is a gap. An absence releases the volunteer's regular assignments; released assignments are what the gap explains ("Brian away, holiday").
+- The training gate: to book a shift kind, a volunteer must hold the matching role and every module required for that role must be Complete or Due soon. Overdue or Not started blocks booking with a message naming the module. Regular slots already on the roster are not affected.
+- Due soon is 30 days before expiry. Online modules can be completed in-app with a read-and-confirm step, which lifts the gate immediately.
+- Bulk scheduling always previews first, skips shifts that already exist, and can roster regulars onto their weekday automatically.
+
+See `DEMO.md` for the ten-minute walkthrough.

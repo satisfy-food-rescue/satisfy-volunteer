@@ -1,26 +1,253 @@
-@import "tailwindcss";
+/* ==========================================================================
+   Satisfy Food Rescue volunteer app - THEME FILE
+   --------------------------------------------------------------------------
+   Every colour, radius and font used anywhere in the app is defined here as a
+   CSS variable and exposed to Tailwind through @theme. Satisfy is mid brand
+   refresh: to re-skin the app, change the values in the ":root" block below
+   and swap the two font imports in src/app/layout.tsx. Nothing else needs
+   touching. Components never use raw hex values.
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+   Contrast notes (WCAG AA, checked numerically):
+   - Brand green #00C951 is too light for text on white (2.2:1), so it is used
+     as a FILL with deep green text (#05301A, 6.6:1). Text and icons in green
+     use --green-text (#0A7A38, 5.5:1 on white, 4.6:1 on the pale tint).
+   - Brand magenta #ED1566 with white text is 4.3:1, just under AA, so fills
+     use --magenta-fill (#D40E5A, 5.2:1). The brand shade stays as a decorative
+     accent (--brand-magenta).
+   ========================================================================== */
+
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  /* Fonts (loaded via next/font in layout.tsx, which sets these variables) */
+  --font-sans: var(--font-body);
+  --font-display: var(--font-headline);
+  --font-heading: var(--font-headline);
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* shadcn semantic tokens */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Satisfy brand tokens, usable as bg-green, text-green-text, etc. */
+  --color-green: var(--brand-green);
+  --color-green-text: var(--green-text);
+  --color-green-deep: var(--green-deep);
+  --color-green-tint: var(--green-tint);
+  --color-green-tint-soft: var(--green-tint-soft);
+  --color-magenta: var(--magenta-fill);
+  --color-magenta-brand: var(--brand-magenta);
+  --color-magenta-tint: var(--magenta-tint);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-canvas: var(--canvas);
+
+  /* Status tokens: never used alone, always with an icon and a label */
+  --color-status-good: var(--status-good);
+  --color-status-good-bg: var(--status-good-bg);
+  --color-status-warn: var(--status-warn);
+  --color-status-warn-bg: var(--status-warn-bg);
+  --color-status-bad: var(--status-bad);
+  --color-status-bad-bg: var(--status-bad-bg);
+  --color-status-neutral: var(--status-neutral);
+  --color-status-neutral-bg: var(--status-neutral-bg);
+  --color-status-info: var(--status-info);
+  --color-status-info-bg: var(--status-info-bg);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  /* ---- Brand palette (from satisfyfoodrescue.org.nz) ---- */
+  --brand-green: #00c951;
+  --brand-magenta: #ed1566;
+  --green-tint: #cff7cb;
+  --green-tint-soft: #eaf9e7;
+  --green-text: #0a7a38;
+  --green-deep: #05301a;
+  --magenta-fill: #d40e5a;
+  --magenta-tint: #fde4ee;
+  --ink: #1f2a24;
+  --ink-soft: #555555;
+  --canvas: #f6faf4;
+
+  /* ---- Status palette ---- */
+  --status-good: #0a7a38;
+  --status-good-bg: #e0f6dc;
+  --status-warn: #92400e;
+  --status-warn-bg: #fef3c7;
+  --status-bad: #b42318;
+  --status-bad-bg: #fee4e2;
+  --status-neutral: #4b5563;
+  --status-neutral-bg: #eef0ee;
+  --status-info: #1d4ed8;
+  --status-info-bg: #e0ebff;
+
+  /* ---- Semantic mapping used by shadcn components ---- */
+  --background: var(--canvas);
+  --foreground: var(--ink);
+  --card: #ffffff;
+  --card-foreground: var(--ink);
+  --popover: #ffffff;
+  --popover-foreground: var(--ink);
+  --primary: var(--brand-green);
+  --primary-foreground: var(--green-deep);
+  --secondary: var(--green-tint-soft);
+  --secondary-foreground: var(--green-deep);
+  --muted: #eef2ec;
+  --muted-foreground: #5b6660;
+  --accent: var(--green-tint-soft);
+  --accent-foreground: var(--green-deep);
+  --destructive: #b42318;
+  --border: #dde5da;
+  --input: #cfd9cc;
+  --ring: var(--brand-green);
+  --chart-1: #0a7a38;
+  --chart-2: #00c951;
+  --chart-3: #8fd9a0;
+  --chart-4: #d40e5a;
+  --chart-5: #5b6660;
+  --radius: 0.875rem;
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: var(--ink);
+  --sidebar-primary: var(--brand-green);
+  --sidebar-primary-foreground: var(--green-deep);
+  --sidebar-accent: var(--green-tint-soft);
+  --sidebar-accent-foreground: var(--green-deep);
+  --sidebar-border: #dde5da;
+  --sidebar-ring: var(--brand-green);
+}
+
+/* Dark mode is not part of the demo scope but the tokens exist so a future
+   re-skin has somewhere to put them. */
+.dark {
+  --background: #101613;
+  --foreground: #f2f6f1;
+  --card: #18201b;
+  --card-foreground: #f2f6f1;
+  --popover: #18201b;
+  --popover-foreground: #f2f6f1;
+  --primary: var(--brand-green);
+  --primary-foreground: var(--green-deep);
+  --secondary: #1f2b23;
+  --secondary-foreground: #f2f6f1;
+  --muted: #1f2b23;
+  --muted-foreground: #a3b0a8;
+  --accent: #1f2b23;
+  --accent-foreground: #f2f6f1;
+  --destructive: #f87171;
+  --border: rgb(255 255 255 / 12%);
+  --input: rgb(255 255 255 / 16%);
+  --ring: var(--brand-green);
+  --sidebar: #18201b;
+  --sidebar-foreground: #f2f6f1;
+  --sidebar-accent: #1f2b23;
+  --sidebar-accent-foreground: #f2f6f1;
+  --sidebar-border: rgb(255 255 255 / 12%);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+    font-size: 16px;
+    overflow-x: clip;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "tnum" 0;
+    touch-action: manipulation;
+  }
+  h1, h2, h3, .display {
+    font-family: var(--font-display);
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    line-height: 1.1;
+  }
+  ::selection {
+    background-color: var(--brand-green);
+    color: var(--green-deep);
+  }
+  :focus-visible {
+    outline: 3px solid var(--brand-green);
+    outline-offset: 2px;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  /* Small uppercase label used above headings and on data lists. */
+  .eyebrow {
+    @apply text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground;
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  /* Subtle wheat-line pattern for tinted hero panels. */
+  .pattern-wheat {
+    background-image: repeating-linear-gradient(
+      135deg,
+      rgb(0 201 81 / 0.09) 0 2px,
+      transparent 2px 22px
+    );
+  }
+  /* Minimum tap target for icon-only controls. */
+  .tap {
+    @apply min-h-11 min-w-11;
+  }
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

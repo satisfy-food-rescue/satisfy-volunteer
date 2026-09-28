@@ -1,0 +1,321 @@
+// Satisfy Food Rescue - volunteer management demo.
+//
+// SQLite for the zero-setup demo. The schema deliberately avoids anything
+// SQLite-specific so production is a datasource swap to Postgres:
+//  - No Prisma enums (SQLite has none). Enum-like columns are String and the
+//    allowed values live as TypeScript unions in src/lib/domain.ts.
+//  - Calendar dates (shift date, absence range, expiry) are stored as DateTime
+//    at UTC midnight and treated as pure dates. Wall-clock times are "HH:MM".
+//  - Instants (session start, sync time, emails) are ordinary UTC DateTime.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// A person: coordinator/admin or volunteer. Applicants are separate until
+// approved (see Application), at which point a Volunteer row is created.
+model Volunteer {
+  id                String   @id @default(cuid())
+  // Demo sign-in only. The four personas have a stable key; everyone else null.
+  personaKey        String?  @unique
+  firstName         String
+  lastName          String?
+  email             String   @unique
+  phone             String?
+  suburb            String?
+  birthYear         Int?
+  // ADMIN | VOLUNTEER
+  role              String   @default("VOLUNTEER")
+  // ACTIVE | INACTIVE
+  status            String   @default("ACTIVE")
+  // Comma-separated volunteer roles: WAREHOUSE, DRIVERS_ASSISTANT, VOLUNTEER_DRIVER
+  roles             String   @default("WAREHOUSE")
+  isRegular         Boolean  @default(false)
+  inHarvestPool     Boolean  @default(false)
+  // Happy to be phoned for same-day cover. Feeds the "last-minute available" list.
+  lastMinuteOk      Boolean  @default(false)
+  emergencyName     String?
+  emergencyPhone    String?
+  availabilityNote  String?
+  notes             String?
+  joinedAt          DateTime @default(now())
+  infoodleId        String?
+  infoodleSyncedAt  DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  regularSlots    RegularSlot[]
+  assignments     Assignment[]
+  absences        Absence[]
+  trainingRecords TrainingRecord[]
+  sessionRsvps    SessionRsvp[]
+  harvestRsvps    HarvestRsvp[]
+  emails          Email[]
+}
+
+// A collection route. Every route has a paid driver except the one that is
+// fully volunteer-driven (isVolunteerDriven).
+model Route {
+  id                String   @id @default(cuid())
+  name              String
+  area              String
+  driverName        String?
+  isVolunteerDriven Boolean  @default(false)
+  order             Int      @default(0)
+  donors    Donor[]
+  templates ShiftTemplate[]
+}
+
+// A supermarket or food retailer we collect from.
+model Donor {
+  id      String @id @default(cuid())
+  name    String
+  suburb  String
+  routeId String
+  route   Route  @relation(fields: [routeId], references: [id], onDelete: Cascade)
+}
+
+// A recipient organisation collecting kai from the warehouse.
+model Recipient {
+  id       String @id @default(cuid())
+  name     String
+  location String
+  kind     String
+}
+
+// The recurring shape of a shift. Shifts are generated from templates
+// (bulk scheduling) and regular slots point at a template + weekday.
+model ShiftTemplate {
+  id        String  @id @default(cuid())
+  // WAREHOUSE | DRIVERS_ASSISTANT | VOLUNTEER_DRIVER
+  kind      String
+  name      String
+  routeId   String?
+  route     Route?  @relation(fields: [routeId], references: [id], onDelete: SetNull)
+  startTime String
+  endTime   String
+  capacity  Int
+  // Minimum crew for the shift to run comfortably. Confirmed < needed = gap.
+  needed    Int
+  // Comma-separated ISO weekdays this template normally runs on, e.g. "1,2,3,4,5"
+  weekdays  String
+  order     Int     @default(0)
+  active    Boolean @default(true)
+  shifts       Shift[]
+  regularSlots RegularSlot[]
+}
+
+model Shift {
+  id         String   @id @default(cuid())
+  templateId String
+  template   ShiftTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  // Calendar date at UTC midnight.
+  date       DateTime
+  startTime  String
+  endTime    String
+  capacity   Int
+  needed     Int
+  // SCHEDULED | CANCELLED
+  status     String   @default("SCHEDULED")
+  notes      String?
+  assignments Assignment[]
+
+  @@unique([templateId, date])
+  @@index([date])
+}
+
+// A volunteer's standing weekly commitment.
+model RegularSlot {
+  id          String @id @default(cuid())
+  volunteerId String
+  volunteer   Volunteer @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
+  templateId  String
+  template    ShiftTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  // ISO weekday 1 (Mon) .. 5 (Fri)
+  weekday     Int
+
+  @@unique([volunteerId, templateId, weekday])
+}
+
+// A volunteer on a shift. Regular slots materialise into assignments; an
+// absence RELEASES them (creating a gap) and a cover creates a fresh one.
+model Assignment {
+  id          String   @id @default(cuid())
+  shiftId     String
+  shift       Shift    @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  volunteerId String
+  volunteer   Volunteer @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
+  // REGULAR | BOOKED | COVER | ADMIN
+  source      String   @default("BOOKED")
+  // CONFIRMED | RELEASED | CANCELLED | ATTENDED | NO_SHOW
+  status      String   @default("CONFIRMED")
+  absenceId   String?
+  absence     Absence? @relation(fields: [absenceId], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+
+  @@index([shiftId])
+  @@index([volunteerId])
+}
+
+model Absence {
+  id          String   @id @default(cuid())
+  volunteerId String
+  volunteer   Volunteer @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
+  startDate   DateTime
+  endDate     DateTime
+  // HOLIDAY | SICK | OTHER
+  reason      String
+  note        String?
+  createdAt   DateTime @default(now())
+  releasedAssignments Assignment[]
+
+  @@index([startDate, endDate])
+}
+
+model TrainingModule {
+  id                        String  @id @default(cuid())
+  code                      String  @unique
+  name                      String
+  description               String
+  // Null = valid once, never expires.
+  validityMonths            Int?
+  // Comma-separated roles this module is required for.
+  requiredRoles             String
+  mandatoryBeforeFirstShift Boolean @default(false)
+  // IN_PERSON | ONLINE_CONFIRM
+  delivery                  String
+  // Short read-and-confirm content for ONLINE_CONFIRM modules.
+  content                   String?
+  order                     Int     @default(0)
+  records  TrainingRecord[]
+  sessions TrainingSession[]
+}
+
+model TrainingRecord {
+  id          String   @id @default(cuid())
+  volunteerId String
+  volunteer   Volunteer @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
+  moduleId    String
+  module      TrainingModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  completedAt DateTime
+  // Null = never expires.
+  expiresAt   DateTime?
+  // SESSION | ONLINE | COORDINATOR
+  method      String
+  sessionId   String?
+  session     TrainingSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  @@index([volunteerId])
+  @@index([expiresAt])
+}
+
+model TrainingSession {
+  id        String   @id @default(cuid())
+  moduleId  String
+  module    TrainingModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  startsAt  DateTime
+  endsAt    DateTime
+  location  String
+  capacity  Int
+  notes     String?
+  rsvps     SessionRsvp[]
+  records   TrainingRecord[]
+}
+
+model SessionRsvp {
+  id          String   @id @default(cuid())
+  sessionId   String
+  session     TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  volunteerId String
+  volunteer   Volunteer @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
+  // GOING | DECLINED
+  status      String   @default("GOING")
+  attendedAt  DateTime?
+  createdAt   DateTime @default(now())
+
+  @@unique([sessionId, volunteerId])
+}
+
+model HarvestCallout {
+  id          String   @id @default(cuid())
+  title       String
+  date        DateTime
+  startTime   String
+  endTime     String
+  location    String
+  partner     String
+  description String
+  needed      Int
+  rsvps HarvestRsvp[]
+}
+
+model HarvestRsvp {
+  id          String   @id @default(cuid())
+  calloutId   String
+  callout     HarvestCallout @relation(fields: [calloutId], references: [id], onDelete: Cascade)
+  volunteerId String
+  volunteer   Volunteer @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
+  // GOING | DECLINED
+  status      String
+  createdAt   DateTime @default(now())
+
+  @@unique([calloutId, volunteerId])
+}
+
+// Applicants arriving from the Infoodle sign-up form (mocked).
+model Application {
+  id           String   @id @default(cuid())
+  firstName    String
+  lastName     String
+  email        String
+  phone        String?
+  suburb       String?
+  birthYear    Int?
+  interests    String
+  availability String
+  message      String?
+  source       String   @default("INFOODLE_FORM")
+  infoodleId   String?
+  submittedAt  DateTime
+  // PENDING | APPROVED | DECLINED
+  status       String   @default("PENDING")
+  reviewedAt   DateTime?
+  reviewNote   String?
+  volunteerId  String?
+}
+
+// Every email the system would send, captured for the Outbox instead of sent.
+model Email {
+  id          String   @id @default(cuid())
+  volunteerId String?
+  volunteer   Volunteer? @relation(fields: [volunteerId], references: [id], onDelete: SetNull)
+  toName      String
+  toEmail     String
+  // TRAINING_DUE_SOON | TRAINING_OVERDUE | SHIFT_REMINDER | ABSENCE_CONFIRMED |
+  // COVER_CONFIRMED | GAP_ALERT | APPLICATION_APPROVED | TRAINING_COMPLETED |
+  // SESSION_CONFIRMED | HARVEST_CALLOUT | WELCOME
+  kind        String
+  subject     String
+  preview     String
+  // Paragraphs separated by blank lines. Rendered by the email preview page.
+  body        String
+  ctaLabel    String?
+  ctaHref     String?
+  // Dedupe key for automated reminders, e.g. "training-due:<recordId>".
+  ref         String?
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([ref])
+}
+
+// Seed bookkeeping so `pnpm dev` can reseed when the demo date rolls over.
+model Meta {
+  key   String @id
+  value String
+}
