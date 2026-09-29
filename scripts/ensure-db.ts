@@ -1,7 +1,9 @@
 // Runs before `next dev`. Creates the SQLite database on first run and reseeds
-// whenever the demo date has rolled over, so seed dates stay relative to today.
+// whenever the demo date has rolled over, so seed dates stay relative to today,
+// or the seed script has changed, so a deploy never serves stale demo data.
 import { execSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, readFileSync } from "node:fs";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import { todayISO } from "../src/lib/dates";
@@ -19,10 +21,13 @@ async function main() {
     console.log("No database yet. Creating schema...");
     run("pnpm exec prisma db push");
   }
-  const db = new PrismaClient({ adapter: new PrismaBetterSqlite3({ url }) });
+  const seedHash = createHash("sha256").update(readFileSync("prisma/seed.ts")).digest("hex");
+  let db = new PrismaClient({ adapter: new PrismaBetterSqlite3({ url }) });
   let seededOn: string | null = null;
+  let seededHash: string | null = null;
   try {
     seededOn = (await db.meta.findUnique({ where: { key: "seededOn" } }))?.value ?? null;
+    seededHash = (await db.meta.findUnique({ where: { key: "seedHash" } }))?.value ?? null;
   } catch {
     // Schema out of date; push again.
     await db.$disconnect();
@@ -31,9 +36,17 @@ async function main() {
     await db.$disconnect();
   }
   const today = todayISO();
-  if (seededOn !== today || process.env.RESEED === "1") {
-    console.log(fresh ? "Seeding demo data..." : `Seed is from ${seededOn ?? "never"}; reseeding for ${today}...`);
+  const reason =
+    process.env.RESEED === "1" ? "RESEED=1"
+    : seededOn !== today ? `seed is from ${seededOn ?? "never"}`
+    : seededHash !== seedHash ? "seed script changed"
+    : null;
+  if (reason) {
+    console.log(fresh ? "Seeding demo data..." : `Reseeding for ${today} (${reason})...`);
     run("pnpm exec tsx prisma/seed.ts");
+    db = new PrismaClient({ adapter: new PrismaBetterSqlite3({ url }) });
+    await db.meta.upsert({ where: { key: "seedHash" }, update: { value: seedHash }, create: { key: "seedHash", value: seedHash } });
+    await db.$disconnect();
   }
 }
 

@@ -76,7 +76,7 @@ const DA_HU = "da-hurunui";
 const VD_HU = "vd-hurunui";
 
 const VOLUNTEERS: VolSpec[] = [
-  { key: "philippa", first: "Philippa", last: null, born: 1978, roles: ["WAREHOUSE"], admin: true, joinedYearsAgo: 3 },
+  { key: "phillipa", first: "Phillipa", last: null, born: 1978, roles: ["WAREHOUSE"], admin: true, joinedYearsAgo: 3 },
   // Monday warehouse
   { first: "Brian", last: "Tweedie", born: 1954, roles: ["WAREHOUSE"], slots: [{ template: W, weekday: 1 }], joinedYearsAgo: 6 },
   { first: "Judith", last: "Alcock", born: 1958, roles: ["WAREHOUSE"], slots: [{ template: W, weekday: 1 }, { template: W, weekday: 3 }], joinedYearsAgo: 4 },
@@ -245,7 +245,7 @@ async function main() {
   const syncedAt = nzInstant(TODAY, "06:00");
   let infoodleSeq = 1041;
   for (const v of VOLUNTEERS) {
-    const email = v.key === "philippa" ? "philippa@satisfyfoodrescue.org.nz" : emailFor(v.first, v.last ?? "volunteer");
+    const email = v.key === "phillipa" ? "phillipa@satisfyfoodrescue.org.nz" : emailFor(v.first, v.last ?? "volunteer");
     const yearsAgo = v.joinedYearsAgo ?? 2;
     const joined = v.key === "jess" ? isoToDate(addDays(TODAY, -2)) : isoToDate(addDays(TODAY, -(yearsAgo * 365 + randInt(0, 200))));
     const row = await db.volunteer.create({
@@ -274,7 +274,7 @@ async function main() {
     vols.set(v.key ?? `${v.first}-${v.last}`, { id: row.id, first: v.first, last: v.last, email, roles: v.roles, spec: v });
   }
   const byName = (first: string, last: string) => vols.get(`${first}-${last}`)!;
-  const philippa = vols.get("philippa")!;
+  const phillipa = vols.get("phillipa")!;
   const margaret = vols.get("margaret")!;
   const tony = vols.get("tony")!;
   const jess = vols.get("jess")!;
@@ -473,7 +473,7 @@ async function main() {
   // Outbox emails ------------------------------------------------------------
   const emails: { volunteerId: string | null; toName: string; toEmail: string; createdAt: Date; draft: T.EmailDraft }[] = [];
   const push = (v: { id: string; first: string; last: string | null; email: string } | null, createdAt: Date, draft: T.EmailDraft) =>
-    emails.push({ volunteerId: v?.id ?? null, toName: v ? `${v.first}${v.last ? " " + v.last : ""}` : "Philippa", toEmail: v?.email ?? philippa.email, createdAt, draft });
+    emails.push({ volunteerId: v?.id ?? null, toName: v ? `${v.first}${v.last ? " " + v.last : ""}` : "Phillipa", toEmail: v?.email ?? phillipa.email, createdAt, draft });
 
   const records = await db.trainingRecord.findMany({ where: { expiresAt: { not: null } }, include: { module: true, volunteer: true } });
   for (const r of records) {

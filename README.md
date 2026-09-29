@@ -25,7 +25,7 @@ There is no real authentication. The sign-in page lists four personas; picking o
 
 | Persona | Who | What they show |
 | --- | --- | --- |
-| Philippa | Coordinator (admin) | Dashboard gaps, overdue training, applications, Outbox, settings |
+| Phillipa | Coordinator (admin) | Dashboard gaps, overdue training, applications, Outbox, settings |
 | Margaret Fairweather | Regular warehouse volunteer | Tue and Thu regular slot, one refresher due soon |
 | Tony Ratana | Driver's assistant | Manual Handling overdue: route shifts blocked until the online refresher is done |
 | Jess Moorhouse | New volunteer | Approved two days ago, no training, must book induction first |
