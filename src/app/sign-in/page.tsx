@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 
 const PERSONAS = [
   {
-    key: "philippa",
+    key: "phillipa",
     label: "Coordinator",
     icon: ShieldCheck,
     blurb: "Admin view: roster, gaps, training compliance, applications and the Outbox.",

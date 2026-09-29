@@ -2,9 +2,9 @@
 
 Start with `pnpm dev` and open http://localhost:3000. Have the browser at desktop width for admin and use responsive mode at 375px (or a phone) for the volunteer app. Everything below is seeded relative to today, so the dates you see will match the calendar.
 
-## 1. Coordinator view (Philippa) - 2 min
+## 1. Coordinator view (Phillipa) - 2 min
 
-Sign in as **Philippa**.
+Sign in as **Phillipa**.
 
 - Dashboard: point at the four tiles. "Gaps, next 14 days" is the pain point from the discovery call: who is away and what is uncovered.
 - Scroll to **Coverage gaps**: two seeded absences (Brian on holiday, Heather off sick) have released their shifts. The line under each gap says exactly why it exists.
@@ -25,7 +25,7 @@ Switch persona (sidebar footer icon) and sign in as **Tony Ratana**. Narrow the 
 Still as Tony:
 
 - Tap **Me**, then **My regular slot and absences** (or Home > Mark me away). Pick next week, reason Holiday. The preview says which of his regular Wednesday route shifts will be released. Submit.
-- Switch persona back to **Philippa**. The dashboard now shows a new gap: "Driver's assistant: Rangiora / Kaiapoi ... Tony Ratana away (holiday)". Click it.
+- Switch persona back to **Phillipa**. The dashboard now shows a new gap: "Driver's assistant: Rangiora / Kaiapoi ... Tony Ratana away (holiday)". Click it.
 - On the shift page, the **Find cover** panel lists only volunteers who hold the driver's assistant role, are training-current, are not away and are free that day. The **Last-minute available** group is people who opted in to be phoned. Click **Add** on one (Steve Kirkwood is the backup driver). The chip flips to Covered.
 - **Absences** in the sidebar shows the same story as a calendar: bars for who is away, with each released shift marked open or covered.
 
