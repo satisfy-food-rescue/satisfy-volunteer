@@ -23,7 +23,7 @@ export default async function HarvestPage() {
         <h1 className="mt-1 text-3xl text-ink">Harvest pool</h1>
       </div>
 
-      <section className={cn("rounded-2xl p-5", me.inHarvestPool ? "pattern-wheat bg-green-tint-soft ring-1 ring-green/40" : "bg-card ring-1 ring-border")}>
+      <section className={cn("rounded-2xl p-5", me.inHarvestPool ? "bg-green-tint-soft ring-1 ring-green/40" : "bg-card ring-1 ring-border")}>
         <div className="flex items-start gap-3">
           <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-white text-green-text ring-1 ring-green/30">
             <Sprout className="size-6" aria-hidden />
@@ -65,7 +65,7 @@ export default async function HarvestPage() {
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Users className="size-4" aria-hidden />
                       <span className="tabular">{going.length} of {c.needed} pickers so far</span>
-                      <span className="flex -space-x-2">
+                      <span className="flex -space-x-1">
                         {going.slice(0, 5).map((r) => <AvatarBadge key={r.id} person={r.volunteer} size="sm" className="ring-2 ring-card" />)}
                       </span>
                     </div>

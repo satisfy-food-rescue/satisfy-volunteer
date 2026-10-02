@@ -34,9 +34,9 @@ There is no real authentication. The sign-in page lists four personas; picking o
 
 ## The theme file
 
-Satisfy is mid brand refresh, so every colour, radius and font is a token in one place: `src/app/globals.css`. Fonts are loaded in `src/app/layout.tsx` (Suez One for headlines, Nunito Sans for body). Change the values in the `:root` block and the whole app, including chips, charts and email previews, follows. No component contains a raw hex value.
+Colours and type follow the Satisfy Food Rescue Brand Guidelines: primary green `#00A551`, the secondary suite (yellow, orange, pink, dark blue, light blue, teal) for charts and accents, and Montserrat for headings. Every colour, radius and font is a token in one place: `src/app/globals.css`. Fonts are loaded in `src/app/layout.tsx`. The guidelines specify Stag for body text, which is a commercial face, so Roboto Slab stands in until a web licence is in place (swap to `next/font/local` with the licensed file). Change the values in the `:root` block and the whole app, including chips, charts and email previews, follows. No component contains a raw hex value.
 
-Contrast was checked numerically: the bright brand green is used as a fill with deep green text, a darker green carries text on white, and the magenta fill is deepened slightly so white labels pass WCAG AA. Body text is 16px minimum, tap targets 44px, and status is always icon plus label, never colour alone.
+Contrast was checked numerically: the brand green is used as a fill with deep green text, a darker green carries text on white, and the pink fill is deepened slightly so white labels pass WCAG AA. Lighter secondary colours get a pale tint for backgrounds and a darkened text shade. Body text is 16px minimum, tap targets 44px, and status is always icon plus label, never colour alone.
 
 ## What is mocked
 

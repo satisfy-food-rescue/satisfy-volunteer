@@ -82,8 +82,8 @@ export function AdminSidebar({
         <Link href="/admin" className="flex items-center gap-2.5 group-data-[collapsible=icon]:justify-center">
           <LogoMark size={36} />
           <span className="flex flex-col leading-tight group-data-[collapsible=icon]:hidden">
-            <span className="font-display text-[0.95rem] tracking-[0.08em] text-ink">SATISFY</span>
-            <span className="text-[0.62rem] font-bold uppercase tracking-[0.2em] text-green-text">Coordinator</span>
+            <span className="font-display font-bold text-[0.95rem] tracking-[0.08em] text-ink">SATISFY</span>
+            <span className="font-display text-[0.62rem] font-bold uppercase tracking-[0.2em] text-green-text">Coordinator</span>
           </span>
         </Link>
       </SidebarHeader>
@@ -101,14 +101,14 @@ export function AdminSidebar({
                       <SidebarMenuButton
                         isActive={active}
                         tooltip={link.label}
-                        className="h-10 text-[0.95rem] data-[active=true]:bg-green-tint data-[active=true]:font-bold data-[active=true]:text-green-deep"
+                        className="h-10 text-[0.95rem] data-active:bg-green-tint data-active:font-bold data-active:text-green-deep"
                         render={<Link href={link.href} />}
                       >
                         <link.icon className="size-4" />
                         <span>{link.label}</span>
                       </SidebarMenuButton>
                       {count > 0 && (
-                        <SidebarMenuBadge className="bg-magenta-tint text-magenta tabular">{count}</SidebarMenuBadge>
+                        <SidebarMenuBadge className="bg-pink-tint font-display font-bold text-pink-text tabular peer-data-[size=default]/menu-button:top-2.5">{count}</SidebarMenuBadge>
                       )}
                     </SidebarMenuItem>
                   );

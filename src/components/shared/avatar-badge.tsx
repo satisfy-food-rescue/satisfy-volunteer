@@ -3,11 +3,11 @@ import { cn } from "@/lib/utils";
 
 const PALETTE = [
   "bg-green-tint text-green-deep",
-  "bg-[#e6ecf7] text-[#1e3a8a]",
-  "bg-[#fbe7d3] text-[#7c2d12]",
-  "bg-[#ece6f7] text-[#4c1d95]",
-  "bg-[#fde4ee] text-[#8a0c3c]",
-  "bg-[#e3f2f4] text-[#134e4a]",
+  "bg-blue-tint text-blue-text",
+  "bg-orange-tint text-orange-text",
+  "bg-yellow-tint text-yellow-text",
+  "bg-pink-tint text-pink-text",
+  "bg-teal-tint text-teal-text",
 ];
 
 function hash(s: string) {
@@ -30,7 +30,7 @@ export function AvatarBadge({
     <span
       aria-hidden
       className={cn(
-        "inline-flex shrink-0 items-center justify-center rounded-full font-bold",
+        "inline-flex shrink-0 items-center justify-center rounded-full font-display font-bold",
         size === "sm" && "size-8 text-xs",
         size === "md" && "size-10 text-sm",
         size === "lg" && "size-14 text-lg",

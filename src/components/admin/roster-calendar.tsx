@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
 import type { ShiftView } from "@/lib/roster";
 import { addDays, formatDayShort, formatMonth, monthEnd, monthStart, weekdayOf, workWeek, WEEKDAY_SHORT, isoToDate, dateToISO, formatDay } from "@/lib/dates";
 import { cn } from "@/lib/utils";
@@ -31,24 +31,54 @@ export function WeekView({ monday, shifts, today }: { monday: string; shifts: Sh
 
 function CompactShift({ view }: { view: ShiftView }) {
   const cancelled = view.shift.status === "CANCELLED";
+  const fill = Math.min(100, Math.round((view.confirmedCount / Math.max(1, view.shift.capacity)) * 100));
   return (
     <Link
       href={`/admin/roster/${view.shift.id}`}
       className={cn(
-        "flex flex-col gap-1 rounded-xl border-l-4 bg-card p-2.5 shadow-sm ring-1 ring-border transition-colors hover:ring-green",
-        cancelled ? "border-l-muted-foreground opacity-60" : view.isGap ? "border-l-magenta" : "border-l-green",
+        "flex flex-col gap-1.5 rounded-xl p-2.5 shadow-sm transition-colors",
+        cancelled
+          ? "border border-dashed border-border bg-card/60"
+          : view.isGap
+            ? "bg-pink-tint/40 ring-1 ring-pink/30 hover:ring-pink/60"
+            : "bg-card ring-1 ring-border hover:ring-green",
       )}
     >
-      <span className="text-sm font-bold leading-tight text-ink">{view.shift.template.name.replace("Driver's assistant: ", "DA: ").replace("Volunteer driver: ", "Driver: ")}</span>
-      <span className="flex items-center justify-between text-xs text-muted-foreground tabular">
-        <span>{view.shift.startTime}</span>
-        <span className={cn("font-bold", view.isGap ? "text-status-bad" : "text-status-good")}>
-          {cancelled ? "Cancelled" : view.isGap ? `${view.confirmedCount}/${view.shift.needed} short ${view.shortBy}` : `${view.confirmedCount}/${view.shift.capacity}`}
+      <span className="flex items-start justify-between gap-2">
+        <span className={cn("text-sm font-bold leading-tight text-ink", cancelled && "text-muted-foreground line-through")}>
+          {view.shift.template.name.replace("Driver's assistant: ", "DA: ").replace("Volunteer driver: ", "Driver: ")}
+        </span>
+        <span
+          className={cn(
+            "inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 font-display text-[0.7rem] font-bold leading-none tabular",
+            cancelled ? "bg-muted text-muted-foreground" : view.isGap ? "bg-pink-tint text-pink-text" : "bg-green-tint-soft text-green-text",
+          )}
+        >
+          {cancelled ? (
+            "Cancelled"
+          ) : view.isGap ? (
+            <>
+              <AlertTriangle className="size-3" aria-hidden />
+              Short {view.shortBy}
+            </>
+          ) : (
+            `${view.confirmedCount}/${view.shift.capacity}`
+          )}
         </span>
       </span>
-      {!cancelled && (
-        <span className="line-clamp-1 text-xs text-ink-soft">{view.confirmed.map((a) => a.volunteer.firstName).join(", ") || "Nobody rostered"}</span>
-      )}
+      <span className="flex min-w-0 items-baseline gap-1.5 text-xs text-muted-foreground">
+        <span className="shrink-0 tabular">{view.shift.startTime}</span>
+        {!cancelled && (
+          <span className="line-clamp-1 text-ink-soft">
+            {view.isGap && <span className="tabular">{view.confirmedCount}/{view.shift.needed} · </span>}
+            {view.confirmed.map((a) => a.volunteer.firstName).join(", ") || "Nobody rostered"}
+          </span>
+        )}
+      </span>
+      {/* Fill level of the shift, in place of a coloured edge. */}
+      <span className="mt-0.5 block h-1 overflow-hidden rounded-full bg-muted" aria-hidden>
+        {!cancelled && <span className={cn("block h-full rounded-full", view.isGap ? "bg-pink" : "bg-green")} style={{ width: `${fill}%` }} />}
+      </span>
     </Link>
   );
 }
@@ -63,7 +93,7 @@ export function MonthView({ anchor, shifts, today }: { anchor: string; shifts: S
   return (
     <div className="overflow-hidden rounded-2xl border border-border bg-card">
       <div className="grid grid-cols-5 border-b border-border bg-muted/60">
-        {["Mon", "Tue", "Wed", "Thu", "Fri"].map((d) => <div key={d} className="px-3 py-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">{d}</div>)}
+        {["Mon", "Tue", "Wed", "Thu", "Fri"].map((d) => <div key={d} className="font-display px-3 py-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">{d}</div>)}
       </div>
       {weeks.map((week, i) => (
         <div key={i} className="grid grid-cols-5 border-b border-border last:border-b-0">
@@ -75,7 +105,7 @@ export function MonthView({ anchor, shifts, today }: { anchor: string; shifts: S
             return (
               <div key={iso} className={cn("min-h-24 border-r border-border p-2 last:border-r-0", !inMonth && "bg-muted/30 text-muted-foreground", iso === today && "bg-green-tint-soft")}>
                 <div className="flex items-center justify-between">
-                  <span className={cn("text-sm font-bold tabular", iso === today && "rounded-full bg-green px-1.5 text-green-deep")}>{Number(iso.slice(8))}</span>
+                  <span className={cn("text-sm font-bold tabular", iso === today && "rounded-full bg-green-fill px-1.5 text-white")}>{Number(iso.slice(8))}</span>
                   {gaps.length > 0 && <span className="rounded-full bg-status-bad-bg px-1.5 text-[0.65rem] font-bold text-status-bad">{gaps.length} gap{gaps.length === 1 ? "" : "s"}</span>}
                 </div>
                 {inMonth && items.length > 0 && (
@@ -84,7 +114,7 @@ export function MonthView({ anchor, shifts, today }: { anchor: string; shifts: S
                   </Link>
                 )}
                 {gaps.slice(0, 2).map((g) => (
-                  <Link key={g.shift.id} href={`/admin/roster/${g.shift.id}`} className="mt-1 block truncate rounded bg-magenta-tint px-1.5 py-0.5 text-[0.7rem] font-semibold text-magenta hover:underline">
+                  <Link key={g.shift.id} href={`/admin/roster/${g.shift.id}`} className="mt-1 block truncate rounded bg-pink-tint px-1.5 py-0.5 text-[0.7rem] font-semibold text-pink-text hover:underline">
                     {g.shift.template.name.replace("Driver's assistant: ", "DA: ")}
                   </Link>
                 ))}

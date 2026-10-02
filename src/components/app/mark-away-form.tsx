@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { CalendarOff, Loader2, Palmtree, Thermometer, HelpCircle } from "lucide-react";
 import { markAway } from "@/app/app/actions";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDay } from "@/lib/dates";
@@ -57,11 +57,11 @@ export function MarkAwayForm({
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="away-start" className="text-base">From</Label>
-          <Input id="away-start" type="date" min={today} value={start} onChange={(e) => { setStart(e.target.value); if (e.target.value > end) setEnd(e.target.value); }} className="h-12 text-base" required />
+          <DatePicker id="away-start" min={today} value={start} onChange={(v) => { setStart(v); if (v > end) setEnd(v); }} className="h-12" />
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="away-end" className="text-base">To</Label>
-          <Input id="away-end" type="date" min={start} value={end} onChange={(e) => setEnd(e.target.value)} className="h-12 text-base" required />
+          <DatePicker id="away-end" min={start} value={end} onChange={setEnd} className="h-12" />
         </div>
       </div>
 

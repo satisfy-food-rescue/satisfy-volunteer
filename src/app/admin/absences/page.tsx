@@ -38,9 +38,9 @@ export default async function AbsencesPage() {
         <table className="w-full min-w-[56rem] border-collapse text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/60">
-              <th className="sticky left-0 z-10 bg-muted/60 px-3 py-2 text-left text-xs font-bold uppercase tracking-wide text-muted-foreground">Volunteer</th>
+              <th className="font-display sticky left-0 z-10 bg-muted/60 px-3 py-2 text-left text-xs font-bold uppercase tracking-wide text-muted-foreground">Volunteer</th>
               {days.map((iso) => (
-                <th key={iso} className={cn("px-0.5 py-2 text-center text-[0.65rem] font-bold uppercase leading-tight text-muted-foreground", iso === today && "text-green-text")}>
+                <th key={iso} className={cn("font-display px-0.5 py-2 text-center text-[0.65rem] font-bold uppercase leading-tight text-muted-foreground", iso === today && "text-green-text")}>
                   {WEEKDAY_SHORT[weekdayOf(iso)]}<br /><span className="text-xs tabular">{Number(iso.slice(8))}</span>
                 </th>
               ))}

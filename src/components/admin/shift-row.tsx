@@ -14,11 +14,11 @@ export function ShiftRow({ view, showDate }: { view: ShiftView; showDate?: strin
       href={`/admin/roster/${view.shift.id}`}
       className={cn(
         "flex items-center gap-3 rounded-xl border bg-card px-3 py-2.5 transition-colors hover:border-green",
-        view.isGap ? "border-magenta/40" : "border-border",
+        view.isGap ? "border-pink/40" : "border-border",
         cancelled && "opacity-60",
       )}
     >
-      <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", view.kind === "WAREHOUSE" ? "bg-green-tint text-green-deep" : "bg-[#e6ecf7] text-[#1e3a8a]")}>
+      <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", view.kind === "WAREHOUSE" ? "bg-green-tint text-green-deep" : "bg-blue-tint text-blue-text")}>
         <ShiftKindIcon kind={view.kind} className="size-5" />
       </span>
       <span className="min-w-0 flex-1">
@@ -28,7 +28,7 @@ export function ShiftRow({ view, showDate }: { view: ShiftView; showDate?: strin
         </span>
         <span className="block text-xs text-muted-foreground tabular">{formatTimeRange(view.shift.startTime, view.shift.endTime)}</span>
       </span>
-      <span className="hidden -space-x-1.5 sm:flex">
+      <span className="hidden -space-x-1 sm:flex">
         {view.confirmed.slice(0, 5).map((a) => <AvatarBadge key={a.id} person={a.volunteer} size="sm" className="size-7 text-[0.6rem] ring-2 ring-card" />)}
       </span>
       <span className="w-12 text-right text-sm text-ink tabular">{view.confirmedCount}/{view.shift.capacity}</span>

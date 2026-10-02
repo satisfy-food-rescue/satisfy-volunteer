@@ -56,7 +56,7 @@ export function AddVolunteerPanel({ shiftId, candidates, isGap }: { shiftId: str
           {c.coversBefore > 0 && <span>Covered {c.coversBefore}x before</span>}
         </span>
       </span>
-      <ActionButton size="sm" className={cn("h-9 px-3", isGap && "bg-magenta text-white hover:bg-magenta/90")} action={() => addToShift(shiftId, c.id)}>
+      <ActionButton size="sm" className={cn("h-9 px-3", isGap && "bg-pink text-white hover:bg-pink/90")} action={() => addToShift(shiftId, c.id)}>
         <UserPlus className="size-4" /> Add
       </ActionButton>
     </li>
@@ -66,12 +66,12 @@ export function AddVolunteerPanel({ shiftId, candidates, isGap }: { shiftId: str
       <Input placeholder="Search eligible volunteers" value={q} onChange={(e) => setQ(e.target.value)} className="h-11 text-base" aria-label="Search eligible volunteers" />
       {lastMinute.length > 0 && (
         <div>
-          <p className="mb-1.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-magenta"><Zap className="size-3.5" aria-hidden /> Last-minute available</p>
-          <ul className="divide-y divide-border overflow-hidden rounded-xl border border-magenta/30 bg-card">{lastMinute.map((c) => <Row key={c.id} c={c} />)}</ul>
+          <p className="font-display mb-1.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-pink-text"><Zap className="size-3.5" aria-hidden /> Last-minute available</p>
+          <ul className="divide-y divide-border overflow-hidden rounded-xl border border-pink/30 bg-card">{lastMinute.map((c) => <Row key={c.id} c={c} />)}</ul>
         </div>
       )}
       <div>
-        <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">Eligible and free ({others.length})</p>
+        <p className="font-display mb-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">Eligible and free ({others.length})</p>
         {others.length === 0 ? (
           <p className="rounded-xl border border-dashed border-border px-3 py-4 text-center text-sm text-muted-foreground">No other eligible volunteers are free that day.</p>
         ) : (

@@ -82,7 +82,7 @@ export default async function ReportsPage() {
         <section className="rounded-2xl border border-border bg-card p-5">
           <h2 className="text-xl text-ink">No-shows per month</h2>
           <p className="mb-4 text-sm text-muted-foreground">Rostered volunteers marked as not attending. Sickness reported in advance is an absence, not a no-show.</p>
-          <BarChart title="No-shows per month" tone="magenta" data={byMonth.map((b) => ({ label: formatMonthShort(b.m), sublabel: formatMonth(b.m), value: b.noShows, muted: b.isCurrent }))} />
+          <BarChart title="No-shows per month" tone="pink" data={byMonth.map((b) => ({ label: formatMonthShort(b.m), sublabel: formatMonth(b.m), value: b.noShows, muted: b.isCurrent }))} />
         </section>
         <section className="rounded-2xl border border-border bg-card p-5">
           <h2 className="text-xl text-ink">Training compliance by module</h2>

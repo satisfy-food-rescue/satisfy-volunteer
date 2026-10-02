@@ -34,7 +34,7 @@ export default async function AdminShiftPage({ params }: { params: Promise<{ id:
 
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-start gap-4">
-          <span className={cn("flex size-14 shrink-0 items-center justify-center rounded-2xl", view.kind === "WAREHOUSE" ? "bg-green-tint text-green-deep" : "bg-[#e6ecf7] text-[#1e3a8a]")}>
+          <span className={cn("flex size-14 shrink-0 items-center justify-center rounded-2xl", view.kind === "WAREHOUSE" ? "bg-green-tint text-green-deep" : "bg-blue-tint text-blue-text")}>
             <ShiftKindIcon kind={view.kind} className="size-7" />
           </span>
           <div>
@@ -88,8 +88,8 @@ export default async function AdminShiftPage({ params }: { params: Promise<{ id:
           )}
 
           {view.released.length > 0 && (
-            <div className="rounded-2xl border border-magenta/30 bg-magenta-tint/50 p-4">
-              <p className="text-sm font-bold text-magenta">Released from this shift</p>
+            <div className="rounded-2xl border border-pink/30 bg-pink-tint/50 p-4">
+              <p className="text-sm font-bold text-pink-text">Released from this shift</p>
               <ul className="mt-2 flex flex-col gap-1.5">
                 {view.released.map((r) => (
                   <li key={r.id} className="flex items-center gap-2 text-sm text-ink">

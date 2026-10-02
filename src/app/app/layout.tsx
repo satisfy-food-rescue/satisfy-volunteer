@@ -16,7 +16,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   ]);
   const attention = training.summary.overdue + training.summary.notStarted;
   return (
-    <div className="flex flex-1 justify-center bg-[#eef3ec]">
+    <div className="flex flex-1 justify-center bg-app-backdrop">
       <div className="relative flex min-h-dvh w-full max-w-[30rem] flex-col bg-background pb-24 md:border-x md:border-border">
         <AppHeader person={me} />
         <main className="flex flex-1 flex-col">{children}</main>

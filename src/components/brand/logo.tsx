@@ -56,11 +56,11 @@ export function Wordmark({
 }) {
   return (
     <span className={cn("flex flex-col leading-none", className)}>
-      <span className="font-display text-[1.05rem] tracking-[0.08em] text-ink">
+      <span className="font-display font-bold text-[1.05rem] tracking-[0.08em] text-ink">
         SATISFY
       </span>
       {!compact && (
-        <span className="mt-0.5 text-[0.62rem] font-bold uppercase tracking-[0.22em] text-green-text">
+        <span className="mt-0.5 font-display text-[0.62rem] font-bold uppercase tracking-[0.22em] text-green-text">
           food rescue
         </span>
       )}

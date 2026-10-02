@@ -38,8 +38,8 @@ export default async function TrainingPage() {
         <h1 className="mt-1 text-3xl text-ink">Training</h1>
       </div>
 
-      <div className={cn("rounded-2xl p-5", summary.compliant ? "pattern-wheat bg-green-tint-soft ring-1 ring-green/40" : "bg-card ring-1 ring-border")}>
-        <p className="font-display text-3xl text-ink tabular">
+      <div className={cn("rounded-2xl p-5", summary.compliant ? "bg-green-tint-soft ring-1 ring-green/40" : "bg-card ring-1 ring-border")}>
+        <p className="font-display font-bold text-3xl text-ink tabular">
           {currentCount} <span className="text-xl text-muted-foreground">of {required.length}</span>
         </p>
         <p className="mt-1 font-semibold text-ink">modules current</p>

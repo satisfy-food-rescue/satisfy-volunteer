@@ -56,7 +56,7 @@ export default async function SignInPage() {
 
   return (
     <main className="flex flex-1 flex-col">
-      <div className="pattern-wheat border-b border-border bg-green-tint-soft">
+      <div className="border-b border-border bg-green-tint-soft">
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-5 py-10 md:flex-row md:items-end md:justify-between md:px-10 md:py-14">
           <div>
             <LogoMark size={96} />
@@ -67,14 +67,14 @@ export default async function SignInPage() {
               Demo build for Satisfy Food Rescue. Pick a persona to explore. Nothing here sends real email or touches Infoodle.
             </p>
           </div>
-          <dl className="grid grid-cols-3 gap-4 md:w-80 md:shrink-0">
+          <dl className="grid grid-cols-3 gap-3 md:w-96 md:shrink-0">
             {[
               [compactCount(IMPACT.kgRescued), "kg of kai rescued"],
               [compactCount(IMPACT.meals), "meals shared"],
               [`${formatCount(IMPACT.co2Tonnes)} t`, `CO2e avoided ${IMPACT.co2Period}`],
             ].map(([n, l]) => (
               <div key={l} className="rounded-xl bg-white/80 px-3 py-3 ring-1 ring-green/30">
-                <dd className="font-display text-2xl text-green-text tabular">{n}</dd>
+                <dd className="whitespace-nowrap font-display text-xl font-bold text-green-text tabular sm:text-2xl">{n}</dd>
                 <dt className="mt-0.5 text-xs font-semibold leading-snug text-ink-soft">{l}</dt>
               </div>
             ))}
@@ -110,7 +110,7 @@ export default async function SignInPage() {
                     <span className="flex size-12 items-center justify-center rounded-xl bg-green-tint text-green-deep">
                       <Icon className="size-6" aria-hidden />
                     </span>
-                    <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                    <span className="font-display rounded-full bg-muted px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-muted-foreground">
                       {p.surface}
                     </span>
                   </div>

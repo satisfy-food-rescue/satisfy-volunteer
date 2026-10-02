@@ -43,7 +43,7 @@ export default async function ShiftsPage({ searchParams }: { searchParams: Promi
           <p className="font-bold text-ink tabular">
             {formatDayShort(days[0])} - {formatDayShort(days[4])}
           </p>
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <p className="font-display text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             {monday === thisWeek ? "This week" : monday === addDays(thisWeek, 7) ? "Next week" : formatMonth(days[0])}
           </p>
         </div>

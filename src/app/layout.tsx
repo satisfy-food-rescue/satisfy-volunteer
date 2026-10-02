@@ -1,18 +1,20 @@
 import type { Metadata, Viewport } from "next";
-import { Nunito_Sans, Suez_One } from "next/font/google";
+import { Montserrat, Roboto_Slab } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
 
 // Fonts are theme tokens too: swap these two imports to rebrand the type.
-const headline = Suez_One({
+// Brand Guidelines: Montserrat (the logo font) for headings and subheadings,
+// Stag for body text. Stag is a commercial face with no web licence yet, so
+// Roboto Slab stands in; with a licensed file, swap it for next/font/local.
+const headline = Montserrat({
   variable: "--font-headline",
   subsets: ["latin"],
-  weight: "400",
   display: "swap",
 });
 
-const body = Nunito_Sans({
+const body = Roboto_Slab({
   variable: "--font-body",
   subsets: ["latin"],
   display: "swap",
@@ -27,7 +29,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#00c951",
+  themeColor: "#00a551",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

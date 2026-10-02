@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { OptionSelect } from "@/components/shared/option-select";
 import { cn } from "@/lib/utils";
 
 const TYPE = [
@@ -11,18 +12,19 @@ const TYPE = [
   ["harvest", "Harvest pool"],
   ["casual", "Casual"],
 ];
+// "any" means no filter: it is dropped from the URL.
 const ROLE = [
-  ["", "Any role"],
-  ["WAREHOUSE", "Warehouse"],
-  ["DRIVERS_ASSISTANT", "Driver's assistant"],
-  ["VOLUNTEER_DRIVER", "Volunteer driver"],
+  { value: "any", label: "Any role" },
+  { value: "WAREHOUSE", label: "Warehouse" },
+  { value: "DRIVERS_ASSISTANT", label: "Driver's assistant" },
+  { value: "VOLUNTEER_DRIVER", label: "Volunteer driver" },
 ];
 const TRAINING = [
-  ["", "Any training status"],
-  ["OVERDUE", "Overdue"],
-  ["DUE_SOON", "Due soon"],
-  ["NOT_STARTED", "Not started"],
-  ["COMPLETE", "All current"],
+  { value: "any", label: "Any training status" },
+  { value: "OVERDUE", label: "Overdue" },
+  { value: "DUE_SOON", label: "Due soon" },
+  { value: "NOT_STARTED", label: "Not started" },
+  { value: "COMPLETE", label: "All current" },
 ];
 
 export function VolunteerFilters() {
@@ -30,7 +32,7 @@ export function VolunteerFilters() {
   const sp = useSearchParams();
   const set = (k: string, v: string) => {
     const next = new URLSearchParams(sp.toString());
-    if (v) next.set(k, v); else next.delete(k);
+    if (v && v !== "any") next.set(k, v); else next.delete(k);
     router.replace(`/admin/volunteers?${next.toString()}`);
   };
   return (
@@ -40,12 +42,8 @@ export function VolunteerFilters() {
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
           <Input aria-label="Search volunteers" placeholder="Search by name, suburb or email" defaultValue={sp.get("q") ?? ""} onChange={(e) => set("q", e.target.value)} className="h-11 bg-card pl-9 text-base" />
         </div>
-        <select aria-label="Role" value={sp.get("role") ?? ""} onChange={(e) => set("role", e.target.value)} className="h-11 rounded-lg border border-input bg-card px-3 text-sm font-semibold text-ink">
-          {ROLE.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-        </select>
-        <select aria-label="Training status" value={sp.get("training") ?? ""} onChange={(e) => set("training", e.target.value)} className="h-11 rounded-lg border border-input bg-card px-3 text-sm font-semibold text-ink">
-          {TRAINING.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-        </select>
+        <OptionSelect aria-label="Role" value={sp.get("role") ?? "any"} onValueChange={(v) => set("role", v)} options={ROLE} className="w-auto min-w-44" />
+        <OptionSelect aria-label="Training status" value={sp.get("training") ?? "any"} onValueChange={(v) => set("training", v)} options={TRAINING} className="w-auto min-w-52" />
       </div>
       <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Volunteer type">
         {TYPE.map(([v, l]) => {

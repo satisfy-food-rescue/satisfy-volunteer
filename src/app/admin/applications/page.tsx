@@ -46,9 +46,9 @@ export default async function ApplicationsPage() {
                   {a.phone && <span className="inline-flex items-center gap-1 tabular"><Phone className="size-4 text-green-text" aria-hidden />{a.phone}</span>}
                 </p>
                 <dl className="mt-3 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
-                  <div><dt className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Interested in</dt><dd className="mt-0.5 flex flex-wrap gap-1">{parseRoles(a.interests).map((r) => <Chip key={r} tone="good" size="sm">{ROLE_SHORT[r]}</Chip>)}</dd></div>
-                  <div><dt className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Availability</dt><dd className="mt-0.5 text-ink">{a.availability}</dd></div>
-                  {a.message && <div className="sm:col-span-2"><dt className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Message</dt><dd className="mt-0.5 text-ink">&ldquo;{a.message}&rdquo;</dd></div>}
+                  <div><dt className="font-display text-xs font-bold uppercase tracking-wide text-muted-foreground">Interested in</dt><dd className="mt-0.5 flex flex-wrap gap-1">{parseRoles(a.interests).map((r) => <Chip key={r} tone="good" size="sm">{ROLE_SHORT[r]}</Chip>)}</dd></div>
+                  <div><dt className="font-display text-xs font-bold uppercase tracking-wide text-muted-foreground">Availability</dt><dd className="mt-0.5 text-ink">{a.availability}</dd></div>
+                  {a.message && <div className="sm:col-span-2"><dt className="font-display text-xs font-bold uppercase tracking-wide text-muted-foreground">Message</dt><dd className="mt-0.5 text-ink">&ldquo;{a.message}&rdquo;</dd></div>}
                 </dl>
                 <p className="mt-3 inline-flex items-center gap-1.5 text-xs text-muted-foreground"><Clock className="size-3.5" aria-hidden />Submitted {formatInstant(a.submittedAt)} · Infoodle {a.infoodleId}</p>
               </div>

@@ -7,7 +7,7 @@ export function AppHeader({ person }: { person: { firstName: string; lastName?: 
     <header className="flex items-center justify-between px-5 pt-4">
       <Link href="/app" className="flex items-center gap-2" aria-label="Home">
         <LogoMark size={40} />
-        <span className="font-display text-[0.95rem] tracking-[0.08em] text-ink">SATISFY</span>
+        <span className="font-display font-bold text-[0.95rem] tracking-[0.08em] text-ink">SATISFY</span>
       </Link>
       <Link href="/app/profile" className="tap flex items-center justify-center" aria-label="My profile">
         <AvatarBadge person={person} size="sm" />

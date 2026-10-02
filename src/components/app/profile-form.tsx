@@ -30,7 +30,7 @@ export function ProfileForm({ initial, email }: { initial: Values; email: string
       }}
     >
       <fieldset className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-4">
-        <legend className="px-1 text-sm font-bold uppercase tracking-wide text-muted-foreground">Contact</legend>
+        <legend className="font-display px-1 text-sm font-bold uppercase tracking-wide text-muted-foreground">Contact</legend>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="email" className="text-base">Email</Label>
           <Input id="email" value={email} readOnly className="h-12 bg-muted text-base" />
@@ -47,7 +47,7 @@ export function ProfileForm({ initial, email }: { initial: Values; email: string
       </fieldset>
 
       <fieldset className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-4">
-        <legend className="px-1 text-sm font-bold uppercase tracking-wide text-muted-foreground">Emergency contact</legend>
+        <legend className="font-display px-1 text-sm font-bold uppercase tracking-wide text-muted-foreground">Emergency contact</legend>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="ec-name" className="text-base">Name and relationship</Label>
           <Input id="ec-name" value={v.emergencyName} onChange={set("emergencyName")} className="h-12 text-base" placeholder="e.g. Sam, partner" />
@@ -59,7 +59,7 @@ export function ProfileForm({ initial, email }: { initial: Values; email: string
       </fieldset>
 
       <fieldset className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-4">
-        <legend className="px-1 text-sm font-bold uppercase tracking-wide text-muted-foreground">Availability</legend>
+        <legend className="font-display px-1 text-sm font-bold uppercase tracking-wide text-muted-foreground">Availability</legend>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="avail" className="text-base">When can you usually help?</Label>
           <Textarea id="avail" rows={3} value={v.availabilityNote} onChange={set("availabilityNote")} className="text-base" placeholder="e.g. Most weekday mornings, not Fridays" />
