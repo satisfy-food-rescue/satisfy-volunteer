@@ -29,7 +29,7 @@ const PERSONAS = [
   },
   {
     key: "tony",
-    label: "Driver's assistant, refresher overdue",
+    label: "Driver help, refresher overdue",
     icon: Truck,
     blurb: "Wednesday Rangiora / Kaiapoi route. Manual Handling lapsed, so route shifts are blocked until it is done.",
     surface: "Volunteer app",
@@ -38,7 +38,7 @@ const PERSONAS = [
     key: "jess",
     label: "New volunteer, no training yet",
     icon: Sprout,
-    blurb: "Approved from the Infoodle form two days ago. Needs induction before booking anything.",
+    blurb: "Approved from the Infoodle form two days ago. Needs an initial visit before booking anything.",
     surface: "Volunteer app",
   },
 ] as const;

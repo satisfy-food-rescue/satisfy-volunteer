@@ -35,10 +35,24 @@ export const REMINDER_RULES = [
   },
   {
     id: "gap-alert",
-    when: "As soon as an absence releases a shift",
+    when: "As soon as a volunteer's absence or cancellation opens a gap",
     audience: "Coordinator",
     template: "Coverage gap alert",
     detail: "Also lists the shift under Open gaps for eligible volunteers.",
+  },
+  {
+    id: "last-minute",
+    when: "A gap inside the shift type's last-minute window (48 hours by default)",
+    audience: "Last-minute volunteers who are eligible and free that day",
+    template: "Last-minute cover (push notification)",
+    detail: "Sent the moment the gap opens, or when an older gap drifts into the window. Each volunteer hears about a shift once.",
+  },
+  {
+    id: "escalate",
+    when: "Still uncovered at the shift type's alert threshold (24 hours by default)",
+    audience: "Coordinator",
+    template: "Uncovered shift alert",
+    detail: "Time to pick up the phone. Route shifts can be set to alert earlier than warehouse shifts in Settings > Shift types.",
   },
 ] as const;
 

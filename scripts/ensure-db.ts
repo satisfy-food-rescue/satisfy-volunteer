@@ -1,6 +1,8 @@
 // Runs before `next dev`. Creates the SQLite database on first run and reseeds
 // whenever the demo date has rolled over, so seed dates stay relative to today,
-// or the seed script has changed, so a deploy never serves stale demo data.
+// or the seed script or schema has changed, so a deploy never serves stale demo
+// data. A schema change is pushed first; the reseed replaces every row anyway,
+// so dropping a column is safe here.
 import { execSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
@@ -15,29 +17,40 @@ function run(cmd: string) {
   execSync(cmd, { stdio: "inherit" });
 }
 
+function hash(path: string) {
+  return createHash("sha256").update(readFileSync(path)).digest("hex");
+}
+
 async function main() {
   const fresh = !existsSync(file);
   if (fresh) {
     console.log("No database yet. Creating schema...");
     run("pnpm exec prisma db push");
   }
-  const seedHash = createHash("sha256").update(readFileSync("prisma/seed.ts")).digest("hex");
+  const seedHash = hash("prisma/seed.ts");
+  const schemaHash = hash("prisma/schema.prisma");
   let db = new PrismaClient({ adapter: new PrismaBetterSqlite3({ url }) });
   let seededOn: string | null = null;
   let seededHash: string | null = null;
+  let pushedSchema: string | null = null;
   try {
     seededOn = (await db.meta.findUnique({ where: { key: "seededOn" } }))?.value ?? null;
     seededHash = (await db.meta.findUnique({ where: { key: "seedHash" } }))?.value ?? null;
+    pushedSchema = (await db.meta.findUnique({ where: { key: "schemaHash" } }))?.value ?? null;
   } catch {
-    // Schema out of date; push again.
-    await db.$disconnect();
-    run("pnpm exec prisma db push");
+    // Meta table unreadable: treat the schema as out of date.
   } finally {
     await db.$disconnect();
+  }
+  const schemaChanged = !fresh && pushedSchema !== schemaHash;
+  if (schemaChanged) {
+    console.log("Schema changed. Pushing...");
+    run("pnpm exec prisma db push --accept-data-loss");
   }
   const today = todayISO();
   const reason =
     process.env.RESEED === "1" ? "RESEED=1"
+    : schemaChanged ? "schema changed"
     : seededOn !== today ? `seed is from ${seededOn ?? "never"}`
     : seededHash !== seedHash ? "seed script changed"
     : null;
@@ -45,7 +58,9 @@ async function main() {
     console.log(fresh ? "Seeding demo data..." : `Reseeding for ${today} (${reason})...`);
     run("pnpm exec tsx prisma/seed.ts");
     db = new PrismaClient({ adapter: new PrismaBetterSqlite3({ url }) });
-    await db.meta.upsert({ where: { key: "seedHash" }, update: { value: seedHash }, create: { key: "seedHash", value: seedHash } });
+    for (const [key, value] of [["seedHash", seedHash], ["schemaHash", schemaHash]]) {
+      await db.meta.upsert({ where: { key }, update: { value }, create: { key, value } });
+    }
     await db.$disconnect();
   }
 }

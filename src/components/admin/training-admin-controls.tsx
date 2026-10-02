@@ -25,7 +25,7 @@ const DELIVERY: Option<ModuleForm["delivery"]>[] = [
 ];
 
 // Session times in 15-minute steps across the working day.
-const TIMES: Option[] = Array.from({ length: (20 - 6) * 4 + 1 }, (_, i) => {
+export const TIMES: Option[] = Array.from({ length: (20 - 6) * 4 + 1 }, (_, i) => {
   const mins = 6 * 60 + i * 15;
   const value = `${String(Math.floor(mins / 60)).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}`;
   return { value, label: formatTime(value) };

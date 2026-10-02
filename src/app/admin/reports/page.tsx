@@ -55,7 +55,7 @@ export default async function ReportsPage() {
     .map((m) => {
       const rel = active.map((v) => moduleStatuses(v, modules, v.trainingRecords, today).find((s) => s.module.id === m.id)!).filter((s) => s.required);
       const cur = rel.filter((s) => s.status === "COMPLETE" || s.status === "DUE_SOON").length;
-      return { label: m.name.replace("Induction and Health & Safety", "Induction").replace("Food Safety and Hygiene", "Food Safety").replace("Slips, Trips and Falls", "Slips/Trips").replace("Route and Vehicle Safety", "Route Safety").replace("Driver Licence Check", "Licence"), sublabel: m.name, value: rel.length ? Math.round((cur / rel.length) * 100) : 100 };
+      return { label: m.name.replace("Food Safety and Hygiene", "Food Safety").replace("Slips, Trips and Falls", "Slips/Trips").replace("Route and Vehicle Safety", "Route Safety").replace("Driver Licence Check", "Licence"), sublabel: m.name, value: rel.length ? Math.round((cur / rel.length) * 100) : 100 };
     });
 
   return (

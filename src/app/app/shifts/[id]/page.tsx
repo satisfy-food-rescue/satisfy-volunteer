@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft, Clock, MapPin, Store, Users } from "lucide-react";
+import { ChevronLeft, Clock, MapPin, Store, UserRound, Users } from "lucide-react";
 import { requireVolunteer } from "@/lib/session";
 import { formatDayLong, formatTimeRange, relativeDay, todayISO } from "@/lib/dates";
 import { shiftById } from "@/lib/roster";
@@ -60,10 +60,18 @@ export default async function ShiftDetailPage({ params }: { params: Promise<{ id
           <div>
             <dt className="sr-only">Where</dt>
             <dd className="text-ink">{view.location}</dd>
-            {view.shift.template.route?.driverName && <dd className="text-sm text-muted-foreground">Driver: {view.shift.template.route.driverName}</dd>}
             {view.shift.template.route?.isVolunteerDriven && <dd className="text-sm text-muted-foreground">Fully volunteer-driven route</dd>}
           </div>
         </div>
+        {view.shift.template.workingWith && (
+          <div className="flex items-start gap-3">
+            <UserRound className="mt-0.5 size-5 shrink-0 text-green-text" aria-hidden />
+            <div>
+              <dt className="sr-only">Working with</dt>
+              <dd className="text-ink">Working with {view.shift.template.workingWith}</dd>
+            </div>
+          </div>
+        )}
         {donors.length > 0 && (
           <div className="flex items-start gap-3">
             <Store className="mt-0.5 size-5 shrink-0 text-green-text" aria-hidden />

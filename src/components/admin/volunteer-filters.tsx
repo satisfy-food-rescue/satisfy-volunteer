@@ -16,7 +16,7 @@ const TYPE = [
 const ROLE = [
   { value: "any", label: "Any role" },
   { value: "WAREHOUSE", label: "Warehouse" },
-  { value: "DRIVERS_ASSISTANT", label: "Driver's assistant" },
+  { value: "DRIVERS_ASSISTANT", label: "Driver help" },
   { value: "VOLUNTEER_DRIVER", label: "Volunteer driver" },
 ];
 const TRAINING = [

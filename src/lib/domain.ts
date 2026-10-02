@@ -10,13 +10,13 @@ export type VolunteerRole = (typeof VOLUNTEER_ROLES)[number];
 
 export const ROLE_LABEL: Record<VolunteerRole, string> = {
   WAREHOUSE: "Warehouse sorting",
-  DRIVERS_ASSISTANT: "Driver's assistant",
+  DRIVERS_ASSISTANT: "Driver help",
   VOLUNTEER_DRIVER: "Volunteer driver",
 };
 
 export const ROLE_SHORT: Record<VolunteerRole, string> = {
   WAREHOUSE: "Warehouse",
-  DRIVERS_ASSISTANT: "Driver's assistant",
+  DRIVERS_ASSISTANT: "Driver help",
   VOLUNTEER_DRIVER: "Driver",
 };
 
@@ -24,7 +24,7 @@ export type ShiftKind = VolunteerRole;
 
 export const SHIFT_KIND_LABEL: Record<ShiftKind, string> = {
   WAREHOUSE: "Warehouse sorting",
-  DRIVERS_ASSISTANT: "Driver's assistant",
+  DRIVERS_ASSISTANT: "Driver help",
   VOLUNTEER_DRIVER: "Volunteer driver",
 };
 
@@ -77,7 +77,11 @@ export type EmailKind =
   | "TRAINING_COMPLETED"
   | "SESSION_CONFIRMED"
   | "HARVEST_CALLOUT"
-  | "WELCOME";
+  | "WELCOME"
+  | "LAST_MINUTE_CALLOUT"
+  | "GAP_ESCALATION"
+  | "ROLES_CHANGED"
+  | "ROLE_CHANGE_REQUEST";
 
 export const EMAIL_KIND_LABEL: Record<EmailKind, string> = {
   TRAINING_DUE_SOON: "Training due soon",
@@ -91,7 +95,27 @@ export const EMAIL_KIND_LABEL: Record<EmailKind, string> = {
   SESSION_CONFIRMED: "Session RSVP confirmed",
   HARVEST_CALLOUT: "Harvest callout",
   WELCOME: "Welcome",
+  LAST_MINUTE_CALLOUT: "Last-minute cover",
+  GAP_ESCALATION: "Uncovered shift alert",
+  ROLES_CHANGED: "Roles changed",
+  ROLE_CHANGE_REQUEST: "Role change request",
 };
+
+export type Channel = "EMAIL" | "PUSH";
+
+export type ContactLogKind = "CALL" | "NOTE" | "PROFILE_UPDATED" | "ROLES_CHANGED" | "VISIT_BOOKED" | "ROLE_REQUEST";
+export const CONTACT_LOG_LABEL: Record<ContactLogKind, string> = {
+  CALL: "Phone call",
+  NOTE: "Note",
+  PROFILE_UPDATED: "Profile updated",
+  ROLES_CHANGED: "Roles changed",
+  VISIT_BOOKED: "Initial visit booked",
+  ROLE_REQUEST: "Asked to change roles",
+};
+
+/** The first in-person training stage. New volunteers cannot book shifts until
+ *  it is done, and the coordinator often books it during the welcome call. */
+export const INITIAL_VISIT_CODE = "INITIAL_VISIT";
 
 /** Days before expiry at which a module flips from Complete to Due soon. */
 export const DUE_SOON_DAYS = 30;
