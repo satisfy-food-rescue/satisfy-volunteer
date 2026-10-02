@@ -44,7 +44,7 @@ export default async function ModulePage({ params }: { params: Promise<{ code: s
           <ol className="flex flex-col gap-3">
             {paragraphs.map((p, i) => (
               <li key={i} className="flex gap-3 rounded-2xl border border-border bg-card p-4">
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-green-tint font-display text-green-deep">{i + 1}</span>
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-green-tint font-display font-bold text-green-deep">{i + 1}</span>
                 <p className="text-base leading-relaxed text-ink">{p}</p>
               </li>
             ))}

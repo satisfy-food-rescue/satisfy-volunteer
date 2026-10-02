@@ -2,18 +2,25 @@
    Satisfy Food Rescue volunteer app - THEME FILE
    --------------------------------------------------------------------------
    Every colour, radius and font used anywhere in the app is defined here as a
-   CSS variable and exposed to Tailwind through @theme. Satisfy is mid brand
-   refresh: to re-skin the app, change the values in the ":root" block below
-   and swap the two font imports in src/app/layout.tsx. Nothing else needs
-   touching. Components never use raw hex values.
+   CSS variable and exposed to Tailwind through @theme. Values follow the
+   Satisfy Food Rescue Brand Guidelines: primary green #00A551 plus the
+   secondary suite (yellow, orange, pink, dark blue, light blue, teal). To
+   re-skin the app, change the values in the ":root" block below and swap the
+   two font imports in src/app/layout.tsx. Nothing else needs touching.
+   Components never use raw hex values.
 
    Contrast notes (WCAG AA, checked numerically):
-   - Brand green #00C951 is too light for text on white (2.2:1), so it is used
-     as a FILL with deep green text (#05301A, 6.6:1). Text and icons in green
-     use --green-text (#0A7A38, 5.5:1 on white, 4.6:1 on the pale tint).
-   - Brand magenta #ED1566 with white text is 4.3:1, just under AA, so fills
-     use --magenta-fill (#D40E5A, 5.2:1). The brand shade stays as a decorative
-     accent (--brand-magenta).
+   - Brand green #00A551 is too light for text on white (3.2:1) and for white
+     text on it, so it stays a decorative fill (bars, rings, focus outlines).
+     Buttons and other fills that carry text use --green-fill (#008543, the
+     brand hue 17% darker) with white text (4.8:1), darkening on hover to
+     #007A3D (5.5:1). Text and icons in green use --green-text (#007A3D, 5.5:1
+     on white, 4.6:1 on the pale tint).
+   - Brand pink #FF0066 with white text is 3.9:1, so fills use --pink-fill
+     (#D6005A, 5.2:1) and pink text uses --pink-text (#B8004D, 5.6:1 on the
+     pink tint). The brand shade stays as a decorative accent (--brand-pink).
+   - The other secondary colours are light or saturated, so each has a pale
+     tint for backgrounds and a darkened text shade (all 6:1 or better).
    ========================================================================== */
 
 @import "tailwindcss";
@@ -38,6 +45,7 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -66,11 +74,23 @@
   --color-green: var(--brand-green);
   --color-green-text: var(--green-text);
   --color-green-deep: var(--green-deep);
+  --color-green-fill: var(--green-fill);
+  --color-green-fill-hover: var(--green-fill-hover);
   --color-green-tint: var(--green-tint);
   --color-green-tint-soft: var(--green-tint-soft);
-  --color-magenta: var(--magenta-fill);
-  --color-magenta-brand: var(--brand-magenta);
-  --color-magenta-tint: var(--magenta-tint);
+  --color-pink: var(--pink-fill);
+  --color-pink-brand: var(--brand-pink);
+  --color-pink-text: var(--pink-text);
+  --color-pink-tint: var(--pink-tint);
+  --color-blue-tint: var(--blue-tint);
+  --color-blue-text: var(--blue-text);
+  --color-teal-tint: var(--teal-tint);
+  --color-teal-text: var(--teal-text);
+  --color-yellow-tint: var(--yellow-tint);
+  --color-yellow-text: var(--yellow-text);
+  --color-orange-tint: var(--orange-tint);
+  --color-orange-text: var(--orange-text);
+  --color-app-backdrop: var(--app-backdrop);
   --color-ink: var(--ink);
   --color-ink-soft: var(--ink-soft);
   --color-canvas: var(--canvas);
@@ -97,30 +117,53 @@
 }
 
 :root {
-  /* ---- Brand palette (from satisfyfoodrescue.org.nz) ---- */
-  --brand-green: #00c951;
-  --brand-magenta: #ed1566;
-  --green-tint: #cff7cb;
-  --green-tint-soft: #eaf9e7;
-  --green-text: #0a7a38;
-  --green-deep: #05301a;
-  --magenta-fill: #d40e5a;
-  --magenta-tint: #fde4ee;
-  --ink: #1f2a24;
-  --ink-soft: #555555;
-  --canvas: #f6faf4;
+  /* ---- Primary brand colour (Brand Guidelines: Green, Pantone 354) ---- */
+  --brand-green: #00a551;
+  --green-tint: #d3f2df;
+  --green-tint-soft: #ebf8f0;
+  --green-text: #007a3d;
+  --green-deep: #00220f;
+  --green-fill: #008543;
+  --green-fill-hover: #007a3d;
+
+  /* ---- Secondary brand colours (Brand Guidelines) ---- */
+  --brand-yellow: #ffc000;
+  --brand-orange: #ff9900;
+  --brand-pink: #ff0066;
+  --brand-dark-blue: #000099;
+  --brand-light-blue: #0070c0;
+  --brand-teal: #33cccc;
+
+  /* Accessible fills, tints and text shades derived from the secondaries */
+  --pink-fill: #d6005a;
+  --pink-text: #b8004d;
+  --pink-tint: #ffe3ee;
+  --blue-tint: #e0eefa;
+  --blue-text: var(--brand-dark-blue);
+  --teal-tint: #d9f5f5;
+  --teal-text: #0b5c5c;
+  --yellow-tint: #fff2cc;
+  --yellow-text: #6b4a00;
+  --orange-tint: #ffebcc;
+  --orange-text: #8a4500;
+
+  /* ---- Neutrals ---- */
+  --ink: #1c2a22;
+  --ink-soft: #4f5a53;
+  --canvas: #f5faf7;
+  --app-backdrop: #e9f1ec;
 
   /* ---- Status palette ---- */
-  --status-good: #0a7a38;
-  --status-good-bg: #e0f6dc;
+  --status-good: var(--green-text);
+  --status-good-bg: #dcf3e5;
   --status-warn: #92400e;
-  --status-warn-bg: #fef3c7;
+  --status-warn-bg: var(--yellow-tint);
   --status-bad: #b42318;
   --status-bad-bg: #fee4e2;
   --status-neutral: #4b5563;
   --status-neutral-bg: #eef0ee;
-  --status-info: #1d4ed8;
-  --status-info-bg: #e0ebff;
+  --status-info: #005a9c;
+  --status-info-bg: var(--blue-tint);
 
   /* ---- Semantic mapping used by shadcn components ---- */
   --background: var(--canvas);
@@ -129,32 +172,33 @@
   --card-foreground: var(--ink);
   --popover: #ffffff;
   --popover-foreground: var(--ink);
-  --primary: var(--brand-green);
-  --primary-foreground: var(--green-deep);
+  --primary: var(--green-fill);
+  --primary-foreground: #ffffff;
+  --primary-hover: var(--green-fill-hover);
   --secondary: var(--green-tint-soft);
   --secondary-foreground: var(--green-deep);
-  --muted: #eef2ec;
-  --muted-foreground: #5b6660;
+  --muted: #edf3ef;
+  --muted-foreground: #566159;
   --accent: var(--green-tint-soft);
   --accent-foreground: var(--green-deep);
   --destructive: #b42318;
-  --border: #dde5da;
-  --input: #cfd9cc;
+  --border: #dbe6df;
+  --input: #cbd9d0;
   --ring: var(--brand-green);
-  --chart-1: #0a7a38;
-  --chart-2: #00c951;
-  --chart-3: #8fd9a0;
-  --chart-4: #d40e5a;
-  --chart-5: #5b6660;
+  --chart-1: var(--brand-green);
+  --chart-2: var(--brand-light-blue);
+  --chart-3: var(--brand-teal);
+  --chart-4: var(--pink-fill);
+  --chart-5: var(--brand-orange);
   --radius: 0.875rem;
 
   --sidebar: #ffffff;
   --sidebar-foreground: var(--ink);
-  --sidebar-primary: var(--brand-green);
-  --sidebar-primary-foreground: var(--green-deep);
+  --sidebar-primary: var(--green-fill);
+  --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: var(--green-tint-soft);
   --sidebar-accent-foreground: var(--green-deep);
-  --sidebar-border: #dde5da;
+  --sidebar-border: var(--border);
   --sidebar-ring: var(--brand-green);
 }
 
@@ -167,8 +211,9 @@
   --card-foreground: #f2f6f1;
   --popover: #18201b;
   --popover-foreground: #f2f6f1;
-  --primary: var(--brand-green);
-  --primary-foreground: var(--green-deep);
+  --primary: var(--green-fill);
+  --primary-foreground: #ffffff;
+  --primary-hover: var(--green-fill-hover);
   --secondary: #1f2b23;
   --secondary-foreground: #f2f6f1;
   --muted: #1f2b23;
@@ -203,8 +248,8 @@
   }
   h1, h2, h3, .display {
     font-family: var(--font-display);
-    font-weight: 400;
-    letter-spacing: -0.01em;
+    font-weight: 700;
+    letter-spacing: -0.02em;
     line-height: 1.1;
   }
   ::selection {
@@ -220,18 +265,10 @@
 @layer components {
   /* Small uppercase label used above headings and on data lists. */
   .eyebrow {
-    @apply text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground;
+    @apply font-display text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground;
   }
   .tabular {
     font-variant-numeric: tabular-nums;
-  }
-  /* Subtle wheat-line pattern for tinted hero panels. */
-  .pattern-wheat {
-    background-image: repeating-linear-gradient(
-      135deg,
-      rgb(0 201 81 / 0.09) 0 2px,
-      transparent 2px 22px
-    );
   }
   /* Minimum tap target for icon-only controls. */
   .tap {

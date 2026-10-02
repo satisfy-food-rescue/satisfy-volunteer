@@ -62,7 +62,7 @@ export function ShiftActions({ state, compact = false }: { state: ShiftActionSta
   }
   return (
     <ActionButton
-      className={state.isGap ? "h-12 w-full bg-magenta text-base text-white hover:bg-magenta/90" : "h-12 w-full text-base"}
+      className={state.isGap ? "h-12 w-full bg-pink text-base text-white hover:bg-pink/90" : "h-12 w-full text-base"}
       action={() => bookShift(state.shiftId)}
     >
       {state.isGap && <HandHelping className="size-5" aria-hidden />}

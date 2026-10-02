@@ -41,13 +41,13 @@ export function ShiftCard({
       className={cn(
         "group flex items-stretch gap-3 rounded-2xl border bg-card p-4 shadow-sm transition-colors hover:border-green",
         mine ? "border-green/60" : "border-border",
-        view.isGap && !mine && "border-magenta/40",
+        view.isGap && !mine && "border-pink/40",
       )}
     >
       <span
         className={cn(
           "flex w-11 shrink-0 items-center justify-center rounded-xl",
-          view.kind === "WAREHOUSE" ? "bg-green-tint text-green-deep" : "bg-[#e6ecf7] text-[#1e3a8a]",
+          view.kind === "WAREHOUSE" ? "bg-green-tint text-green-deep" : "bg-blue-tint text-blue-text",
         )}
       >
         <ShiftKindIcon kind={view.kind} className="size-6" />
@@ -76,7 +76,7 @@ export function ShiftCard({
         </span>
         {others.length > 0 && (
           <span className="flex items-center gap-1.5 pt-0.5">
-            <span className="flex -space-x-2">
+            <span className="flex -space-x-1">
               {others.slice(0, 4).map((a) => (
                 <AvatarBadge key={a.id} person={a.volunteer} size="sm" className="ring-2 ring-card" />
               ))}

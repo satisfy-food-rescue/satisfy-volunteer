@@ -10,10 +10,26 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { DatePicker } from "@/components/ui/date-picker";
+import { OptionSelect, type Option } from "@/components/shared/option-select";
+import { formatTime } from "@/lib/dates";
 import { ROLE_SHORT, VOLUNTEER_ROLES, type VolunteerRole } from "@/lib/domain";
 import { cn } from "@/lib/utils";
 
 export type ModuleForm = { id: string; name: string; validityMonths: number | null; requiredRoles: VolunteerRole[]; mandatoryBeforeFirstShift: boolean; delivery: "IN_PERSON" | "ONLINE_CONFIRM" };
+
+const DELIVERY: Option<ModuleForm["delivery"]>[] = [
+  { value: "IN_PERSON", label: "In-person session" },
+  { value: "ONLINE_CONFIRM", label: "Online: read and confirm" },
+];
+
+// Session times in 15-minute steps across the working day.
+const TIMES: Option[] = Array.from({ length: (20 - 6) * 4 + 1 }, (_, i) => {
+  const mins = 6 * 60 + i * 15;
+  const value = `${String(Math.floor(mins / 60)).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}`;
+  return { value, label: formatTime(value) };
+});
 
 export function ModuleEditor({ module }: { module: ModuleForm }) {
   const [open, setOpen] = useState(false);
@@ -25,45 +41,50 @@ export function ModuleEditor({ module }: { module: ModuleForm }) {
   }
   return (
     <form
-      className="mt-3 grid gap-4 rounded-xl border border-green/40 bg-green-tint-soft p-4 sm:grid-cols-2"
+      className="mt-3 grid gap-x-4 gap-y-5 rounded-xl border border-green/40 bg-green-tint-soft p-4 sm:grid-cols-2"
       onSubmit={(e) => { e.preventDefault(); run(async () => { const r = await updateModule(v); if (r.ok) { toast.success(r.message); setOpen(false); router.refresh(); } else toast.error(r.error); }); }}
     >
       <div className="flex flex-col gap-1.5 sm:col-span-2">
         <Label htmlFor={`m-name-${v.id}`}>Module name</Label>
-        <Input id={`m-name-${v.id}`} value={v.name} onChange={(e) => setV({ ...v, name: e.target.value })} className="h-11 bg-white text-base" />
+        <Input id={`m-name-${v.id}`} value={v.name} onChange={(e) => setV({ ...v, name: e.target.value })} className="h-11 bg-card text-base" />
       </div>
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor={`m-val-${v.id}`}>Validity (months, blank = never expires)</Label>
-        <Input id={`m-val-${v.id}`} type="number" min={1} max={60} value={v.validityMonths ?? ""} onChange={(e) => setV({ ...v, validityMonths: e.target.value ? Number(e.target.value) : null })} className="h-11 bg-white text-base" />
+        <Label htmlFor={`m-val-${v.id}`}>Valid for</Label>
+        <div className="relative">
+          <Input id={`m-val-${v.id}`} type="number" min={1} max={60} placeholder="Never expires" aria-describedby={`m-val-hint-${v.id}`} value={v.validityMonths ?? ""} onChange={(e) => setV({ ...v, validityMonths: e.target.value ? Number(e.target.value) : null })} className="h-11 bg-card pr-20 text-base" />
+          {v.validityMonths != null && <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">months</span>}
+        </div>
+        <p id={`m-val-hint-${v.id}`} className="text-xs text-muted-foreground">Leave blank if it never expires.</p>
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={`m-del-${v.id}`}>Delivery</Label>
-        <select id={`m-del-${v.id}`} value={v.delivery} onChange={(e) => setV({ ...v, delivery: e.target.value as ModuleForm["delivery"] })} className="h-11 rounded-lg border border-input bg-white px-3 text-base text-ink">
-          <option value="IN_PERSON">In-person session</option>
-          <option value="ONLINE_CONFIRM">Online: read and confirm</option>
-        </select>
+        <OptionSelect id={`m-del-${v.id}`} value={v.delivery} onValueChange={(d) => setV({ ...v, delivery: d })} options={DELIVERY} />
       </div>
-      <fieldset className="flex flex-col gap-1.5">
-        <legend className="text-sm font-medium">Required for</legend>
-        <div className="flex flex-wrap gap-1.5">
+      <fieldset className="flex flex-col gap-2 sm:col-span-2">
+        <legend className="mb-2 text-sm font-medium">Required for</legend>
+        <div className="flex flex-wrap gap-2">
           {VOLUNTEER_ROLES.map((r) => {
             const on = v.requiredRoles.includes(r);
             return (
-              <label key={r} className={cn("flex h-10 cursor-pointer items-center rounded-full border px-3 text-sm font-semibold", on ? "border-green bg-white text-green-deep" : "border-border bg-white/60 text-muted-foreground")}>
+              <label key={r} className={cn("flex h-10 cursor-pointer items-center gap-1.5 rounded-full border px-3.5 font-display text-sm font-semibold transition-colors has-focus-visible:outline-3 has-focus-visible:outline-green", on ? "border-green bg-card text-green-deep" : "border-border bg-card/60 text-muted-foreground hover:text-ink")}>
                 <input type="checkbox" className="sr-only" checked={on} onChange={() => setV({ ...v, requiredRoles: on ? v.requiredRoles.filter((x) => x !== r) : [...v.requiredRoles, r] })} />
+                {on && <Check className="size-4 text-green-text" aria-hidden />}
                 {ROLE_SHORT[r]}
               </label>
             );
           })}
         </div>
       </fieldset>
-      <label className="flex cursor-pointer items-center gap-3 self-end pb-1">
-        <input type="checkbox" className="size-4 accent-[var(--brand-green)]" checked={v.mandatoryBeforeFirstShift} onChange={(e) => setV({ ...v, mandatoryBeforeFirstShift: e.target.checked })} />
-        <span className="text-sm text-ink">Mandatory before first shift</span>
+      <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-card p-3 sm:col-span-2">
+        <Checkbox className="mt-0.5 size-5" checked={v.mandatoryBeforeFirstShift} onCheckedChange={(c) => setV({ ...v, mandatoryBeforeFirstShift: c })} />
+        <span className="flex flex-col">
+          <span className="text-sm font-semibold text-ink">Mandatory before first shift</span>
+          <span className="text-xs text-muted-foreground">New volunteers cannot book until this module is complete.</span>
+        </span>
       </label>
       <div className="flex gap-2 sm:col-span-2">
-        <Button type="submit" size="sm" className="h-10" disabled={pending}>{pending ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />} Save module</Button>
-        <Button type="button" variant="ghost" size="sm" className="h-10" onClick={() => { setV(module); setOpen(false); }}><X className="size-4" /> Cancel</Button>
+        <Button type="submit" size="sm" className="h-10 px-4" disabled={pending}>{pending ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />} Save module</Button>
+        <Button type="button" variant="ghost" size="sm" className="h-10 px-4" onClick={() => { setV(module); setOpen(false); }}><X className="size-4" /> Cancel</Button>
       </div>
     </form>
   );
@@ -79,11 +100,11 @@ export function NewSessionForm({ modules, today }: { modules: { id: string; name
     <form className="grid grid-cols-1 gap-4 rounded-2xl border border-green/40 bg-card p-4 sm:grid-cols-2 lg:grid-cols-3" onSubmit={(e) => { e.preventDefault(); run(async () => { const r = await createSession(v); if (r.ok) { toast.success(r.message); setOpen(false); router.refresh(); } else toast.error(r.error); }); }}>
       <div className="flex flex-col gap-1.5 lg:col-span-3">
         <Label htmlFor="s-mod">Module</Label>
-        <select id="s-mod" value={v.moduleId} onChange={(e) => setV({ ...v, moduleId: e.target.value })} className="h-11 rounded-lg border border-input bg-card px-3 text-base text-ink">{modules.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</select>
+        <OptionSelect id="s-mod" value={v.moduleId} onValueChange={(moduleId) => setV({ ...v, moduleId })} options={modules.map((m) => ({ value: m.id, label: m.name }))} />
       </div>
-      <div className="flex flex-col gap-1.5"><Label htmlFor="s-date">Date</Label><Input id="s-date" type="date" min={today} value={v.date} onChange={(e) => setV({ ...v, date: e.target.value })} className="h-11 text-base" /></div>
-      <div className="flex flex-col gap-1.5"><Label htmlFor="s-start">Start</Label><Input id="s-start" type="time" value={v.startTime} onChange={(e) => setV({ ...v, startTime: e.target.value })} className="h-11 text-base" /></div>
-      <div className="flex flex-col gap-1.5"><Label htmlFor="s-end">End</Label><Input id="s-end" type="time" value={v.endTime} onChange={(e) => setV({ ...v, endTime: e.target.value })} className="h-11 text-base" /></div>
+      <div className="flex flex-col gap-1.5"><Label htmlFor="s-date">Date</Label><DatePicker id="s-date" min={today} value={v.date} onChange={(date) => setV({ ...v, date })} /></div>
+      <div className="flex flex-col gap-1.5"><Label htmlFor="s-start">Start</Label><OptionSelect id="s-start" value={v.startTime} onValueChange={(startTime) => setV({ ...v, startTime, endTime: v.endTime > startTime ? v.endTime : TIMES[Math.min(TIMES.length - 1, TIMES.findIndex((t) => t.value === startTime) + 3)].value })} options={TIMES} /></div>
+      <div className="flex flex-col gap-1.5"><Label htmlFor="s-end">End</Label><OptionSelect id="s-end" value={v.endTime} onValueChange={(endTime) => setV({ ...v, endTime })} options={TIMES.filter((t) => t.value > v.startTime)} /></div>
       <div className="flex flex-col gap-1.5 sm:col-span-2"><Label htmlFor="s-loc">Location</Label><Input id="s-loc" value={v.location} onChange={(e) => setV({ ...v, location: e.target.value })} className="h-11 text-base" /></div>
       <div className="flex flex-col gap-1.5"><Label htmlFor="s-cap">Capacity</Label><Input id="s-cap" type="number" min={1} max={60} value={v.capacity} onChange={(e) => setV({ ...v, capacity: Number(e.target.value) })} className="h-11 text-base" /></div>
       <div className="flex flex-col gap-1.5 lg:col-span-3"><Label htmlFor="s-notes">Notes for volunteers</Label><Textarea id="s-notes" rows={2} value={v.notes} onChange={(e) => setV({ ...v, notes: e.target.value })} className="text-base" /></div>

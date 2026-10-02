@@ -40,11 +40,14 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
     <div className="mx-auto flex max-w-7xl flex-col gap-6">
       <PageHeader eyebrow="Training" title="Modules, sessions and reminders" description="Configure what each role must complete and how often. The gate in the volunteer app reads directly from these settings." />
       <Tabs defaultValue={tab === "sessions" || tab === "reminders" || tab === "people" ? tab : "modules"} className="gap-6">
-        <TabsList className="h-11 w-full justify-start overflow-x-auto sm:w-auto">
-          <TabsTrigger value="modules" className="h-9 px-4 text-sm">Modules</TabsTrigger>
-          <TabsTrigger value="people" className="h-9 px-4 text-sm">Needs attention <span className="ml-1 rounded-full bg-status-bad-bg px-1.5 text-xs font-bold text-status-bad tabular">{attention.length}</span></TabsTrigger>
-          <TabsTrigger value="sessions" className="h-9 px-4 text-sm">Sessions</TabsTrigger>
-          <TabsTrigger value="reminders" className="h-9 px-4 text-sm">Reminders</TabsTrigger>
+        <TabsList variant="line" className="w-full justify-start overflow-x-auto overflow-y-hidden scrollbar-none">
+          <TabsTrigger value="modules">Modules</TabsTrigger>
+          <TabsTrigger value="people">
+            Needs attention
+            <span className="rounded-full bg-status-bad-bg px-2 py-0.5 text-xs font-bold leading-none text-status-bad tabular">{attention.length}</span>
+          </TabsTrigger>
+          <TabsTrigger value="sessions">Sessions</TabsTrigger>
+          <TabsTrigger value="reminders">Reminders</TabsTrigger>
         </TabsList>
 
         <TabsContent value="modules" className="flex flex-col gap-3">
@@ -81,7 +84,7 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
         <TabsContent value="people">
           <div className="overflow-hidden rounded-2xl border border-border bg-card">
             <table className="w-full text-sm">
-              <thead className="bg-muted/60 text-left text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-2.5 font-bold">Volunteer</th><th className="px-4 py-2.5 font-bold">Module</th><th className="hidden px-4 py-2.5 font-bold sm:table-cell">Expiry</th><th className="px-4 py-2.5 font-bold">Status</th></tr></thead>
+              <thead className="font-display bg-muted/60 text-left text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-2.5 font-bold">Volunteer</th><th className="px-4 py-2.5 font-bold">Module</th><th className="hidden px-4 py-2.5 font-bold sm:table-cell">Expiry</th><th className="px-4 py-2.5 font-bold">Status</th></tr></thead>
               <tbody className="divide-y divide-border">
                 {attention.length === 0 && <tr><td colSpan={4} className="px-4 py-10 text-center text-muted-foreground">Everyone is current. Ka pai.</td></tr>}
                 {attention.map(({ v, s }) => (
@@ -122,7 +125,7 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
               <ol className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
                 {REMINDER_RULES.map((r, i) => (
                   <li key={r.id} className="flex gap-4 px-4 py-3">
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-green-tint font-display text-green-deep">{i + 1}</span>
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-green-tint font-display font-bold text-green-deep">{i + 1}</span>
                     <div className="min-w-0">
                       <p className="font-bold text-ink">{r.when}</p>
                       <p className="text-sm text-ink-soft">Sends <span className="font-semibold">{r.template}</span> to {r.audience.toLowerCase()}.</p>

@@ -31,14 +31,14 @@ export function BottomNav({ badges = {} }: { badges?: Partial<Record<string, num
                 href={t.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "relative flex min-h-14 flex-col items-center justify-center gap-0.5 text-[0.7rem] font-bold transition-colors",
+                  "relative flex min-h-14 flex-col items-center justify-center gap-0.5 font-display text-[0.7rem] font-bold transition-colors",
                   active ? "text-green-text" : "text-muted-foreground hover:text-ink",
                 )}
               >
                 <span className={cn("relative flex h-7 w-12 items-center justify-center rounded-full transition-colors", active && "bg-green-tint")}>
                   <Icon className="size-5" aria-hidden />
                   {badge ? (
-                    <span className="absolute -right-0.5 -top-0.5 flex min-w-4 items-center justify-center rounded-full bg-magenta px-1 text-[0.6rem] font-bold text-white">
+                    <span className="absolute -right-0.5 -top-0.5 flex min-w-4 items-center justify-center rounded-full bg-pink px-1 text-[0.6rem] font-bold text-white">
                       {badge}
                     </span>
                   ) : null}

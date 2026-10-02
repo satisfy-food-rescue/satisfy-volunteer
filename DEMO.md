@@ -9,7 +9,7 @@ Sign in as **Phillipa**.
 - Dashboard: point at the four tiles. "Gaps, next 14 days" is the pain point from the discovery call: who is away and what is uncovered.
 - Scroll to **Coverage gaps**: two seeded absences (Brian on holiday, Heather off sick) have released their shifts. The line under each gap says exactly why it exists.
 - **Training attention** on the right: Tony's Manual Handling is overdue, several others are due within 30 days.
-- Click **Roster** in the sidebar: week view with each day's shifts, magenta edge on anything short. Flip to **Month** to show the whole picture. Mention **Bulk schedule** (preview before anything is created, regulars land on their weekday).
+- Click **Roster** in the sidebar: week view with each day's shifts, pink edge on anything short. Flip to **Month** to show the whole picture. Mention **Bulk schedule** (preview before anything is created, regulars land on their weekday).
 
 ## 2. The training gate (Tony) - 3 min
 
@@ -40,7 +40,7 @@ Still as Tony:
 
 ## 6. Rebrand-ready and Infoodle - 1 min
 
-- **Settings**. First card: every colour and font is a theme token in one file, ready for the brand refresh. Second card: the Infoodle panel with "API: pending confirmation" and what would sync in each direction. Third: the email templates.
+- **Settings**. First card: the brand colours and fonts from the Brand Guidelines, all theme tokens in one file. Second card: the Infoodle panel with "API: pending confirmation" and what would sync in each direction. Third: the email templates.
 
 ## If something looks off
 

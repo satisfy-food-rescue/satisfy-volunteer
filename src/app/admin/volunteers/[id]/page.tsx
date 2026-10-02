@@ -62,7 +62,7 @@ export default async function VolunteerProfilePage({ params }: { params: Promise
         </div>
         <dl className="grid grid-cols-3 gap-4 text-center">
           {[["Shifts", attended], ["Hours", Math.round(hours)], ["No-shows", noShows]].map(([l, n]) => (
-            <div key={l}><dd className="font-display text-2xl text-ink tabular">{n}</dd><dt className="text-xs font-semibold text-muted-foreground">{l}</dt></div>
+            <div key={l}><dd className="font-display font-bold text-2xl text-ink tabular">{n}</dd><dt className="text-xs font-semibold text-muted-foreground">{l}</dt></div>
           ))}
         </dl>
       </header>
@@ -121,7 +121,7 @@ export default async function VolunteerProfilePage({ params }: { params: Promise
             )}
             {upcoming.length > 0 && (
               <>
-                <p className="mt-3 text-xs font-bold uppercase tracking-wide text-muted-foreground">Next up</p>
+                <p className="font-display mt-3 text-xs font-bold uppercase tracking-wide text-muted-foreground">Next up</p>
                 <ul className="mt-1 text-sm text-ink-soft">{upcoming.map((a) => <li key={a.id} className="tabular">{formatDay(dateToISO(a.shift.date))} · {a.shift.template.kind === "WAREHOUSE" ? "Warehouse" : a.shift.template.name.split(": ")[1]}</li>)}</ul>
               </>
             )}
@@ -137,7 +137,7 @@ export default async function VolunteerProfilePage({ params }: { params: Promise
             <h2 id="ec-h" className="flex items-center gap-2 text-xl text-ink"><HeartPulse className="size-5 text-green-text" aria-hidden /> Emergency contact</h2>
             <p className="mt-2 text-sm text-ink">{v.emergencyName ?? <span className="text-muted-foreground">Not provided</span>}</p>
             {v.emergencyPhone && <p className="text-sm text-ink-soft tabular">{v.emergencyPhone}</p>}
-            {v.availabilityNote && <><p className="mt-3 text-xs font-bold uppercase tracking-wide text-muted-foreground">Availability</p><p className="text-sm text-ink-soft">{v.availabilityNote}</p></>}
+            {v.availabilityNote && <><p className="font-display mt-3 text-xs font-bold uppercase tracking-wide text-muted-foreground">Availability</p><p className="text-sm text-ink-soft">{v.availabilityNote}</p></>}
           </section>
 
           <section className="rounded-2xl border border-border bg-card p-4" aria-labelledby="notes-h">

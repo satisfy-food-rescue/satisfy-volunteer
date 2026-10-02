@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { CalendarRange, Check, Loader2, Pencil } from "lucide-react";
 import { bulkSchedule, type BulkResult } from "@/app/admin/actions";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { addDays, formatDay, formatTimeRange, WEEKDAY_SHORT } from "@/lib/dates";
 import { cn } from "@/lib/utils";
@@ -53,7 +53,7 @@ export function BulkScheduler({ templates, today }: { templates: TemplateLite[];
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
       <div className="flex flex-col gap-6 lg:col-span-2">
         <fieldset className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-4">
-          <legend className="px-1 text-sm font-bold uppercase tracking-wide text-muted-foreground">Shift templates</legend>
+          <legend className="font-display px-1 text-sm font-bold uppercase tracking-wide text-muted-foreground">Shift templates</legend>
           {templates.map((t) => (
             <label key={t.id} className={cn("flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors", selected.has(t.id) ? "border-green bg-green-tint-soft" : "border-border hover:bg-muted")}>
               <input type="checkbox" className="mt-1 size-4 accent-[var(--brand-green)]" checked={selected.has(t.id)} onChange={() => { invalidate(); setSelected(toggle(selected, t.id)); }} />
@@ -68,15 +68,15 @@ export function BulkScheduler({ templates, today }: { templates: TemplateLite[];
         </fieldset>
 
         <fieldset className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-4">
-          <legend className="px-1 text-sm font-bold uppercase tracking-wide text-muted-foreground">Date range</legend>
+          <legend className="font-display px-1 text-sm font-bold uppercase tracking-wide text-muted-foreground">Date range</legend>
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="bs-start">From</Label>
-              <Input id="bs-start" type="date" min={today} value={startDate} onChange={(e) => { invalidate(); setStartDate(e.target.value); }} className="h-11" />
+              <DatePicker id="bs-start" min={today} value={startDate} onChange={(d) => { invalidate(); setStartDate(d); if (d > endDate) setEndDate(d); }} />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="bs-end">To</Label>
-              <Input id="bs-end" type="date" min={startDate} value={endDate} onChange={(e) => { invalidate(); setEndDate(e.target.value); }} className="h-11" />
+              <DatePicker id="bs-end" min={startDate} value={endDate} onChange={(d) => { invalidate(); setEndDate(d); }} />
             </div>
           </div>
           <div>
@@ -125,14 +125,14 @@ export function BulkScheduler({ templates, today }: { templates: TemplateLite[];
                 ["Regulars rostered", preview.assignments, "text-ink"],
               ].map(([l, n, c]) => (
                 <div key={l as string} className="rounded-2xl border border-border bg-card p-3">
-                  <p className={cn("font-display text-2xl tabular", c as string)}>{n as number}</p>
+                  <p className={cn("font-display font-bold text-2xl tabular", c as string)}>{n as number}</p>
                   <p className="text-xs font-semibold text-muted-foreground">{l as string}</p>
                 </div>
               ))}
             </div>
             <div className="max-h-[32rem] overflow-y-auto rounded-2xl border border-border bg-card">
               <table className="w-full text-sm">
-                <thead className="sticky top-0 bg-muted/90 text-left text-xs uppercase tracking-wide text-muted-foreground backdrop-blur">
+                <thead className="font-display sticky top-0 bg-muted/90 text-left text-xs uppercase tracking-wide text-muted-foreground backdrop-blur">
                   <tr><th className="px-3 py-2 font-bold">Date</th><th className="px-3 py-2 font-bold">Shift</th><th className="px-3 py-2 text-right font-bold">Regulars</th><th className="px-3 py-2 text-right font-bold">Status</th></tr>
                 </thead>
                 <tbody className="divide-y divide-border">

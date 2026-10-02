@@ -32,7 +32,7 @@ export function StatTile({
           <Icon className="size-5" aria-hidden />
         </span>
       </div>
-      <p className="mt-2 font-display text-3xl text-ink tabular">{value}</p>
+      <p className="mt-2 font-display font-bold text-3xl text-ink tabular">{value}</p>
       {hint && <p className="mt-1 text-sm text-muted-foreground">{hint}</p>}
     </>
   );

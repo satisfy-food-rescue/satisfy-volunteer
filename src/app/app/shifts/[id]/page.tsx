@@ -37,7 +37,7 @@ export default async function ShiftDetailPage({ params }: { params: Promise<{ id
       </Link>
 
       <header className="flex items-start gap-4">
-        <span className={view.kind === "WAREHOUSE" ? "flex size-14 shrink-0 items-center justify-center rounded-2xl bg-green-tint text-green-deep" : "flex size-14 shrink-0 items-center justify-center rounded-2xl bg-[#e6ecf7] text-[#1e3a8a]"}>
+        <span className={view.kind === "WAREHOUSE" ? "flex size-14 shrink-0 items-center justify-center rounded-2xl bg-green-tint text-green-deep" : "flex size-14 shrink-0 items-center justify-center rounded-2xl bg-blue-tint text-blue-text"}>
           <ShiftKindIcon kind={view.kind} className="size-7" />
         </span>
         <div className="min-w-0">
@@ -84,7 +84,7 @@ export default async function ShiftDetailPage({ params }: { params: Promise<{ id
       </dl>
 
       {view.isGap && view.causes.length > 0 && (
-        <p className="rounded-xl bg-magenta-tint px-4 py-3 text-sm font-semibold text-magenta">
+        <p className="rounded-xl bg-pink-tint px-4 py-3 text-sm font-semibold text-pink-text">
           {view.causes.join(". ")}.
         </p>
       )}

@@ -37,12 +37,12 @@ export default async function SlotPage() {
       ) : (
         <ul className="flex flex-col gap-2.5">
           {slots.map((s) => (
-            <li key={s.id} className="pattern-wheat flex items-center gap-4 rounded-2xl border border-green/40 bg-green-tint-soft p-4">
+            <li key={s.id} className="flex items-center gap-4 rounded-2xl border border-green/40 bg-green-tint-soft p-4">
               <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-white text-green-text">
                 <CalendarCheck className="size-6" aria-hidden />
               </span>
               <span className="min-w-0">
-                <span className="block font-display text-xl text-ink">{WEEKDAY_LONG[s.weekday]}s</span>
+                <span className="block font-display font-bold text-xl text-ink">{WEEKDAY_LONG[s.weekday]}s</span>
                 <span className="block text-ink">{s.template.name}</span>
                 <span className="block text-sm text-ink-soft tabular">{formatTimeRange(s.template.startTime, s.template.endTime)}</span>
               </span>

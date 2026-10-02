@@ -76,9 +76,9 @@ export default async function HomePage() {
           <Link href="/app/shifts" className="text-sm font-semibold text-green-text hover:underline">All shifts</Link>
         </div>
         {next ? (
-          <Link href={`/app/shifts/${next.shift.id}`} className="pattern-wheat block rounded-2xl border border-green/40 bg-green-tint-soft p-5 shadow-sm transition-colors hover:border-green">
-            <p className="text-sm font-bold uppercase tracking-wide text-green-text">{relativeDays(next.iso, today)}</p>
-            <p className="mt-1 font-display text-3xl text-ink">{formatDay(next.iso)}</p>
+          <Link href={`/app/shifts/${next.shift.id}`} className="block rounded-2xl border border-green/40 bg-green-tint-soft p-5 shadow-sm transition-colors hover:border-green">
+            <p className="font-display text-sm font-bold uppercase tracking-wide text-green-text">{relativeDays(next.iso, today)}</p>
+            <p className="mt-1 font-display font-bold text-3xl text-ink">{formatDay(next.iso)}</p>
             <p className="mt-1 text-lg text-ink tabular">{formatTimeRange(next.shift.startTime, next.shift.endTime)}</p>
             <p className="mt-3 font-bold text-ink">{next.shift.template.name}</p>
             <p className="mt-0.5 inline-flex items-center gap-1.5 text-sm text-ink-soft">
@@ -87,7 +87,7 @@ export default async function HomePage() {
             </p>
             {others.length > 0 && (
               <div className="mt-4 flex items-center gap-2">
-                <span className="flex -space-x-2">
+                <span className="flex -space-x-1">
                   {others.slice(0, 5).map((a) => (
                     <AvatarBadge key={a.id} person={a.volunteer} size="sm" className="ring-2 ring-green-tint-soft" />
                   ))}
@@ -121,7 +121,7 @@ export default async function HomePage() {
           <Link
             key={q.href}
             href={q.href}
-            className="flex min-h-[5.5rem] flex-col items-center justify-center gap-2 rounded-2xl border border-border bg-card px-2 py-3 text-center text-sm font-bold leading-tight text-ink shadow-sm transition-colors hover:border-green hover:bg-green-tint-soft"
+            className="flex min-h-[5.5rem] flex-col items-center justify-start gap-2 rounded-2xl border border-border bg-card px-2 pb-3 pt-4 text-center text-sm font-bold leading-tight text-ink shadow-sm transition-colors hover:border-green hover:bg-green-tint-soft"
           >
             <q.icon className="size-6 text-green-text" aria-hidden />
             {q.label}
@@ -130,8 +130,8 @@ export default async function HomePage() {
       </section>
 
       {coverable.length > 0 && (
-        <Link href="/app/gaps" className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-magenta/50">
-          <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-magenta-tint text-magenta">
+        <Link href="/app/gaps" className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-pink/50">
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-pink-tint text-pink-text">
             <HandHelping className="size-6" aria-hidden />
           </span>
           <span className="min-w-0 flex-1">
@@ -163,7 +163,7 @@ export default async function HomePage() {
       )}
 
       <section aria-label="Impact" className="rounded-2xl bg-green-deep p-5 text-white">
-        <p className="text-xs font-bold uppercase tracking-[0.14em] text-green">Together, over {IMPACT.yearsRunning} years</p>
+        <p className="font-display text-xs font-bold uppercase tracking-[0.14em] text-green">Together, over {IMPACT.yearsRunning} years</p>
         <dl className="mt-3 grid grid-cols-3 gap-3">
           {[
             [compactCount(IMPACT.kgRescued), "kg of kai rescued"],
@@ -171,7 +171,7 @@ export default async function HomePage() {
             [`${formatCount(IMPACT.co2Tonnes)} t`, `CO2e avoided in ${IMPACT.co2Period}`],
           ].map(([n, l]) => (
             <div key={l}>
-              <dd className="font-display text-2xl text-white tabular">{n}</dd>
+              <dd className="font-display font-bold text-2xl text-white tabular">{n}</dd>
               <dt className="mt-0.5 text-xs leading-snug text-white/75">{l}</dt>
             </div>
           ))}

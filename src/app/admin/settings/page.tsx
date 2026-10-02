@@ -10,13 +10,23 @@ import Link from "next/link";
 export const metadata = { title: "Settings" };
 
 const SWATCHES = [
-  ["Brand green", "--brand-green", "Fills, primary buttons, active states"],
+  ["Satisfy green", "--brand-green", "Primary. Fills, buttons, active states"],
   ["Green text", "--green-text", "Links, icons, text on white (AA)"],
-  ["Deep green", "--green-deep", "Text on bright green fills"],
+  ["Deep green", "--green-deep", "Text on green fills"],
   ["Pale green", "--green-tint", "Tinted panels and badges"],
-  ["Magenta", "--magenta-fill", "One high-emphasis action: cover a gap"],
+  ["Pink", "--pink-fill", "One high-emphasis action: cover a gap"],
   ["Ink", "--ink", "Headings and body text"],
   ["Canvas", "--canvas", "Page background"],
+];
+
+// Secondary colours from the Brand Guidelines, used for charts and avatars.
+const SECONDARY = [
+  ["Yellow", "--brand-yellow"],
+  ["Orange", "--brand-orange"],
+  ["Pink", "--brand-pink"],
+  ["Dark blue", "--brand-dark-blue"],
+  ["Light blue", "--brand-light-blue"],
+  ["Teal", "--brand-teal"],
 ];
 
 export default async function SettingsPage() {
@@ -33,8 +43,8 @@ export default async function SettingsPage() {
         <div className="flex items-start gap-3">
           <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-green-tint text-green-deep"><Palette className="size-5" aria-hidden /></span>
           <div className="min-w-0 flex-1">
-            <h2 id="brand-h" className="text-2xl text-ink">Rebrand-ready: colours and fonts are theme tokens</h2>
-            <p className="mt-1 text-ink-soft">Satisfy is mid brand refresh, so every colour, radius and typeface in both the volunteer app and this admin lives in one theme file. A re-skin is a single-file change: update the values, and every screen, chip, chart and email preview follows. No component contains a hard-coded colour.</p>
+            <h2 id="brand-h" className="text-2xl text-ink">Brand colours and fonts</h2>
+            <p className="mt-1 text-ink-soft">The volunteer app and this admin follow the Satisfy Food Rescue Brand Guidelines. Every colour, radius and typeface lives in one theme file, so a future re-skin is a single-file change: update the values, and every screen, chip, chart and email preview follows. No component contains a hard-coded colour.</p>
             <p className="mt-2 text-sm text-muted-foreground">File: <code className="rounded bg-muted px-1.5 py-0.5 text-xs">src/app/globals.css</code> · fonts in <code className="rounded bg-muted px-1.5 py-0.5 text-xs">src/app/layout.tsx</code></p>
           </div>
         </div>
@@ -46,9 +56,18 @@ export default async function SettingsPage() {
             </li>
           ))}
         </ul>
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-border p-3">
+          <span className="eyebrow">Secondary</span>
+          {SECONDARY.map(([name, v]) => (
+            <span key={v} className="inline-flex items-center gap-2 text-sm text-ink">
+              <span className="size-4 shrink-0 rounded-full ring-1 ring-black/10" style={{ background: `var(${v})` }} aria-hidden />
+              {name}
+            </span>
+          ))}
+        </div>
         <div className="mt-4 flex flex-wrap gap-4 rounded-xl bg-muted/60 p-4">
-          <div className="flex items-center gap-3"><Type className="size-5 text-green-text" aria-hidden /><div><p className="font-display text-xl text-ink">Suez One</p><p className="text-xs text-muted-foreground">Headlines, matching the website</p></div></div>
-          <div className="flex items-center gap-3"><Type className="size-5 text-green-text" aria-hidden /><div><p className="text-xl font-semibold text-ink">Nunito Sans</p><p className="text-xs text-muted-foreground">Body, open equivalent of Avenir Light</p></div></div>
+          <div className="flex items-center gap-3"><Type className="size-5 text-green-text" aria-hidden /><div><p className="font-display font-bold text-xl text-ink">Montserrat</p><p className="text-xs text-muted-foreground">Headings and subheadings, the logo font</p></div></div>
+          <div className="flex items-center gap-3"><Type className="size-5 text-green-text" aria-hidden /><div><p className="text-xl font-semibold text-ink">Roboto Slab</p><p className="text-xs text-muted-foreground">Body, stand-in for Stag until a web licence is in place</p></div></div>
           <div className="flex items-center gap-3"><ShieldCheck className="size-5 text-green-text" aria-hidden /><div><p className="font-semibold text-ink">WCAG AA checked</p><p className="text-xs text-muted-foreground">16px minimum body, 44px tap targets, status never colour-only</p></div></div>
         </div>
       </section>
@@ -66,7 +85,7 @@ export default async function SettingsPage() {
         </div>
         <div className="mt-5 grid gap-4 md:grid-cols-2">
           <div className="rounded-xl border border-border p-4">
-            <p className="text-xs font-bold uppercase tracking-wide text-green-text">Infoodle to this app</p>
+            <p className="font-display text-xs font-bold uppercase tracking-wide text-green-text">Infoodle to this app</p>
             <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-ink">
               <li>New sign-up form submissions appear in Applications automatically.</li>
               <li>Approved applicants keep their Infoodle record id, so nothing is double-entered.</li>
@@ -74,7 +93,7 @@ export default async function SettingsPage() {
             </ul>
           </div>
           <div className="rounded-xl border border-border p-4">
-            <p className="text-xs font-bold uppercase tracking-wide text-green-text">This app to Infoodle</p>
+            <p className="font-display text-xs font-bold uppercase tracking-wide text-green-text">This app to Infoodle</p>
             <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-ink">
               <li>Phone, emergency contact and availability edits made by volunteers.</li>
               <li>Volunteer status (active, inactive) and role tags.</li>
