@@ -3,7 +3,7 @@ import { CalendarCheck, Clock, Mail, MapPin, Phone, RefreshCw, UserPlus } from "
 import { requireAdmin } from "@/lib/session";
 import { db } from "@/lib/db";
 import { formatInstant } from "@/lib/dates";
-import { ROLE_SHORT, parseRoles } from "@/lib/domain";
+import { INITIAL_VISIT_CODE, ROLE_SHORT, parseRoles } from "@/lib/domain";
 import { PageHeader } from "@/components/shared/page-header";
 import { AvatarBadge } from "@/components/shared/avatar-badge";
 import { Chip } from "@/components/shared/status-chip";
@@ -15,19 +15,19 @@ export default async function ApplicationsPage() {
   await requireAdmin();
   const [apps, induction] = await Promise.all([
     db.application.findMany({ orderBy: [{ submittedAt: "desc" }] }),
-    db.trainingSession.findFirst({ where: { startsAt: { gte: new Date() }, module: { code: "INDUCTION" } }, orderBy: { startsAt: "asc" } }),
+    db.trainingSession.findFirst({ where: { startsAt: { gte: new Date() }, module: { code: INITIAL_VISIT_CODE } }, orderBy: { startsAt: "asc" } }),
   ]);
   const pending = apps.filter((a) => a.status === "PENDING");
   const reviewed = apps.filter((a) => a.status !== "PENDING");
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-6">
-      <PageHeader eyebrow="Applications" title="New volunteer applications" description="Applicants fill in the sign-up form on the website, which lands in Infoodle. Approved applicants get an account here, are pencilled into the next induction, and receive a welcome email." />
+      <PageHeader eyebrow="Applications" title="New volunteer applications" description="Applicants fill in the sign-up form on the website, which lands in Infoodle. Approved applicants get an account here and a welcome email. Then give them a call and book their initial visit from their profile." />
 
       <div className="flex items-start gap-3 rounded-2xl border border-border bg-card p-4 text-sm">
         <RefreshCw className="mt-0.5 size-5 shrink-0 text-green-text" aria-hidden />
         <div>
           <p className="font-bold text-ink">Source: Infoodle sign-up form (mocked)</p>
-          <p className="text-muted-foreground">When the Infoodle API is confirmed, new form submissions appear here automatically. Until then the coordinator can add them by hand. On approval: account created, induction assigned{induction ? ` (next: ${formatInstant(induction.startsAt)})` : ""}, welcome email queued, Infoodle record flagged as active volunteer.</p>
+          <p className="text-muted-foreground">When the Infoodle API is confirmed, new form submissions appear here automatically. Until then the coordinator can add them by hand. On approval: account created, welcome email queued{induction ? `, pencilled into the next open initial-visit slot (${formatInstant(induction.startsAt)}) if there is room` : ""}, Infoodle record flagged as active volunteer.</p>
         </div>
       </div>
 
@@ -54,7 +54,7 @@ export default async function ApplicationsPage() {
               </div>
             </div>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
-              <p className="inline-flex items-start gap-2 text-sm text-muted-foreground"><UserPlus className="mt-0.5 size-4 shrink-0 text-green-text" aria-hidden />Approving creates the account, books the induction and queues the welcome email.</p>
+              <p className="inline-flex items-start gap-2 text-sm text-muted-foreground"><UserPlus className="mt-0.5 size-4 shrink-0 text-green-text" aria-hidden />Approving creates the account and queues the welcome email. Book the initial visit from their profile.</p>
               <ApplicationReview id={a.id} firstName={a.firstName} />
             </div>
           </article>

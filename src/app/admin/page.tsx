@@ -53,7 +53,7 @@ export default async function AdminDashboard() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatTile label="Gaps, next 14 days" value={gaps.length} hint={gaps[0] ? `Next: ${formatDay(gaps[0].iso)}` : "Everything covered"} icon={HandHelping} tone={gaps.length ? "bad" : "good"} href="/admin/roster" />
-        <StatTile label="Overdue training" value={overdueCount} hint={`${attention.filter((x) => x.summary.dueSoon > 0).length} more due within 30 days`} icon={AlertTriangle} tone={overdueCount ? "warn" : "good"} href="/admin/training" />
+        <StatTile label="Overdue training" value={overdueCount} hint={`${attention.filter((x) => x.summary.dueSoon > 0).length} more due within 30 days`} icon={AlertTriangle} tone={overdueCount ? "warn" : "good"} href="/admin/training?tab=people&status=OVERDUE" />
         <StatTile label="Pending applications" value={applications.length} hint={applications[0] ? `Latest ${relativeDay(todayISO(applications[0].submittedAt), today).toLowerCase()}` : "Queue is clear"} icon={Inbox} tone={applications.length ? "info" : "neutral"} href="/admin/applications" />
         <StatTile label="Training compliance" value={`${Math.round((compliant / volunteers.length) * 100)}%`} hint={`${compliant} of ${volunteers.length} active volunteers current`} icon={Users} tone="neutral" href="/admin/reports" />
       </div>
@@ -94,7 +94,7 @@ export default async function AdminDashboard() {
           <section className="flex flex-col gap-3" aria-labelledby="training-h">
             <div className="flex items-baseline justify-between">
               <h2 id="training-h" className="text-2xl text-ink">Training attention</h2>
-              <Link href="/admin/training" className="text-sm font-semibold text-green-text hover:underline">All</Link>
+              <Link href="/admin/training?tab=people" className="text-sm font-semibold text-green-text hover:underline">All</Link>
             </div>
             <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
               {attention.slice(0, 7).map(({ v, statuses, summary }) => {

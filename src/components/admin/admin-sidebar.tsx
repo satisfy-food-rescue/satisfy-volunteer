@@ -9,6 +9,7 @@ import {
   GraduationCap,
   Inbox,
   LayoutDashboard,
+  ListChecks,
   LogOut,
   Mail,
   Settings,
@@ -48,6 +49,7 @@ const SECTIONS: { label: string; links: NavLink[] }[] = [
       { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
       { href: "/admin/roster", label: "Roster", icon: CalendarRange, badge: "gaps" },
       { href: "/admin/absences", label: "Absences", icon: CalendarOff },
+      { href: "/admin/shift-types", label: "Shift types", icon: ListChecks },
     ],
   },
   {

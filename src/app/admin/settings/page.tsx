@@ -131,7 +131,7 @@ export default async function SettingsPage() {
         <p className="font-bold text-ink">What is mocked in this demo</p>
         <ul className="mt-2 list-disc space-y-1 pl-5">
           <li>Sign-in: four personas set a cookie. Production uses email sign-in with passkeys.</li>
-          <li>Email: nothing is sent; every message is captured in the Outbox.</li>
+          <li>Email and push notifications: nothing is sent; every message is captured in the Outbox.</li>
           <li>Infoodle: sync status and record ids are sample data.</li>
           <li>Database: SQLite for zero setup. The schema is Postgres-compatible for production.</li>
         </ul>

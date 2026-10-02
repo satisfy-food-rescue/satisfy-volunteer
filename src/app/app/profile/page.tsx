@@ -6,6 +6,7 @@ import { ROLE_LABEL, parseRoles, fullName } from "@/lib/domain";
 import { AvatarBadge } from "@/components/shared/avatar-badge";
 import { Chip } from "@/components/shared/status-chip";
 import { ProfileForm } from "@/components/app/profile-form";
+import { RoleChangeRequest } from "@/components/app/role-change-request";
 import { signOut } from "@/app/sign-in/actions";
 import { Button } from "@/components/ui/button";
 
@@ -20,12 +21,20 @@ export default async function ProfilePage() {
         <div className="min-w-0">
           <h1 className="text-[1.75rem] leading-tight text-ink">{fullName(me)}</h1>
           <p className="text-sm text-muted-foreground">Volunteer since {formatDate(dateToISO(me.joinedAt))}</p>
-          <div className="mt-1.5 flex flex-wrap gap-1.5">
-            {parseRoles(me.roles).map((r) => <Chip key={r} tone="good" size="sm">{ROLE_LABEL[r]}</Chip>)}
-            {me.inHarvestPool && <Chip tone="info" size="sm" icon={Sprout}>Harvest pool</Chip>}
-          </div>
+          {me.inHarvestPool && <div className="mt-1.5"><Chip tone="info" size="sm" icon={Sprout}>Harvest pool</Chip></div>}
         </div>
       </header>
+
+      <section aria-labelledby="roles-h" className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4">
+        <div>
+          <h2 id="roles-h" className="text-xl text-ink">My roles</h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">Your roles decide which shifts you can book and which training applies.</p>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {parseRoles(me.roles).map((r) => <Chip key={r} tone="good">{ROLE_LABEL[r]}</Chip>)}
+        </div>
+        <RoleChangeRequest />
+      </section>
 
       <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3">
         <RefreshCw className="size-5 shrink-0 text-green-text" aria-hidden />

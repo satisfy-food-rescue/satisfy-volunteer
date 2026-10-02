@@ -66,8 +66,8 @@ export function ProfileForm({ initial, email }: { initial: Values; email: string
         </div>
         <label className="flex min-h-11 cursor-pointer items-center justify-between gap-4">
           <span>
-            <span className="block font-semibold text-ink">Happy to be called for last-minute cover</span>
-            <span className="block text-sm text-muted-foreground">The coordinator sees you first when someone calls in sick.</span>
+            <span className="block font-semibold text-ink">Send me last-minute cover requests</span>
+            <span className="block text-sm text-muted-foreground">Get a notification when a shift you can do needs cover at short notice.</span>
           </span>
           <Switch checked={v.lastMinuteOk} onCheckedChange={(c) => setV({ ...v, lastMinuteOk: c })} className="scale-125" />
         </label>

@@ -46,7 +46,7 @@ function CompactShift({ view }: { view: ShiftView }) {
     >
       <span className="flex items-start justify-between gap-2">
         <span className={cn("text-sm font-bold leading-tight text-ink", cancelled && "text-muted-foreground line-through")}>
-          {view.shift.template.name.replace("Driver's assistant: ", "DA: ").replace("Volunteer driver: ", "Driver: ")}
+          {view.shift.template.name.replace("Volunteer driver: ", "Driver: ")}
         </span>
         <span
           className={cn(
@@ -115,7 +115,7 @@ export function MonthView({ anchor, shifts, today }: { anchor: string; shifts: S
                 )}
                 {gaps.slice(0, 2).map((g) => (
                   <Link key={g.shift.id} href={`/admin/roster/${g.shift.id}`} className="mt-1 block truncate rounded bg-pink-tint px-1.5 py-0.5 text-[0.7rem] font-semibold text-pink-text hover:underline">
-                    {g.shift.template.name.replace("Driver's assistant: ", "DA: ")}
+                    {g.shift.template.name}
                   </Link>
                 ))}
               </div>

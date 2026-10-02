@@ -25,10 +25,10 @@ There is no real authentication. The sign-in page lists four personas; picking o
 
 | Persona | Who | What they show |
 | --- | --- | --- |
-| Phillipa | Coordinator (admin) | Dashboard gaps, overdue training, applications, Outbox, settings |
+| Phillipa | Coordinator (admin) | Dashboard gaps, overdue training, applications, volunteer profiles with contact history, shift types, Outbox |
 | Margaret Fairweather | Regular warehouse volunteer | Tue and Thu regular slot, one refresher due soon |
-| Tony Ratana | Driver's assistant | Manual Handling overdue: route shifts blocked until the online refresher is done |
-| Jess Moorhouse | New volunteer | Approved two days ago, no training, must book induction first |
+| Tony Ratana | Driver help | Manual Handling overdue: route shifts blocked until the online refresher is done |
+| Jess Moorhouse | New volunteer | Approved two days ago, no training, needs an initial visit first |
 
 "Switch persona" is on the volunteer Me tab and in the admin sidebar footer.
 
@@ -41,8 +41,8 @@ Contrast was checked numerically: the brand green is used as a fill with deep gr
 ## What is mocked
 
 - **Auth**: persona cookie, see above. Production uses email sign-in with passkeys, the same as the Fair Food portal.
-- **Email**: nothing is sent. Every message the system would send is written to the `Email` table and shown in Admin > Outbox with a branded preview. Templates are pure functions in `src/lib/email-templates.ts`, shared by the seed and the server actions.
-- **Reminders**: the rules are real code in `src/lib/reminders.ts` and can be run on demand from Admin > Training > Reminders. In production they run nightly.
+- **Email and push**: nothing is sent. Every email and push notification the system would send is written to the `Email` table (`channel` is `EMAIL` or `PUSH`) and shown in Admin > Outbox with a branded preview. Templates are pure functions in `src/lib/email-templates.ts`, shared by the seed and the server actions.
+- **Reminders and cover checks**: the rules are real code in `src/lib/reminders.ts` and `src/lib/cover.ts` and can be run on demand from Admin > Training > Reminders. In production training reminders run nightly and cover checks hourly.
 - **Infoodle**: sync status, record ids and the application feed are sample data. The settings page describes what would sync in each direction once API access is confirmed.
 - **Database**: SQLite via Prisma 7 for zero setup. The schema avoids SQLite-only features (enums are strings with TypeScript unions in `src/lib/domain.ts`) so production is a datasource swap to Postgres.
 
@@ -60,6 +60,7 @@ src/app/admin/*             coordinator admin (sidebar)
 src/app/*/actions.ts        server actions, Zod-validated
 src/lib/training.ts         module status and the booking gate
 src/lib/roster.ts           shift views, gap detection, available volunteers
+src/lib/cover.ts            last-minute push notifications and coordinator alerts
 src/lib/email-templates.ts  every email, as pure builders
 src/components/ui           shadcn primitives (owned source)
 ```
@@ -70,5 +71,9 @@ src/components/ui           shadcn primitives (owned source)
 - The training gate: to book a shift kind, a volunteer must hold the matching role and every module required for that role must be Complete or Due soon. Overdue or Not started blocks booking with a message naming the module. Regular slots already on the roster are not affected.
 - Due soon is 30 days before expiry. Online modules can be completed in-app with a read-and-confirm step, which lifts the gate immediately.
 - Bulk scheduling always previews first, skips shifts that already exist, and can roster regulars onto their weekday automatically.
+- Last-minute cover: when a cancellation or absence opens a gap inside the shift type's last-minute window (48 hours by default, 72 for route shifts), eligible volunteers who opted in to last-minute cover and are free that day get a push notification, once per shift. If it is still uncovered inside the shift type's alert threshold (24 hours by default), the coordinator gets an email to step in. Both thresholds are set per shift type in Admin > Shift types.
+- New volunteers start with an Initial Visit, an in-person stage the coordinator usually books during the welcome call (Book initial visit on the volunteer's profile). In-person stages are marked complete with the date they happened, and expiry runs from that date.
+- Role changes are made by an admin from the volunteer's profile and email the volunteer coordinator, listing any training the new roles bring in. Volunteers can ask for a change from the Me tab.
+- Every volunteer profile has a communication history: emails, push notifications, absences, calls and notes the coordinator logs, and changes made on the volunteer's behalf (`ContactLog`).
 
 See `DEMO.md` for the ten-minute walkthrough.

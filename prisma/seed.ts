@@ -5,6 +5,7 @@ import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import {
   addDays,
   addMonths,
+  daysBetween,
   isoToDate,
   isWeekday,
   nzInstant,
@@ -12,8 +13,9 @@ import {
   weekdayOf,
   weekMonday,
 } from "../src/lib/dates";
-import { ABSENCE_REASON_LABEL, type AbsenceReason, type VolunteerRole } from "../src/lib/domain";
+import { ABSENCE_REASON_LABEL, INITIAL_VISIT_CODE, type AbsenceReason, type VolunteerRole } from "../src/lib/domain";
 import * as T from "../src/lib/email-templates";
+import { runCoverChecks } from "../src/lib/cover";
 
 const db = new PrismaClient({
   adapter: new PrismaBetterSqlite3({
@@ -108,13 +110,13 @@ const VOLUNTEERS: VolSpec[] = [
   { first: "Robyn", last: "Ashworth", born: 1959, roles: ["WAREHOUSE"], slots: [{ template: W, weekday: 5 }], joinedYearsAgo: 2 },
   { first: "Kevin", last: "Marshall", born: 1955, roles: ["WAREHOUSE"], slots: [{ template: W, weekday: 5 }], joinedYearsAgo: 5 },
   { first: "Liz", last: "Stratford", born: 1968, roles: ["WAREHOUSE"], slots: [{ template: W, weekday: 5 }], joinedYearsAgo: 1 },
-  // Driver's assistants, Rangiora / Kaiapoi route
+  // Driver help, Rangiora / Kaiapoi route
   { first: "Trevor", last: "Hansen", born: 1952, roles: ["WAREHOUSE", "DRIVERS_ASSISTANT"], slots: [{ template: DA_RK, weekday: 1 }], joinedYearsAgo: 7 },
   { first: "Moana", last: "Rikihana", lastMinute: true, born: 1970, roles: ["WAREHOUSE", "DRIVERS_ASSISTANT"], slots: [{ template: DA_RK, weekday: 2 }], joinedYearsAgo: 2 },
   { key: "tony", first: "Tony", last: "Ratana", born: 1963, roles: ["WAREHOUSE", "DRIVERS_ASSISTANT"], slots: [{ template: DA_RK, weekday: 3 }], joinedYearsAgo: 3, notes: "Knows the Kaiapoi stores well. Sometimes covers Fridays." },
   { first: "Ian", last: "Carmichael", born: 1954, roles: ["WAREHOUSE", "DRIVERS_ASSISTANT"], slots: [{ template: DA_RK, weekday: 4 }], joinedYearsAgo: 5 },
   { first: "Debbie", last: "Ryan", born: 1965, roles: ["WAREHOUSE", "DRIVERS_ASSISTANT"], slots: [{ template: DA_RK, weekday: 5 }], joinedYearsAgo: 4 },
-  // Driver's assistants, Christchurch North route
+  // Driver help, Christchurch North route
   { first: "Gary", last: "Pemberton", born: 1950, roles: ["WAREHOUSE", "DRIVERS_ASSISTANT"], slots: [{ template: DA_CN, weekday: 1 }], joinedYearsAgo: 8 },
   { first: "Heather", last: "Lowe", born: 1958, roles: ["WAREHOUSE", "DRIVERS_ASSISTANT"], slots: [{ template: DA_CN, weekday: 2 }], joinedYearsAgo: 6 },
   { first: "Wiremu", last: "Kahui", born: 1972, roles: ["WAREHOUSE", "DRIVERS_ASSISTANT"], slots: [{ template: DA_CN, weekday: 3 }], joinedYearsAgo: 2 },
@@ -141,6 +143,7 @@ async function main() {
 
   // Wipe in dependency order.
   await db.email.deleteMany();
+  await db.contactLog.deleteMany();
   await db.harvestRsvp.deleteMany();
   await db.harvestCallout.deleteMany();
   await db.sessionRsvp.deleteMany();
@@ -161,13 +164,13 @@ async function main() {
 
   // Routes and donors --------------------------------------------------------
   const routeRK = await db.route.create({
-    data: { name: "Rangiora / Kaiapoi", area: "Waimakariri", driverName: "Dave (staff driver)", order: 1 },
+    data: { name: "Rangiora / Kaiapoi", area: "Waimakariri", order: 1 },
   });
   const routeCN = await db.route.create({
-    data: { name: "Christchurch North", area: "Christchurch City", driverName: "Sam (staff driver)", order: 2 },
+    data: { name: "Christchurch North", area: "Christchurch City", order: 2 },
   });
   const routeHU = await db.route.create({
-    data: { name: "Hurunui", area: "Hurunui", driverName: null, isVolunteerDriven: true, order: 3 },
+    data: { name: "Hurunui", area: "Hurunui", isVolunteerDriven: true, order: 3 },
   });
   await db.donor.createMany({
     data: [
@@ -193,24 +196,26 @@ async function main() {
   });
 
   // Shift templates ----------------------------------------------------------
+  // Route shifts cannot run short-handed, so they push and escalate earlier
+  // than the warehouse sort.
   const templateSpecs = [
-    { key: W, kind: "WAREHOUSE", name: "Warehouse sorting (AM)", routeId: null, start: "09:00", end: "12:00", capacity: 10, needed: 6, weekdays: "1,2,3,4,5", order: 1 },
-    { key: DA_RK, kind: "DRIVERS_ASSISTANT", name: "Driver's assistant: Rangiora / Kaiapoi", routeId: routeRK.id, start: "08:00", end: "11:30", capacity: 1, needed: 1, weekdays: "1,2,3,4,5", order: 2 },
-    { key: DA_CN, kind: "DRIVERS_ASSISTANT", name: "Driver's assistant: Christchurch North", routeId: routeCN.id, start: "08:30", end: "12:00", capacity: 1, needed: 1, weekdays: "1,2,3,4,5", order: 3 },
-    { key: DA_HU, kind: "DRIVERS_ASSISTANT", name: "Driver's assistant: Hurunui", routeId: routeHU.id, start: "08:00", end: "12:30", capacity: 1, needed: 1, weekdays: "2,4", order: 4 },
-    { key: VD_HU, kind: "VOLUNTEER_DRIVER", name: "Volunteer driver: Hurunui", routeId: routeHU.id, start: "08:00", end: "12:30", capacity: 1, needed: 1, weekdays: "2,4", order: 5 },
+    { key: W, kind: "WAREHOUSE", name: "Warehouse sorting (AM)", routeId: null, workingWith: "Kim (warehouse supervisor)", lastMinuteHours: 48, escalateHours: 24, start: "09:00", end: "12:00", capacity: 10, needed: 6, weekdays: "1,2,3,4,5", order: 1 },
+    { key: DA_RK, kind: "DRIVERS_ASSISTANT", name: "Driver help: Rangiora / Kaiapoi", routeId: routeRK.id, workingWith: "Dave (staff driver)", lastMinuteHours: 72, escalateHours: 36, start: "08:00", end: "11:30", capacity: 1, needed: 1, weekdays: "1,2,3,4,5", order: 2 },
+    { key: DA_CN, kind: "DRIVERS_ASSISTANT", name: "Driver help: Christchurch North", routeId: routeCN.id, workingWith: "Sam (staff driver)", lastMinuteHours: 72, escalateHours: 36, start: "08:30", end: "12:00", capacity: 1, needed: 1, weekdays: "1,2,3,4,5", order: 3 },
+    { key: DA_HU, kind: "DRIVERS_ASSISTANT", name: "Driver help: Hurunui", routeId: routeHU.id, workingWith: "the volunteer driver on the day", lastMinuteHours: 72, escalateHours: 36, start: "08:00", end: "12:30", capacity: 1, needed: 1, weekdays: "2,4", order: 4 },
+    { key: VD_HU, kind: "VOLUNTEER_DRIVER", name: "Volunteer driver: Hurunui", routeId: routeHU.id, workingWith: "a driver help volunteer", lastMinuteHours: 72, escalateHours: 48, start: "08:00", end: "12:30", capacity: 1, needed: 1, weekdays: "2,4", order: 5 },
   ] as const;
   const templates = new Map<string, { id: string; kind: string; name: string; start: string; end: string; capacity: number; needed: number; weekdays: number[] }>();
   for (const t of templateSpecs) {
     const row = await db.shiftTemplate.create({
-      data: { kind: t.kind, name: t.name, routeId: t.routeId, startTime: t.start, endTime: t.end, capacity: t.capacity, needed: t.needed, weekdays: t.weekdays, order: t.order },
+      data: { kind: t.kind, name: t.name, routeId: t.routeId, workingWith: t.workingWith, lastMinuteHours: t.lastMinuteHours, escalateHours: t.escalateHours, startTime: t.start, endTime: t.end, capacity: t.capacity, needed: t.needed, weekdays: t.weekdays, order: t.order },
     });
     templates.set(t.key, { id: row.id, kind: t.kind, name: t.name, start: t.start, end: t.end, capacity: t.capacity, needed: t.needed, weekdays: t.weekdays.split(",").map(Number) });
   }
 
   // Training modules ---------------------------------------------------------
   const moduleSpecs = [
-    { code: "INDUCTION", name: "Induction and Health & Safety", description: "Warehouse orientation, emergency procedures, PPE, and how a sorting morning runs. Required before your first shift.", validityMonths: null, requiredRoles: "WAREHOUSE,DRIVERS_ASSISTANT,VOLUNTEER_DRIVER", mandatory: true, delivery: "IN_PERSON", order: 1 },
+    { code: INITIAL_VISIT_CODE, name: "Initial Visit", description: "Your first visit to the warehouse, arranged one-to-one with the coordinator: orientation, emergency procedures, PPE, and how a sorting morning runs. Required before your first shift.", validityMonths: null, requiredRoles: "WAREHOUSE,DRIVERS_ASSISTANT,VOLUNTEER_DRIVER", mandatory: true, delivery: "IN_PERSON", order: 1 },
     { code: "MANUAL_HANDLING", name: "Manual Handling", description: "Safe lifting and carrying of crates and boxes. Refreshed every 12 months.", validityMonths: 12, requiredRoles: "WAREHOUSE,DRIVERS_ASSISTANT,VOLUNTEER_DRIVER", mandatory: false, delivery: "ONLINE_CONFIRM", order: 2, content: [
       "Plan the lift. Check the weight of a crate before you commit; if it is heavier than a full bag of groceries, get a second person or use the trolley.",
       "Keep the load close to your body, feet shoulder-width apart, and lift with your legs rather than your back. Avoid twisting while carrying; turn with your feet.",
@@ -369,12 +374,22 @@ async function main() {
 
   // Training sessions --------------------------------------------------------
   const nextWeekday = (from: string) => { let d = from; while (!isWeekday(d)) d = addDays(d, 1); return d; };
+
+  // A short-notice cancellation on the next working day's route, inside the
+  // route's last-minute window, so pushes and the coordinator alert show up.
+  const lateISO = nextWeekday(addDays(TODAY, 1));
+  const lateHolder = [DA_RK, DA_CN]
+    .map((key) => (slotIndex.get(`${templates.get(key)!.id}:${weekdayOf(lateISO)}`) ?? [])[0])
+    .map((id) => [...vols.values()].find((v) => v.id === id))
+    .find((v) => v && v.id !== tony.id)!;
+  await createAbsence(lateHolder, lateISO, lateISO, "SICK", "Rang in with a migraine", { createdDaysBefore: daysBetween(TODAY, lateISO) });
   const inductionISO = nextWeekday(addDays(TODAY, 5));
   const mhISO = nextWeekday(addDays(TODAY, 9));
   const rvsISO = nextWeekday(addDays(TODAY, 16));
   const pastSessionISO = nextWeekday(addDays(TODAY, -20));
   const warehouse = "Satisfy warehouse, Rangiora";
-  const sessionInduction = await db.trainingSession.create({ data: { moduleId: modules.get("INDUCTION")!.id, startsAt: nzInstant(inductionISO, "10:00"), endsAt: nzInstant(inductionISO, "12:00"), location: warehouse, capacity: 8, notes: "Includes a walk-through of the sorting floor and chiller." } });
+  // An open initial-visit slot the coordinator can offer during a welcome call.
+  await db.trainingSession.create({ data: { moduleId: modules.get(INITIAL_VISIT_CODE)!.id, startsAt: nzInstant(inductionISO, "10:00"), endsAt: nzInstant(inductionISO, "11:00"), location: warehouse, capacity: 2, notes: "Includes a walk-through of the sorting floor and chiller." } });
   const sessionMH = await db.trainingSession.create({ data: { moduleId: modules.get("MANUAL_HANDLING")!.id, startsAt: nzInstant(mhISO, "12:30"), endsAt: nzInstant(mhISO, "13:15"), location: warehouse, capacity: 12, notes: "Straight after the morning sort. Hands-on refresher for anyone who prefers it to the online version." } });
   const sessionRVS = await db.trainingSession.create({ data: { moduleId: modules.get("ROUTE_VEHICLE_SAFETY")!.id, startsAt: nzInstant(rvsISO, "13:00"), endsAt: nzInstant(rvsISO, "14:30"), location: warehouse + " (loading bay)", capacity: 8, notes: "Bring your route notes. Dave will run the van loading demo." } });
   const sessionPast = await db.trainingSession.create({ data: { moduleId: modules.get("SLIPS_TRIPS_FALLS")!.id, startsAt: nzInstant(pastSessionISO, "12:30"), endsAt: nzInstant(pastSessionISO, "13:00"), location: warehouse, capacity: 12 } });
@@ -471,9 +486,11 @@ async function main() {
   });
 
   // Outbox emails ------------------------------------------------------------
-  const emails: { volunteerId: string | null; toName: string; toEmail: string; createdAt: Date; draft: T.EmailDraft }[] = [];
-  const push = (v: { id: string; first: string; last: string | null; email: string } | null, createdAt: Date, draft: T.EmailDraft) =>
-    emails.push({ volunteerId: v?.id ?? null, toName: v ? `${v.first}${v.last ? " " + v.last : ""}` : "Phillipa", toEmail: v?.email ?? phillipa.email, createdAt, draft });
+  const emails: { volunteerId: string | null; toName: string; toEmail: string; createdAt: Date; draft: T.EmailDraft; ref?: string }[] = [];
+  // `ref` matches the dedupe keys in src/lib/reminders.ts, so running the
+  // reminder check straight after a seed finds nothing new to send.
+  const push = (v: { id: string; first: string; last: string | null; email: string } | null, createdAt: Date, draft: T.EmailDraft, ref?: string) =>
+    emails.push({ volunteerId: v?.id ?? null, toName: v ? `${v.first}${v.last ? " " + v.last : ""}` : "Phillipa", toEmail: v?.email ?? phillipa.email, createdAt, draft, ref });
 
   const records = await db.trainingRecord.findMany({ where: { expiresAt: { not: null } }, include: { module: true, volunteer: true } });
   for (const r of records) {
@@ -482,12 +499,12 @@ async function main() {
     const v = { id: r.volunteer.id, first: r.volunteer.firstName, last: r.volunteer.lastName, email: r.volunteer.email };
     const online = r.module.delivery === "ONLINE_CONFIRM";
     if (days > 0 && days <= 30) {
-      push(v, nzInstant(addDays(expISO, -30), "07:00"), T.trainingDueSoon({ firstName: v.first, moduleName: r.module.name, expiresISO: expISO, daysLeft: 30, online }));
+      push(v, nzInstant(addDays(expISO, -30), "07:00"), T.trainingDueSoon({ firstName: v.first, moduleName: r.module.name, expiresISO: expISO, daysLeft: 30, online }), `training-due:${r.id}`);
     } else if (days <= 0) {
       const blocks = r.module.requiredRoles.includes("WAREHOUSE") ? "new shifts" : "route shifts";
-      push(v, nzInstant(addDays(expISO, -30), "07:00"), T.trainingDueSoon({ firstName: v.first, moduleName: r.module.name, expiresISO: expISO, daysLeft: 30, online }));
+      push(v, nzInstant(addDays(expISO, -30), "07:00"), T.trainingDueSoon({ firstName: v.first, moduleName: r.module.name, expiresISO: expISO, daysLeft: 30, online }), `training-due:${r.id}`);
       for (let d = expISO; d <= TODAY; d = addDays(d, 7)) {
-        push(v, nzInstant(d, "07:00"), T.trainingOverdue({ firstName: v.first, moduleName: r.module.name, expiredISO: expISO, online, blocks }));
+        push(v, nzInstant(d, "07:00"), T.trainingOverdue({ firstName: v.first, moduleName: r.module.name, expiredISO: expISO, online, blocks }), `training-overdue:${r.id}`);
       }
     }
   }
@@ -502,6 +519,9 @@ async function main() {
   push({ id: heather.id, first: heather.first, last: heather.last, email: heather.email }, nzInstant(TODAY, "06:48"), T.absenceConfirmed({ firstName: "Heather", startISO: TODAY, endISO: addDays(TODAY, 6), reasonLabel: ABSENCE_REASON_LABEL.SICK, releasedCount: 1 }));
   const heatherShift = (await db.assignment.findFirst({ where: { volunteerId: heather.id, status: "RELEASED" }, include: { shift: { include: { template: true } } }, orderBy: { shift: { date: "asc" } } }))!;
   push(null, nzInstant(TODAY, "06:48"), T.gapAlert({ shiftName: heatherShift.shift.template.name, dateISO: heatherShift.shift.date.toISOString().slice(0, 10), start: heatherShift.shift.startTime, end: heatherShift.shift.endTime, cause: "Heather Lowe marked away (sick)", shiftId: heatherShift.shiftId }));
+  const lateShift = (await db.assignment.findFirst({ where: { volunteerId: lateHolder.id, status: "RELEASED", shift: { date: isoToDate(lateISO) } }, include: { shift: { include: { template: true } } } }))!;
+  push({ id: lateHolder.id, first: lateHolder.first, last: lateHolder.last, email: lateHolder.email }, nzInstant(TODAY, "07:05"), T.absenceConfirmed({ firstName: lateHolder.first, startISO: lateISO, endISO: lateISO, reasonLabel: ABSENCE_REASON_LABEL.SICK, releasedCount: 1 }));
+  push(null, nzInstant(TODAY, "07:05"), T.gapAlert({ shiftName: lateShift.shift.template.name, dateISO: lateISO, start: lateShift.shift.startTime, end: lateShift.shift.endTime, cause: `${lateHolder.first} ${lateHolder.last} marked away (sick)`, shiftId: lateShift.shiftId }));
   const brian = byName("Brian", "Tweedie");
   push({ id: brian.id, first: brian.first, last: brian.last, email: brian.email }, nzInstant(addDays(TODAY, -6), "11:20"), T.absenceConfirmed({ firstName: "Brian", startISO: addDays(TODAY, 3), endISO: addDays(TODAY, 12), reasonLabel: ABSENCE_REASON_LABEL.HOLIDAY, releasedCount: 2 }));
   // Ngaire covered by Fiona.
@@ -509,7 +529,8 @@ async function main() {
   const fionaCover = (await db.assignment.findFirst({ where: { volunteerId: fiona.id, source: "COVER", status: "CONFIRMED" }, include: { shift: { include: { template: true } } } }))!;
   push({ id: fiona.id, first: fiona.first, last: fiona.last, email: fiona.email }, nzInstant(addDays(TODAY, -1), "15:12"), T.coverConfirmed({ firstName: "Fiona", shiftName: fionaCover.shift.template.name, dateISO: fionaCover.shift.date.toISOString().slice(0, 10), start: fionaCover.shift.startTime, end: fionaCover.shift.endTime, shiftId: fionaCover.shiftId }));
   // Jess approved + welcome
-  push({ id: jess.id, first: jess.first, last: jess.last, email: jess.email }, nzInstant(addDays(TODAY, -2), "09:10"), T.applicationApproved({ firstName: "Jess", inductionAt: sessionInduction.startsAt, inductionLocation: warehouse }));
+  // Jess has not had her welcome call yet, so no initial visit is booked.
+  push({ id: jess.id, first: jess.first, last: jess.last, email: jess.email }, nzInstant(addDays(TODAY, -2), "09:10"), T.applicationApproved({ firstName: "Jess" }));
   push({ id: jess.id, first: jess.first, last: jess.last, email: jess.email }, nzInstant(addDays(TODAY, -2), "09:11"), T.welcome({ firstName: "Jess" }));
   // Harvest callout to the pool
   for (const v of vols.values()) {
@@ -522,12 +543,27 @@ async function main() {
   }
 
   await db.email.createMany({
-    data: emails.map((e) => ({ volunteerId: e.volunteerId, toName: e.toName, toEmail: e.toEmail, createdAt: e.createdAt, kind: e.draft.kind, subject: e.draft.subject, preview: e.draft.preview, body: e.draft.body, ctaLabel: e.draft.ctaLabel ?? null, ctaHref: e.draft.ctaHref ?? null })),
+    data: emails.map((e) => ({ volunteerId: e.volunteerId, toName: e.toName, toEmail: e.toEmail, createdAt: e.createdAt, kind: e.draft.kind, subject: e.draft.subject, preview: e.draft.preview, body: e.draft.body, ctaLabel: e.draft.ctaLabel ?? null, ctaHref: e.draft.ctaHref ?? null, ref: e.ref ?? null })),
   });
+
+  // Coordinator contact history ------------------------------------------------
+  const logs: { v: { id: string }; kind: string; summary: string; at: Date }[] = [
+    { v: tony, kind: "CALL", summary: "Called about the overdue Manual Handling refresher. Said he would do the online one this week.", at: nzInstant(addDays(TODAY, -9), "10:15") },
+    { v: tony, kind: "NOTE", summary: "Happy to pick up Friday route cover when Debbie is away.", at: nzInstant(addDays(TODAY, -40), "13:02") },
+    { v: margaret, kind: "CALL", summary: "Asked if she would buddy new volunteers on Tuesdays. Yes, keen.", at: nzInstant(addDays(TODAY, -16), "11:40") },
+    { v: margaret, kind: "PROFILE_UPDATED", summary: "Updated emergency contact.", at: nzInstant(addDays(TODAY, -70), "09:30") },
+    { v: byName("Steve", "Kirkwood"), kind: "ROLES_CHANGED", summary: "Added Volunteer driver. Training needed: Driver Licence Check.", at: nzInstant(addDays(TODAY, -300), "14:10") },
+    { v: byName("Heather", "Lowe"), kind: "CALL", summary: "Rang in sick, chest infection. Marked away for the week.", at: nzInstant(TODAY, "06:45") },
+  ];
+  await db.contactLog.createMany({ data: logs.map((l) => ({ volunteerId: l.v.id, authorId: phillipa.id, kind: l.kind, summary: l.summary, createdAt: l.at })) });
+
+  // Last-minute pushes and coordinator alerts for gaps already near their start,
+  // generated by the same rules the app runs.
+  const cover = await runCoverChecks();
 
   await db.meta.create({ data: { key: "seededOn", value: TODAY } });
 
-  console.log(`Seeded ${vols.size} volunteers, ${shifts.length} shifts, ${assignmentRows.length} assignments, ${recordRows.length} training records, ${emails.length} emails.`);
+  console.log(`Seeded ${vols.size} volunteers, ${shifts.length} shifts, ${assignmentRows.length} assignments, ${recordRows.length} training records, ${emails.length} emails, ${cover.pushes} last-minute pushes, ${cover.escalations} uncovered alerts.`);
 }
 
 main()

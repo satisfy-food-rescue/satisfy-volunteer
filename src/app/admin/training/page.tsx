@@ -1,13 +1,15 @@
 import Link from "next/link";
-import { ArrowRight, BellRing, Clock, Mail, MapPin, Users } from "lucide-react";
+import { Suspense } from "react";
+import { ArrowDown, ArrowRight, ArrowUp, BellRing, Clock, Mail, MapPin, Smartphone, Users } from "lucide-react";
 import { requireAdmin } from "@/lib/session";
 import { db } from "@/lib/db";
 import { formatInstant, formatInstantTime, todayISO, formatDate } from "@/lib/dates";
 import { DELIVERY_LABEL, EMAIL_KIND_LABEL, ROLE_SHORT, fullName, parseRoles, type Delivery, type EmailKind } from "@/lib/domain";
-import { moduleStatuses } from "@/lib/training";
+import { moduleStatuses, type ModuleStatus } from "@/lib/training";
 import { REMINDER_RULES } from "@/lib/reminders";
 import { PageHeader } from "@/components/shared/page-header";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TrainingRecordFilters, UrlTabs } from "@/components/admin/training-filters";
 import { TrainingChip } from "@/components/shared/status-chip";
 import { AvatarBadge } from "@/components/shared/avatar-badge";
 import { ModuleEditor, NewSessionForm, RunRemindersButton } from "@/components/admin/training-admin-controls";
@@ -15,15 +17,43 @@ import { cn } from "@/lib/utils";
 
 export const metadata = { title: "Training" };
 
-export default async function TrainingAdminPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+type Search = { tab?: string; module?: string; status?: string; expiry?: string; q?: string; sort?: string };
+type Row = { v: { id: string; firstName: string; lastName: string | null }; s: ModuleStatus };
+
+const ATTENTION = ["OVERDUE", "DUE_SOON", "NOT_STARTED"];
+const SORTS = ["expiry", "-expiry", "name", "-name", "module", "-module"] as const;
+
+function compareRows(sort: (typeof SORTS)[number]) {
+  const dir = sort.startsWith("-") ? -1 : 1;
+  const key = sort.replace("-", "");
+  // Never completed sorts as most urgent: before anything that has a date.
+  const expiry = (r: Row) => r.s.expiresISO ?? (r.s.status === "NOT_STARTED" ? "0000" : "9999");
+  return (a: Row, b: Row) => {
+    const by =
+      key === "name" ? fullName(a.v).localeCompare(fullName(b.v))
+      : key === "module" ? a.s.module.order - b.s.module.order
+      : expiry(a).localeCompare(expiry(b));
+    return dir * by || fullName(a.v).localeCompare(fullName(b.v)) || a.s.module.order - b.s.module.order;
+  };
+}
+
+/** Builds a training page URL from the current filters plus overrides. */
+function trainingHref(sp: Search, patch: Partial<Search>) {
+  const next = new URLSearchParams();
+  for (const [k, v] of Object.entries({ ...sp, ...patch })) if (v) next.set(k, v);
+  return `/admin/training?${next.toString()}`;
+}
+
+export default async function TrainingAdminPage({ searchParams }: { searchParams: Promise<Search> }) {
   await requireAdmin();
-  const { tab } = await searchParams;
+  const sp = await searchParams;
+  const { tab } = sp;
   const today = todayISO();
   const [modules, volunteers, sessions, reminderEmails] = await Promise.all([
     db.trainingModule.findMany({ orderBy: { order: "asc" } }),
     db.volunteer.findMany({ where: { status: "ACTIVE", role: "VOLUNTEER" }, include: { trainingRecords: true } }),
     db.trainingSession.findMany({ include: { module: true, rsvps: { include: { volunteer: true } } }, orderBy: { startsAt: "asc" } }),
-    db.email.findMany({ where: { kind: { in: ["TRAINING_DUE_SOON", "TRAINING_OVERDUE"] } }, include: { volunteer: true }, orderBy: { createdAt: "desc" }, take: 8 }),
+    db.email.findMany({ where: { kind: { in: ["TRAINING_DUE_SOON", "TRAINING_OVERDUE", "LAST_MINUTE_CALLOUT", "GAP_ESCALATION"] } }, include: { volunteer: true }, orderBy: { createdAt: "desc" }, take: 8 }),
   ]);
   const perVolunteer = volunteers.map((v) => ({ v, statuses: moduleStatuses(v, modules, v.trainingRecords, today) }));
   const moduleStats = modules.map((m) => {
@@ -31,20 +61,45 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
     const count = (st: string) => rel.filter((s) => s.status === st).length;
     return { m, required: rel.length, complete: count("COMPLETE"), dueSoon: count("DUE_SOON"), overdue: count("OVERDUE"), notStarted: count("NOT_STARTED") };
   });
-  const attention = perVolunteer.flatMap((x) => x.statuses.filter((s) => s.status === "OVERDUE" || s.status === "DUE_SOON" || s.status === "NOT_STARTED").map((s) => ({ v: x.v, s })))
-    .sort((a, b) => (a.s.daysLeft ?? 999) - (b.s.daysLeft ?? 999));
+  const allRows: Row[] = perVolunteer.flatMap((x) => x.statuses.filter((s) => s.required).map((s) => ({ v: x.v, s })));
+  const attentionCount = allRows.filter((r) => ATTENTION.includes(r.s.status)).length;
+  const status = sp.status ?? "attention";
+  const q = (sp.q ?? "").toLowerCase();
+  const sort = (SORTS as readonly string[]).includes(sp.sort ?? "") ? (sp.sort as (typeof SORTS)[number]) : "expiry";
+  const rows = allRows
+    .filter(({ v, s }) => {
+      if (sp.module && s.module.id !== sp.module) return false;
+      if (status === "attention" ? !ATTENTION.includes(s.status) : status !== "all" && s.status !== status) return false;
+      if (sp.expiry === "expired" && !(s.daysLeft !== null && s.daysLeft < 0)) return false;
+      if ((sp.expiry === "30" || sp.expiry === "90") && !(s.daysLeft !== null && s.daysLeft >= 0 && s.daysLeft <= Number(sp.expiry))) return false;
+      if (q && !fullName(v).toLowerCase().includes(q)) return false;
+      return true;
+    })
+    .sort(compareRows(sort));
+  const sortHeader = (key: "name" | "module" | "expiry", label: string, className?: string) => {
+    const active = sort.replace("-", "") === key;
+    const desc = sort.startsWith("-");
+    const Icon = desc ? ArrowDown : ArrowUp;
+    return (
+      <th className={cn("px-4 py-2.5 font-bold", className)} aria-sort={active ? (desc ? "descending" : "ascending") : undefined}>
+        <Link href={trainingHref(sp, { tab: "people", sort: active && !desc ? `-${key}` : key === "expiry" ? undefined : key })} scroll={false} className={cn("inline-flex items-center gap-1 hover:text-ink", active && "text-ink")}>
+          {label}{active && <Icon className="size-3.5" aria-hidden />}
+        </Link>
+      </th>
+    );
+  };
   const upcoming = sessions.filter((s) => s.startsAt >= new Date());
   const past = sessions.filter((s) => s.startsAt < new Date()).reverse();
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-6">
       <PageHeader eyebrow="Training" title="Modules, sessions and reminders" description="Configure what each role must complete and how often. The gate in the volunteer app reads directly from these settings." />
-      <Tabs defaultValue={tab === "sessions" || tab === "reminders" || tab === "people" ? tab : "modules"} className="gap-6">
+      <UrlTabs value={tab === "sessions" || tab === "reminders" || tab === "people" ? tab : "modules"} className="gap-6">
         <TabsList variant="line" className="w-full justify-start overflow-x-auto overflow-y-hidden scrollbar-none">
           <TabsTrigger value="modules">Modules</TabsTrigger>
           <TabsTrigger value="people">
-            Needs attention
-            <span className="rounded-full bg-status-bad-bg px-2 py-0.5 text-xs font-bold leading-none text-status-bad tabular">{attention.length}</span>
+            People
+            {attentionCount > 0 && <span className="rounded-full bg-status-bad-bg px-2 py-0.5 text-xs font-bold leading-none text-status-bad tabular" aria-label={`${attentionCount} need attention`}>{attentionCount}</span>}
           </TabsTrigger>
           <TabsTrigger value="sessions">Sessions</TabsTrigger>
           <TabsTrigger value="reminders">Reminders</TabsTrigger>
@@ -69,8 +124,14 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
                   <div className="flex h-2.5 overflow-hidden rounded-full bg-muted" role="img" aria-label={`${complete} complete, ${dueSoon} due soon, ${overdue} overdue, ${notStarted} not started`}>
                     {[["bg-status-good", complete], ["bg-status-warn", dueSoon], ["bg-status-bad", overdue]].map(([c, n]) => (n as number) > 0 && <span key={c as string} className={cn(c as string, "border-r-2 border-card last:border-r-0")} style={{ width: `${((n as number) / required) * 100}%` }} />)}
                   </div>
-                  <p className="mt-1 flex flex-wrap gap-x-3 text-xs text-muted-foreground tabular">
-                    <span className="text-status-good">{complete} complete</span><span className="text-status-warn">{dueSoon} due soon</span><span className="text-status-bad">{overdue} overdue</span>{notStarted > 0 && <span>{notStarted} not started</span>}
+                  <p className="mt-1 flex flex-wrap gap-x-3 text-xs font-semibold tabular">
+                    {([["COMPLETE", complete, "complete", "text-status-good"], ["DUE_SOON", dueSoon, "due soon", "text-status-warn"], ["OVERDUE", overdue, "overdue", "text-status-bad"], ["NOT_STARTED", notStarted, "not started", "text-muted-foreground"]] as const).map(([st, n, label, color]) =>
+                      n > 0 ? (
+                        <Link key={st} href={`/admin/training?tab=people&module=${m.id}&status=${st}`} className={cn(color, "underline-offset-2 hover:underline")}>{n} {label}</Link>
+                      ) : st !== "NOT_STARTED" ? (
+                        <span key={st} className="text-muted-foreground">0 {label}</span>
+                      ) : null,
+                    )}
                   </p>
                 </div>
               </div>
@@ -81,17 +142,35 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
           ))}
         </TabsContent>
 
-        <TabsContent value="people">
-          <div className="overflow-hidden rounded-2xl border border-border bg-card">
+        <TabsContent value="people" className="flex flex-col gap-4">
+          <Suspense><TrainingRecordFilters modules={modules.map((m) => ({ value: m.id, label: m.name }))} /></Suspense>
+          <p className="text-sm text-muted-foreground" aria-live="polite">{rows.length} {rows.length === 1 ? "record" : "records"}{status === "attention" ? " needing attention" : ""}</p>
+          <div className="overflow-x-auto rounded-2xl border border-border bg-card">
             <table className="w-full text-sm">
-              <thead className="font-display bg-muted/60 text-left text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="px-4 py-2.5 font-bold">Volunteer</th><th className="px-4 py-2.5 font-bold">Module</th><th className="hidden px-4 py-2.5 font-bold sm:table-cell">Expiry</th><th className="px-4 py-2.5 font-bold">Status</th></tr></thead>
+              <thead className="font-display bg-muted/60 text-left text-xs uppercase tracking-wide text-muted-foreground">
+                <tr>
+                  {sortHeader("name", "Volunteer")}
+                  {sortHeader("module", "Module")}
+                  <th className="hidden px-4 py-2.5 font-bold md:table-cell">Completed</th>
+                  {sortHeader("expiry", "Expiry", "hidden sm:table-cell")}
+                  <th className="px-4 py-2.5 font-bold">Status</th>
+                </tr>
+              </thead>
               <tbody className="divide-y divide-border">
-                {attention.length === 0 && <tr><td colSpan={4} className="px-4 py-10 text-center text-muted-foreground">Everyone is current. Ka pai.</td></tr>}
-                {attention.map(({ v, s }) => (
+                {rows.length === 0 && <tr><td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">{status === "attention" && !sp.module && !sp.q && !sp.expiry ? "Everyone is current. Ka pai." : "No training records match these filters."}</td></tr>}
+                {rows.map(({ v, s }) => (
                   <tr key={v.id + s.module.id} className="hover:bg-muted/40">
                     <td className="px-4 py-2.5"><Link href={`/admin/volunteers/${v.id}`} className="flex items-center gap-2 font-bold text-ink hover:underline"><AvatarBadge person={v} size="sm" className="size-7 text-[0.6rem]" />{fullName(v)}</Link></td>
                     <td className="px-4 py-2.5 text-ink-soft">{s.module.name}<span className="block text-xs text-muted-foreground">{DELIVERY_LABEL[s.module.delivery as Delivery]}</span></td>
-                    <td className="hidden px-4 py-2.5 text-ink-soft tabular sm:table-cell">{s.expiresISO ? formatDate(s.expiresISO) : "Never completed"}</td>
+                    <td className="hidden px-4 py-2.5 text-ink-soft tabular md:table-cell">{s.completedISO ? formatDate(s.completedISO) : <span className="text-muted-foreground">Never</span>}</td>
+                    <td className="hidden px-4 py-2.5 tabular sm:table-cell">
+                      {s.expiresISO ? (
+                        <>
+                          <span className="text-ink-soft">{formatDate(s.expiresISO)}</span>
+                          {s.daysLeft !== null && s.daysLeft <= 90 && <span className={cn("block text-xs", s.daysLeft < 0 ? "text-status-bad" : s.daysLeft <= 30 ? "text-status-warn" : "text-muted-foreground")}>{s.daysLeft < 0 ? `${-s.daysLeft} days ago` : s.daysLeft === 0 ? "Today" : `In ${s.daysLeft} days`}</span>}
+                        </>
+                      ) : <span className="text-muted-foreground">{s.completedISO ? "Never expires" : "Not completed"}</span>}
+                    </td>
                     <td className="px-4 py-2.5"><TrainingChip status={s.status} size="sm" /></td>
                   </tr>
                 ))}
@@ -101,7 +180,7 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
         </TabsContent>
 
         <TabsContent value="sessions" className="flex flex-col gap-4">
-          <NewSessionForm today={today} modules={modules.filter((m) => m.delivery === "IN_PERSON" || true).map((m) => ({ id: m.id, name: m.name }))} />
+          <NewSessionForm today={today} modules={modules.map((m) => ({ id: m.id, name: m.name }))} />
           <h2 className="text-2xl text-ink">Upcoming</h2>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
             {upcoming.map((s) => <SessionCard key={s.id} s={s} />)}
@@ -119,7 +198,7 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
             <section className="lg:col-span-3">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-2xl text-ink">Reminder rules</h2>
+                <h2 className="text-2xl text-ink">Automatic messages</h2>
                 <RunRemindersButton />
               </div>
               <ol className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
@@ -134,7 +213,7 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
                   </li>
                 ))}
               </ol>
-              <p className="mt-3 flex items-start gap-2 text-sm text-muted-foreground"><BellRing className="mt-0.5 size-4 shrink-0" aria-hidden />In production these run nightly. Nothing is sent from this demo; every email lands in the Outbox instead.</p>
+              <p className="mt-3 flex items-start gap-2 text-sm text-muted-foreground"><BellRing className="mt-0.5 size-4 shrink-0" aria-hidden />In production training reminders run nightly and cover checks run hourly. Nothing is sent from this demo; every email and notification lands in the Outbox instead.</p>
             </section>
             <section className="lg:col-span-2">
               <div className="mb-3 flex items-baseline justify-between">
@@ -145,7 +224,9 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
                 {reminderEmails.map((e) => (
                   <li key={e.id}>
                     <Link href={`/admin/outbox/${e.id}`} className="flex items-start gap-3 px-3 py-2.5 hover:bg-muted">
-                      <Mail className={cn("mt-0.5 size-4 shrink-0", e.kind === "TRAINING_OVERDUE" ? "text-status-bad" : "text-status-warn")} aria-hidden />
+                      {e.channel === "PUSH"
+                        ? <Smartphone className="mt-0.5 size-4 shrink-0 text-pink-text" aria-hidden />
+                        : <Mail className={cn("mt-0.5 size-4 shrink-0", e.kind === "TRAINING_OVERDUE" || e.kind === "GAP_ESCALATION" ? "text-status-bad" : "text-status-warn")} aria-hidden />}
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-bold text-ink">{e.subject}</span>
                         <span className="block text-xs text-muted-foreground">To {e.toName} · {EMAIL_KIND_LABEL[e.kind as EmailKind]} · {formatInstant(e.createdAt)}</span>
@@ -158,7 +239,7 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
             </section>
           </div>
         </TabsContent>
-      </Tabs>
+      </UrlTabs>
     </div>
   );
 }

@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft, Clock, HandHelping, MapPin, Store, Users, CheckCircle2, XCircle } from "lucide-react";
+import { ChevronLeft, Clock, HandHelping, MapPin, Smartphone, Store, UserRound, Users, CheckCircle2, XCircle } from "lucide-react";
 import { requireAdmin } from "@/lib/session";
 import { db } from "@/lib/db";
-import { formatDayLong, formatTimeRange, relativeDay, todayISO, dateToISO, formatDay } from "@/lib/dates";
+import { formatDayLong, formatInstant, formatTimeRange, relativeDay, todayISO, dateToISO, formatDayRange } from "@/lib/dates";
 import { availableForShift, shiftById } from "@/lib/roster";
 import { ABSENCE_REASON_LABEL, fullName, type AbsenceReason } from "@/lib/domain";
 import { AvatarBadge } from "@/components/shared/avatar-badge";
@@ -21,10 +21,12 @@ export default async function AdminShiftPage({ params }: { params: Promise<{ id:
   if (!view) notFound();
   const today = todayISO();
   const isPast = view.iso < today;
-  const [candidates, donors] = await Promise.all([
+  const [candidates, donors, pushes] = await Promise.all([
     view.shift.status === "SCHEDULED" && !isPast ? availableForShift(view) : Promise.resolve([]),
     view.shift.template.routeId ? db.donor.findMany({ where: { routeId: view.shift.template.routeId } }) : Promise.resolve([]),
+    db.email.findMany({ where: { ref: { startsWith: `last-minute:${id}:` } }, include: { volunteer: { select: { firstName: true, lastName: true } } }, orderBy: { createdAt: "asc" } }),
   ]);
+  const pushedTo = pushes.flatMap((p) => (p.volunteer ? [fullName(p.volunteer)] : []));
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-6">
@@ -43,6 +45,7 @@ export default async function AdminShiftPage({ params }: { params: Promise<{ id:
             <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-ink-soft">
               <span className="inline-flex items-center gap-1.5"><Clock className="size-4 text-green-text" aria-hidden />{formatDayLong(view.iso)}, <span className="tabular">{formatTimeRange(view.shift.startTime, view.shift.endTime)}</span></span>
               <span className="inline-flex items-center gap-1.5"><MapPin className="size-4 text-green-text" aria-hidden />{view.location}</span>
+              {view.shift.template.workingWith && <span className="inline-flex items-center gap-1.5"><UserRound className="size-4 text-green-text" aria-hidden />With {view.shift.template.workingWith}</span>}
               {donors.length > 0 && <span className="inline-flex items-center gap-1.5"><Store className="size-4 text-green-text" aria-hidden />{donors.map((d) => d.name).join(", ")}</span>}
             </p>
           </div>
@@ -96,7 +99,7 @@ export default async function AdminShiftPage({ params }: { params: Promise<{ id:
                     <AvatarBadge person={r.volunteer} size="sm" className="size-7 text-[0.6rem]" />
                     <span className="font-semibold">{fullName(r.volunteer)}</span>
                     <span className="text-muted-foreground">
-                      away {r.absence ? `(${ABSENCE_REASON_LABEL[r.absence.reason as AbsenceReason].toLowerCase()}, ${formatDay(dateToISO(r.absence.startDate))} to ${formatDay(dateToISO(r.absence.endDate))})` : ""}
+                      away {r.absence ? `(${ABSENCE_REASON_LABEL[r.absence.reason as AbsenceReason].toLowerCase()}, ${formatDayRange(dateToISO(r.absence.startDate), dateToISO(r.absence.endDate))})` : ""}
                     </span>
                   </li>
                 ))}
@@ -107,6 +110,12 @@ export default async function AdminShiftPage({ params }: { params: Promise<{ id:
 
         <aside className="flex flex-col gap-3 lg:col-span-2" aria-labelledby="add-h">
           <h2 id="add-h" className="text-2xl text-ink">{view.isGap ? "Find cover" : "Add a volunteer"}</h2>
+          {pushedTo.length > 0 && (
+            <p className="flex items-start gap-2 rounded-xl bg-pink-tint/60 px-3 py-2.5 text-sm text-ink">
+              <Smartphone className="mt-0.5 size-4 shrink-0 text-pink-text" aria-hidden />
+              <span>Last-minute notification sent {formatInstant(pushes[0].createdAt)} to {pushedTo.join(", ")}.</span>
+            </p>
+          )}
           {isPast || view.shift.status !== "SCHEDULED" ? (
             <p className="rounded-2xl border border-dashed border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">This shift is {isPast ? "in the past" : "cancelled"}.</p>
           ) : (

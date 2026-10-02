@@ -5,9 +5,10 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireVolunteer } from "@/lib/session";
 import { addMonths, daysBetween, isoToDate, todayISO, dateToISO } from "@/lib/dates";
-import { ABSENCE_REASON_LABEL, type AbsenceReason } from "@/lib/domain";
+import { ABSENCE_REASON_LABEL, fullName, type AbsenceReason } from "@/lib/domain";
 import { eligibilityFor } from "@/lib/training";
-import { decorateShift, shiftInclude, shiftById } from "@/lib/roster";
+import { shiftById } from "@/lib/roster";
+import { afterShiftReleased } from "@/lib/cover";
 import { trainingContext } from "@/lib/volunteer-data";
 import { queueEmail } from "@/lib/emails";
 import * as T from "@/lib/email-templates";
@@ -54,6 +55,7 @@ export async function cancelBooking(assignmentId: string): Promise<ActionResult>
   if (a.source === "REGULAR") return { ok: false, error: "This is your regular slot. Use Mark me away instead." };
   if (dateToISO(a.shift.date) < todayISO()) return { ok: false, error: "That shift has already happened." };
   await db.assignment.update({ where: { id: assignmentId }, data: { status: "CANCELLED" } });
+  await afterShiftReleased(a.shiftId, `${fullName(me)} cancelled`);
   revalidateAll();
   return { ok: true, message: "Booking cancelled." };
 }
@@ -88,12 +90,7 @@ export async function markAway(input: z.infer<typeof awaySchema>): Promise<Actio
   });
   await queueEmail(me, T.absenceConfirmed({ firstName: me.firstName, startISO: startDate, endISO: endDate, reasonLabel: ABSENCE_REASON_LABEL[reason as AbsenceReason], releasedCount: affected.length }));
   for (const a of affected) {
-    const shift = await db.shift.findUnique({ where: { id: a.shiftId }, include: shiftInclude });
-    if (!shift) continue;
-    const view = decorateShift(shift);
-    if (view.isGap) {
-      await queueEmail(null, T.gapAlert({ shiftName: shift.template.name, dateISO: view.iso, start: shift.startTime, end: shift.endTime, cause: `${me.firstName}${me.lastName ? " " + me.lastName : ""} marked away (${ABSENCE_REASON_LABEL[reason as AbsenceReason].toLowerCase()})`, shiftId: shift.id }));
-    }
+    await afterShiftReleased(a.shiftId, `${fullName(me)} marked away (${ABSENCE_REASON_LABEL[reason as AbsenceReason].toLowerCase()})`);
   }
   revalidateAll();
   return { ok: true, message: affected.length === 0 ? "Marked away. No regular shifts fall in that period." : `Marked away. ${affected.length} ${affected.length === 1 ? "shift" : "shifts"} released for cover.` };
@@ -190,3 +187,14 @@ export async function updateProfile(input: z.infer<typeof profileSchema>): Promi
   return { ok: true, message: "Profile saved. Contact changes sync to Infoodle overnight." };
 }
 
+
+export async function requestRoleChange(message: string): Promise<ActionResult> {
+  const me = await requireVolunteer();
+  const text = message.trim();
+  if (text.length < 3) return { ok: false, error: "Tell the coordinator what you would like to change." };
+  if (text.length > 500) return { ok: false, error: "Please keep it under 500 characters." };
+  await db.contactLog.create({ data: { volunteerId: me.id, authorId: me.id, kind: "ROLE_REQUEST", summary: text } });
+  await queueEmail(null, T.roleChangeRequest({ volunteerName: fullName(me), volunteerId: me.id, message: text }));
+  revalidateAll();
+  return { ok: true, message: "Sent to the coordinator. They will be in touch." };
+}

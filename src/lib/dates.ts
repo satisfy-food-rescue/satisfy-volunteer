@@ -102,6 +102,11 @@ export function formatDay(iso: string): string {
   return `${WEEKDAY_SHORT[weekdayOf(iso)]} ${d.getUTCDate()} ${MONTH_SHORT[d.getUTCMonth()]}`;
 }
 
+/** "Mon 5 Oct to Fri 9 Oct", or just "Mon 5 Oct" for a single day. */
+export function formatDayRange(startISO: string, endISO: string): string {
+  return startISO === endISO ? formatDay(startISO) : `${formatDay(startISO)} to ${formatDay(endISO)}`;
+}
+
 /** "6 Oct" */
 export function formatDayShort(iso: string): string {
   const d = isoToDate(iso);

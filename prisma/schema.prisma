@@ -56,15 +56,17 @@ model Volunteer {
   sessionRsvps    SessionRsvp[]
   harvestRsvps    HarvestRsvp[]
   emails          Email[]
+  contactLogs     ContactLog[] @relation("ContactLogVolunteer")
+  authoredLogs    ContactLog[] @relation("ContactLogAuthor")
 }
 
 // A collection route. Every route has a paid driver except the one that is
-// fully volunteer-driven (isVolunteerDriven).
+// fully volunteer-driven (isVolunteerDriven). Who drives is shown per shift
+// type (ShiftTemplate.workingWith).
 model Route {
   id                String   @id @default(cuid())
   name              String
   area              String
-  driverName        String?
   isVolunteerDriven Boolean  @default(false)
   order             Int      @default(0)
   donors    Donor[]
@@ -104,6 +106,13 @@ model ShiftTemplate {
   needed    Int
   // Comma-separated ISO weekdays this template normally runs on, e.g. "1,2,3,4,5"
   weekdays  String
+  // The supervisor or driver volunteers work alongside, e.g. "Dave (staff driver)".
+  workingWith      String?
+  // A gap that opens within this many hours of the start sends a push
+  // notification to eligible last-minute volunteers.
+  lastMinuteHours  Int     @default(48)
+  // Still uncovered this many hours before the start: alert the coordinator.
+  escalateHours    Int     @default(24)
   order     Int     @default(0)
   active    Boolean @default(true)
   shifts       Shift[]
@@ -289,16 +298,20 @@ model Application {
   volunteerId  String?
 }
 
-// Every email the system would send, captured for the Outbox instead of sent.
+// Every email or push notification the system would send, captured for the
+// Outbox instead of sent.
 model Email {
   id          String   @id @default(cuid())
   volunteerId String?
   volunteer   Volunteer? @relation(fields: [volunteerId], references: [id], onDelete: SetNull)
+  // EMAIL | PUSH
+  channel     String   @default("EMAIL")
   toName      String
   toEmail     String
   // TRAINING_DUE_SOON | TRAINING_OVERDUE | SHIFT_REMINDER | ABSENCE_CONFIRMED |
   // COVER_CONFIRMED | GAP_ALERT | APPLICATION_APPROVED | TRAINING_COMPLETED |
-  // SESSION_CONFIRMED | HARVEST_CALLOUT | WELCOME
+  // SESSION_CONFIRMED | HARVEST_CALLOUT | WELCOME | LAST_MINUTE_CALLOUT |
+  // GAP_ESCALATION | ROLES_CHANGED | ROLE_CHANGE_REQUEST
   kind        String
   subject     String
   preview     String
@@ -312,6 +325,23 @@ model Email {
 
   @@index([createdAt])
   @@index([ref])
+}
+
+// The coordinator's record of contact with a volunteer: phone calls, notes and
+// changes made on their behalf. Shown on the profile timeline alongside the
+// emails and notifications they were sent.
+model ContactLog {
+  id          String   @id @default(cuid())
+  volunteerId String
+  volunteer   Volunteer @relation("ContactLogVolunteer", fields: [volunteerId], references: [id], onDelete: Cascade)
+  authorId    String?
+  author      Volunteer? @relation("ContactLogAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  // CALL | NOTE | PROFILE_UPDATED | ROLES_CHANGED | VISIT_BOOKED | ROLE_REQUEST
+  kind        String
+  summary     String
+  createdAt   DateTime @default(now())
+
+  @@index([volunteerId, createdAt])
 }
 
 // Seed bookkeeping so `pnpm dev` can reseed when the demo date rolls over.

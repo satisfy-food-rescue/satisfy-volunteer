@@ -1,10 +1,13 @@
 // Pure email builders. Nothing here touches the database, so the seed and the
 // server actions share one source of truth for what volunteers would receive.
-import type { EmailKind } from "./domain";
+import type { Channel, EmailKind } from "./domain";
 import { formatDate, formatDay, formatDayLong, formatInstant, formatTimeRange } from "./dates";
 
 export type EmailDraft = {
   kind: EmailKind;
+  /** Defaults to EMAIL. A PUSH draft is a phone notification: the subject is
+   *  the title and the preview is the one-line message. */
+  channel?: Channel;
   subject: string;
   preview: string;
   body: string;
@@ -180,9 +183,9 @@ export function applicationApproved(p: {
       `Kia ora ${p.firstName},`,
       `Great news, your application to volunteer with Satisfy has been approved. Nau mai, haere mai.`,
       p.inductionAt
-        ? `Your first step is the Induction and Health & Safety session on ${formatInstant(p.inductionAt)} at ${p.inductionLocation ?? "the Rangiora warehouse"}. We have pencilled you in; please confirm from the Training tab.`
-        : `Your first step is the Induction and Health & Safety session. Book into the next one from the Training tab.`,
-      `Once your induction is complete you can book shifts, choose a regular weekly slot, and opt in to seasonal harvest callouts.`,
+        ? `Your first step is your initial visit to the warehouse on ${formatInstant(p.inductionAt)} at ${p.inductionLocation ?? "the Rangiora warehouse"}. We have pencilled you in; please confirm from the Training tab.`
+        : `Your first step is your initial visit to the warehouse. Our volunteer coordinator will give you a call to find a time that suits, or you can book one from the Training tab.`,
+      `Once your in-person training is complete you can book shifts, choose a regular weekly slot, and opt in to seasonal harvest callouts.`,
       SIGN_OFF,
     ),
     ctaLabel: "Open the volunteer app",
@@ -193,6 +196,8 @@ export function applicationApproved(p: {
 export function trainingCompleted(p: {
   firstName: string;
   moduleName: string;
+  /** Omitted when completed today. */
+  completedISO?: string;
   expiresISO: string | null;
 }): EmailDraft {
   return {
@@ -203,7 +208,7 @@ export function trainingCompleted(p: {
       : "No refresher needed.",
     body: paragraphs(
       `Kia ora ${p.firstName},`,
-      `Your ${p.moduleName} training has been recorded as complete today.`,
+      `Your ${p.moduleName} training has been recorded as complete${p.completedISO ? `, as of ${formatDate(p.completedISO)}` : " today"}.`,
       p.expiresISO
         ? `Your next refresher will be due on ${formatDate(p.expiresISO)}. We will remind you 30 days beforehand.`
         : `This module does not expire.`,
@@ -266,10 +271,123 @@ export function welcome(p: { firstName: string }): EmailDraft {
     preview: "Sign in to see training and shifts.",
     body: paragraphs(
       `Kia ora ${p.firstName},`,
-      `Your volunteer account is ready. Sign in to complete your induction booking, see the weekly shift pattern and add your emergency contact.`,
+      `Your volunteer account is ready. Sign in to confirm your initial visit, see the weekly shift pattern and add your emergency contact.`,
       SIGN_OFF,
     ),
     ctaLabel: "Sign in",
     ctaHref: "/app",
+  };
+}
+
+export function initialVisitBooked(p: {
+  firstName: string;
+  startsAt: Date;
+  location: string;
+  bookedBy: string;
+}): EmailDraft {
+  return {
+    kind: "SESSION_CONFIRMED",
+    subject: `Your initial visit: ${formatInstant(p.startsAt)}`,
+    preview: `At ${p.location}.`,
+    body: paragraphs(
+      `Kia ora ${p.firstName},`,
+      `Thanks for the chat. As agreed with ${p.bookedBy}, your initial visit to Satisfy is on ${formatInstant(p.startsAt)} at ${p.location}.`,
+      `We will show you around the warehouse, go through health and safety, and answer any questions. Wear closed-toe shoes and bring a warm layer. If the time no longer suits, reply to this email and we will find another.`,
+      SIGN_OFF,
+    ),
+    ctaLabel: "View my training",
+    ctaHref: "/app/training",
+  };
+}
+
+export function lastMinuteCallout(p: {
+  shiftName: string;
+  dateISO: string;
+  start: string;
+  end: string;
+  shiftId: string;
+}): EmailDraft {
+  return {
+    kind: "LAST_MINUTE_CALLOUT",
+    channel: "PUSH",
+    subject: `Can you help ${formatDay(p.dateISO)}?`,
+    preview: `${p.shiftName}, ${formatTimeRange(p.start, p.end)} needs cover. Tap to take it.`,
+    body: `${p.shiftName} on ${formatDayLong(p.dateISO)}, ${formatTimeRange(p.start, p.end)} needs cover. Tap to take it.`,
+    ctaLabel: "Open the shift",
+    ctaHref: `/app/shifts/${p.shiftId}`,
+  };
+}
+
+export function gapEscalation(p: {
+  shiftName: string;
+  dateISO: string;
+  start: string;
+  end: string;
+  cause: string;
+  notified: number;
+  shiftId: string;
+}): EmailDraft {
+  return {
+    kind: "GAP_ESCALATION",
+    subject: `Still uncovered: ${p.shiftName}, ${formatDay(p.dateISO)}`,
+    preview: "Nobody has taken this shift yet. Time to pick up the phone.",
+    body: paragraphs(
+      `${p.shiftName} on ${formatDayLong(p.dateISO)} (${formatTimeRange(p.start, p.end)}) is still uncovered.`,
+      `Cause: ${p.cause}.`,
+      p.notified > 0
+        ? `${p.notified} last-minute ${p.notified === 1 ? "volunteer was" : "volunteers were"} sent a push notification and nobody has taken it. The shift page lists who is free and eligible, with phone numbers.`
+        : `No eligible last-minute volunteers were free to notify. The shift page lists everyone else who is free and eligible, with phone numbers.`,
+      COORDINATOR_SIGN_OFF,
+    ),
+    ctaLabel: "Find cover",
+    ctaHref: `/admin/roster/${p.shiftId}`,
+  };
+}
+
+export function rolesChanged(p: {
+  volunteerName: string;
+  volunteerId: string;
+  changedBy: string;
+  added: string[];
+  removed: string[];
+  trainingNeeded: string[];
+}): EmailDraft {
+  const parts = [
+    p.added.length ? `added ${p.added.join(", ")}` : "",
+    p.removed.length ? `removed ${p.removed.join(", ")}` : "",
+  ].filter(Boolean);
+  return {
+    kind: "ROLES_CHANGED",
+    subject: `Roles changed for ${p.volunteerName}`,
+    preview: `${p.changedBy} ${parts.join(" and ")}.`,
+    body: paragraphs(
+      `${p.changedBy} changed ${p.volunteerName}'s roles: ${parts.join(" and ")}.`,
+      p.trainingNeeded.length
+        ? `Training now needed before they can book these shifts: ${p.trainingNeeded.join(", ")}.`
+        : `No extra training is needed for the new roles.`,
+      COORDINATOR_SIGN_OFF,
+    ),
+    ctaLabel: "Open their profile",
+    ctaHref: `/admin/volunteers/${p.volunteerId}`,
+  };
+}
+
+export function roleChangeRequest(p: {
+  volunteerName: string;
+  volunteerId: string;
+  message: string;
+}): EmailDraft {
+  return {
+    kind: "ROLE_CHANGE_REQUEST",
+    subject: `${p.volunteerName} would like to change roles`,
+    preview: p.message,
+    body: paragraphs(
+      `${p.volunteerName} asked for a change to their volunteer roles from the app:`,
+      `"${p.message}"`,
+      `Roles decide which shifts they can book and which training applies, so changes are made by a coordinator from their profile.`,
+      COORDINATOR_SIGN_OFF,
+    ),
+    ctaLabel: "Open their profile",
+    ctaHref: `/admin/volunteers/${p.volunteerId}`,
   };
 }
