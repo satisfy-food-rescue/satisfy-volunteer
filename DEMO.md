@@ -1,6 +1,6 @@
 # Demo walkthrough (about 12 minutes)
 
-Start with `pnpm dev` and open http://localhost:3000. Have the browser at desktop width for admin and use responsive mode at 375px (or a phone) for the volunteer app. Everything below is seeded relative to today, so the dates you see will match the calendar.
+Use the demo deployment, or run it locally with `DEMO_MODE=1` in `.env` (see the README for setup) and open http://localhost:3000. Have the browser at desktop width for admin and use responsive mode at 375px (or a phone) for the volunteer app. Everything below is generated relative to today, so the dates you see will match the calendar. Nothing in the demo sends email.
 
 ## 1. Coordinator view (Phillipa) - 2 min
 
@@ -38,7 +38,7 @@ Still as Tony:
 
 ## 5. Applications and the welcome call - 2 min
 
-- **Applications**. Three pending, mocked as arriving from the Infoodle sign-up form. Open Aroha Ngata and click **Approve**: account created, welcome email queued.
+- **Applications**. Three pending, mocked as arriving from the Infoodle sign-up form. Open Aroha Ngata and click **Approve**: account created and an invite to set a password emailed (it shows in the Outbox without its link, which is never stored).
 - Open **Volunteers > Jess Moorhouse**. The banner says she has not had an initial visit yet, with her number to call. Click **Book initial visit**, pick a new time or the open slot, and book. Jess gets an email and the banner flips to the booked time.
 - While "on the call": **Edit details** to update her emergency contact or availability, and **Log a call** in Communication history. The timeline shows the call alongside every email she has been sent.
 - Under **Training record**, **Mark complete** asks for the date the stage was done, not just today.
@@ -54,5 +54,6 @@ Still as Tony:
 
 ## If something looks off
 
-- Dates are relative to today and the database reseeds automatically on a new day. To reset mid-demo: stop the server and run `pnpm db:reset`, then `pnpm dev`.
-- Persona switching is just a cookie. If you end up on the wrong surface, go to `/sign-in`.
+- Dates are relative to today and the demo regenerates its data every new day and on every restart. To reset mid-demo locally, run `pnpm db:seed`; on the demo deployment, restart it in Coolify.
+- If you end up on the wrong surface, use Switch persona (Me tab, or the sidebar footer) to get back to the persona picker.
+- Production differs in a few places: people sign in with a password, Google or a passkey; email is really sent (the Outbox shows whether each one was delivered); last-minute cover goes out by email until push notifications are built.

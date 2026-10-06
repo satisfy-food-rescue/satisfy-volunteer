@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CalendarCheck, CalendarClock, CheckCircle2, ChevronLeft, Mail, MapPin, Phone, PhoneCall, RefreshCw, Sprout, XCircle, Zap } from "lucide-react";
+import { CalendarCheck, CalendarClock, CheckCircle2, ChevronLeft, Mail, MapPin, Phone, PhoneCall, Power, RefreshCw, Sprout, XCircle, Zap } from "lucide-react";
 import { requireAdmin } from "@/lib/session";
 import { db } from "@/lib/db";
 import { addDays, dateToISO, formatDate, isWeekday, formatDay, formatDayRange, formatInstant, formatInstantTime, formatTimeRange, todayISO, WEEKDAY_LONG } from "@/lib/dates";
-import { ABSENCE_REASON_LABEL, DELIVERY_LABEL, INITIAL_VISIT_CODE, fullName, parseRoles, type AbsenceReason, type Delivery } from "@/lib/domain";
+import { ABSENCE_REASON_LABEL, DELIVERY_LABEL, INITIAL_VISIT_CODE, fullName } from "@/lib/domain";
 import { moduleStatuses, trainingSummary } from "@/lib/training";
 import { AvatarBadge } from "@/components/shared/avatar-badge";
 import { Chip, TrainingChip } from "@/components/shared/status-chip";
-import { BookInitialVisitButton, ContactLogForm, NotesEditor, ProfileEditor, RecordCompletionButton, RolesEditor } from "@/components/admin/volunteer-admin-controls";
+import { AccountControls, BookInitialVisitButton, ContactLogForm, NotesEditor, ProfileEditor, RecordCompletionButton, RolesEditor } from "@/components/admin/volunteer-admin-controls";
 import { ContactTimeline } from "@/components/admin/contact-timeline";
 import { RecordAbsenceForm } from "@/components/admin/record-absence-form";
 import { cn } from "@/lib/utils";
@@ -22,7 +22,7 @@ function nextWorkingDay(iso: string) {
 }
 
 export default async function VolunteerProfilePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ history?: string }> }) {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const { id } = await params;
   const { history: historyParam } = await searchParams;
   const today = todayISO();
@@ -34,7 +34,9 @@ export default async function VolunteerProfilePage({ params, searchParams }: { p
         trainingRecords: { include: { session: true }, orderBy: { completedAt: "desc" } },
         regularSlots: { include: { template: true }, orderBy: { weekday: "asc" } },
         absences: { orderBy: { startDate: "desc" } },
-        emails: { select: { id: true, channel: true, kind: true, subject: true, createdAt: true }, orderBy: { createdAt: "desc" } },
+        emails: { select: { id: true, channel: true, kind: true, subject: true, status: true, createdAt: true }, orderBy: { createdAt: "desc" } },
+        passkeys: { select: { id: true } },
+        oauthAccounts: { select: { provider: true } },
         contactLogs: { include: { author: { select: { id: true, firstName: true } } }, orderBy: { createdAt: "desc" } },
         sessionRsvps: { where: { status: "GOING", session: { startsAt: { gte: now }, module: { code: INITIAL_VISIT_CODE } } }, include: { session: true } },
         assignments: { where: { status: { in: ["ATTENDED", "NO_SHOW", "CONFIRMED", "RELEASED"] } }, include: { shift: { include: { template: true } } }, orderBy: { shift: { date: "desc" } }, take: 200 },
@@ -57,6 +59,11 @@ export default async function VolunteerProfilePage({ params, searchParams }: { p
     .filter((s) => s.id !== visitBooked?.id && s.rsvps.length < s.capacity)
     .map((s) => ({ value: s.id, label: `${formatInstant(s.startsAt)} to ${formatInstantTime(s.endsAt)} · ${s.capacity - s.rsvps.length} of ${s.capacity} ${s.capacity === 1 ? "place" : "places"} free` }));
   const visitButton = needsVisit ? <BookInitialVisitButton volunteer={{ id: v.id, firstName: v.firstName }} openSlots={openSlots} today={today} defaultDate={nextWorkingDay(today)} rebook={!!visitBooked} /> : null;
+  const signInMethods = [
+    v.passwordHash && "Password",
+    v.oauthAccounts.length > 0 && "Google",
+    v.passkeys.length > 0 && `${v.passkeys.length} ${v.passkeys.length === 1 ? "passkey" : "passkeys"}`,
+  ].filter((m): m is string => Boolean(m));
   const hours = history.filter((a) => a.status === "ATTENDED").reduce((n, a) => { const [sh, sm] = a.shift.startTime.split(":").map(Number); const [eh, em] = a.shift.endTime.split(":").map(Number); return n + (eh * 60 + em - sh * 60 - sm) / 60; }, 0);
 
   return (
@@ -73,6 +80,7 @@ export default async function VolunteerProfilePage({ params, searchParams }: { p
             <span className="inline-flex items-center gap-1"><Mail className="size-4 text-green-text" aria-hidden />{v.email}</span>
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            {v.status === "INACTIVE" && <Chip tone="muted" size="sm" icon={Power}>Inactive</Chip>}
             <TrainingChip status={summary.worst} size="sm" />
             {v.isRegular && <Chip tone="good" size="sm" icon={CalendarCheck}>Regular</Chip>}
             {v.inHarvestPool && <Chip tone="info" size="sm" icon={Sprout}>Harvest pool</Chip>}
@@ -109,8 +117,8 @@ export default async function VolunteerProfilePage({ params, searchParams }: { p
         </section>
       )}
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
-        <div className="flex flex-col gap-6 lg:col-span-3">
+      <div className="grid grid-cols-1 gap-6 @4xl/admin:grid-cols-5">
+        <div className="flex flex-col gap-6 @4xl/admin:col-span-3">
           <section className="flex flex-col gap-3" aria-labelledby="tr-h">
             <h2 id="tr-h" className="text-2xl text-ink">Training record</h2>
             <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
@@ -119,7 +127,7 @@ export default async function VolunteerProfilePage({ params, searchParams }: { p
                   <div className="min-w-0 flex-1">
                     <p className="font-bold text-ink">{s.module.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {s.module.validityMonths ? `${s.module.validityMonths}-month validity` : "Once only"} · {DELIVERY_LABEL[s.module.delivery as Delivery]}
+                      {s.module.validityMonths ? `${s.module.validityMonths}-month validity` : "Once only"} · {DELIVERY_LABEL[s.module.delivery]}
                       {s.completedISO && ` · completed ${formatDate(s.completedISO)}${s.record?.method === "SESSION" ? " (session)" : s.record?.method === "ONLINE" ? " (online)" : s.record?.method === "COORDINATOR" ? " (coordinator)" : ""}`}
                     </p>
                     {s.module.code === INITIAL_VISIT_CODE && s.status === "NOT_STARTED" && visitBooked && <p className="text-xs font-semibold text-green-text">Booked for {formatInstant(visitBooked.startsAt)}</p>}
@@ -166,10 +174,10 @@ export default async function VolunteerProfilePage({ params, searchParams }: { p
           </section>
         </div>
 
-        <div className="flex flex-col gap-6 lg:col-span-2">
+        <div className="flex flex-col gap-6 @4xl/admin:col-span-2">
           <section className="rounded-2xl border border-border bg-card p-4" aria-labelledby="contact-h">
             <h2 id="contact-h" className="text-xl text-ink">Contact and availability</h2>
-            <p className="mb-3 mt-1 text-xs text-muted-foreground">Edit while you are on the phone. Changes sync to Infoodle overnight.</p>
+            <p className="mb-3 mt-1 text-xs text-muted-foreground">Edit while you are on the phone.</p>
             <ProfileEditor
               volunteerId={v.id}
               initial={{ phone: v.phone ?? "", suburb: v.suburb ?? "", emergencyName: v.emergencyName ?? "", emergencyPhone: v.emergencyPhone ?? "", availabilityNote: v.availabilityNote ?? "", lastMinuteOk: v.lastMinuteOk, inHarvestPool: v.inHarvestPool }}
@@ -189,7 +197,7 @@ export default async function VolunteerProfilePage({ params, searchParams }: { p
           <section className="rounded-2xl border border-border bg-card p-4" aria-labelledby="roles-h">
             <h2 id="roles-h" className="text-xl text-ink">Roles</h2>
             <p className="mb-3 mt-1 text-xs text-muted-foreground">Roles decide which shift types and training modules apply.</p>
-            <RolesEditor volunteerId={v.id} initial={parseRoles(v.roles)} />
+            <RolesEditor volunteerId={v.id} initial={v.roles} />
           </section>
 
           <section className="rounded-2xl border border-border bg-card p-4" aria-labelledby="slot-h">
@@ -216,7 +224,7 @@ export default async function VolunteerProfilePage({ params, searchParams }: { p
             <h2 id="abs-h" className="text-xl text-ink">Absences</h2>
             {v.absences.length === 0 ? <p className="mt-2 text-sm text-muted-foreground">None recorded.</p> : (
               <ul className="mt-2 flex flex-col gap-1 text-sm">
-                {v.absences.slice(0, 6).map((a) => <li key={a.id} className="flex items-center justify-between gap-2"><span className="tabular">{formatDayRange(dateToISO(a.startDate), dateToISO(a.endDate))}</span><Chip tone="neutral" size="sm">{ABSENCE_REASON_LABEL[a.reason as AbsenceReason]}</Chip></li>)}
+                {v.absences.slice(0, 6).map((a) => <li key={a.id} className="flex items-center justify-between gap-2"><span className="tabular">{formatDayRange(dateToISO(a.startDate), dateToISO(a.endDate))}</span><Chip tone="neutral" size="sm">{ABSENCE_REASON_LABEL[a.reason]}</Chip></li>)}
               </ul>
             )}
             <details className="mt-3">
@@ -225,11 +233,31 @@ export default async function VolunteerProfilePage({ params, searchParams }: { p
             </details>
           </section>
 
-          <div className="flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-sm">
-            <RefreshCw className="size-4 text-green-text" aria-hidden />
-            <span className="text-ink">Infoodle {v.infoodleId}</span>
-            <span className="ml-auto text-xs text-muted-foreground">{v.infoodleSyncedAt ? `synced ${formatInstant(v.infoodleSyncedAt)}` : "not synced"}</span>
-          </div>
+          <section className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4" aria-labelledby="acct-h">
+            <h2 id="acct-h" className="text-xl text-ink">Account</h2>
+            <dl className="grid grid-cols-[7.5rem_1fr] gap-x-3 gap-y-2 text-sm">
+              <dt className="font-semibold text-muted-foreground">Status</dt>
+              <dd className="text-ink">{v.status === "ACTIVE" ? "Active" : "Inactive: cannot sign in"}</dd>
+              <dt className="font-semibold text-muted-foreground">Last sign-in</dt>
+              <dd className="text-ink">{v.lastSignInAt ? formatInstant(v.lastSignInAt) : <span className="text-muted-foreground">Not yet</span>}</dd>
+              <dt className="font-semibold text-muted-foreground">Signs in with</dt>
+              <dd className="text-ink">{signInMethods.length ? signInMethods.join(", ") : <span className="text-muted-foreground">Nothing set up yet</span>}</dd>
+            </dl>
+            <AccountControls
+              volunteer={{ id: v.id, firstName: v.firstName, active: v.status === "ACTIVE", hasSignedIn: Boolean(v.lastSignInAt || v.passwordHash) }}
+              isSelf={v.id === admin.id}
+              upcomingShifts={v.assignments.filter((a) => a.status === "CONFIRMED" && dateToISO(a.shift.date) >= today).length}
+              regularSlots={v.regularSlots.length}
+            />
+          </section>
+
+          {v.infoodleId && (
+            <div className="flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-sm">
+              <RefreshCw className="size-4 text-green-text" aria-hidden />
+              <span className="text-ink">Infoodle {v.infoodleId}</span>
+              <span className="ml-auto text-xs text-muted-foreground">{v.infoodleSyncedAt ? `synced ${formatInstant(v.infoodleSyncedAt)}` : "not synced"}</span>
+            </div>
+          )}
         </div>
       </div>
     </div>

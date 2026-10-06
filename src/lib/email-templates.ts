@@ -73,6 +73,27 @@ export function trainingOverdue(p: {
   };
 }
 
+export function trainingOverdueCoordinator(p: {
+  volunteerName: string;
+  volunteerId: string;
+  moduleName: string;
+  expiredISO: string;
+  phone: string | null;
+}): EmailDraft {
+  return {
+    kind: "TRAINING_OVERDUE_COORDINATOR",
+    subject: `${p.volunteerName}: ${p.moduleName} three weeks overdue`,
+    preview: `Expired ${formatDate(p.expiredISO)}. Weekly reminders have not worked yet.`,
+    body: paragraphs(
+      `${p.volunteerName}'s ${p.moduleName} training expired on ${formatDate(p.expiredISO)} and is still not refreshed after three weekly reminders.`,
+      `Until it is done they cannot book the shifts it covers. Their regular slot is not affected. A quick call usually sorts it${p.phone ? `: ${p.phone}` : ""}.`,
+      COORDINATOR_SIGN_OFF,
+    ),
+    ctaLabel: "Open their profile",
+    ctaHref: `/admin/volunteers/${p.volunteerId}`,
+  };
+}
+
 export function shiftReminder(p: {
   firstName: string;
   shiftName: string;
@@ -264,18 +285,39 @@ export function harvestCallout(p: {
   };
 }
 
-export function welcome(p: { firstName: string }): EmailDraft {
+/** Sent when an admin creates an account. The button carries a single-use
+ *  link that is never stored, so the logged copy has no link. */
+export function accountInvite(p: { firstName: string; expiresDays: number }): EmailDraft {
   return {
-    kind: "WELCOME",
-    subject: "Your Satisfy volunteer account is ready",
-    preview: "Sign in to see training and shifts.",
+    kind: "ACCOUNT_INVITE",
+    subject: "Set up your Satisfy volunteer account",
+    preview: `Choose a password to sign in. The link works for ${p.expiresDays} days.`,
     body: paragraphs(
       `Kia ora ${p.firstName},`,
-      `Your volunteer account is ready. Sign in to confirm your initial visit, see the weekly shift pattern and add your emergency contact.`,
+      `Your Satisfy volunteer account is ready. Choose a password to sign in and see your training, shifts and regular slot.`,
+      `The link works once and for ${p.expiresDays} days. If this address is your Google account, you can also just sign in with Google.`,
+      `Not expecting this? You can ignore it.`,
       SIGN_OFF,
     ),
-    ctaLabel: "Sign in",
-    ctaHref: "/app",
+    ctaLabel: "Set up my account",
+  };
+}
+
+/** "Forgot password" and "first time here?" both send this. */
+export function passwordReset(p: { firstName: string; expiresHours: number; hasPassword: boolean }): EmailDraft {
+  return {
+    kind: "PASSWORD_RESET",
+    subject: p.hasPassword ? "Reset your Satisfy volunteer password" : "Choose a password for Satisfy volunteers",
+    preview: `The link works once and for ${p.expiresHours} hours.`,
+    body: paragraphs(
+      `Kia ora ${p.firstName},`,
+      p.hasPassword
+        ? `Someone, hopefully you, asked to reset the password for your Satisfy volunteer account.`
+        : `Someone, hopefully you, asked to set up a password for your Satisfy volunteer account.`,
+      `The button below works once and for ${p.expiresHours} hours. If you did not ask for this, ignore this email${p.hasPassword ? ": your password has not changed" : ""}.`,
+      SIGN_OFF,
+    ),
+    ctaLabel: p.hasPassword ? "Choose a new password" : "Choose a password",
   };
 }
 

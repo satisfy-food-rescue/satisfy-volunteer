@@ -34,7 +34,7 @@ export function ProfileForm({ initial, email }: { initial: Values; email: string
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="email" className="text-base">Email</Label>
           <Input id="email" value={email} readOnly className="h-12 bg-muted text-base" />
-          <p className="text-xs text-muted-foreground">Managed in Infoodle. Ask the coordinator to change it.</p>
+          <p className="text-xs text-muted-foreground">This is the email you sign in with. Ask the coordinator to change it.</p>
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="phone" className="text-base">Mobile</Label>

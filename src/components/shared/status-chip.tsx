@@ -3,11 +3,13 @@ import {
   CheckCircle2,
   Circle,
   Clock,
+  EyeOff,
   MinusCircle,
+  Send,
   type LucideIcon,
 } from "lucide-react";
-import type { TrainingStatus } from "@/lib/domain";
-import { TRAINING_STATUS_LABEL } from "@/lib/domain";
+import type { DeliveryStatus, TrainingStatus } from "@/lib/domain";
+import { DELIVERY_STATUS_LABEL, TRAINING_STATUS_LABEL } from "@/lib/domain";
 import { cn } from "@/lib/utils";
 
 export type Tone = "good" | "warn" | "bad" | "neutral" | "info" | "muted";
@@ -78,6 +80,28 @@ export function TrainingChip({
   return (
     <Chip tone={TRAINING_TONE[status]} icon={TRAINING_ICON[status]} size={size} className={className}>
       {TRAINING_STATUS_LABEL[status]}
+    </Chip>
+  );
+}
+
+const DELIVERY_TONE: Record<DeliveryStatus, Tone> = {
+  SENT: "good",
+  PENDING: "neutral",
+  FAILED: "bad",
+  CAPTURED: "muted",
+};
+
+const DELIVERY_ICON: Record<DeliveryStatus, LucideIcon> = {
+  SENT: Send,
+  PENDING: Clock,
+  FAILED: AlertTriangle,
+  CAPTURED: EyeOff,
+};
+
+export function DeliveryChip({ status, size = "sm" }: { status: DeliveryStatus; size?: "sm" | "md" }) {
+  return (
+    <Chip tone={DELIVERY_TONE[status]} icon={DELIVERY_ICON[status]} size={size}>
+      {DELIVERY_STATUS_LABEL[status]}
     </Chip>
   );
 }

@@ -1,8 +1,15 @@
 node_modules
 .next
 .git
+.claude
 .env*
-prisma/dev.db*
+!.env.example
 *.tsbuildinfo
+src/generated
+playwright-report
+test-results
+tests
+playwright.config.ts
+vitest.config.mts
 Dockerfile
 .dockerignore

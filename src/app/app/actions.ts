@@ -5,7 +5,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireVolunteer } from "@/lib/session";
 import { addMonths, daysBetween, isoToDate, todayISO, dateToISO } from "@/lib/dates";
-import { ABSENCE_REASON_LABEL, fullName, type AbsenceReason } from "@/lib/domain";
+import { ABSENCE_REASON_LABEL, fullName } from "@/lib/domain";
 import { eligibilityFor } from "@/lib/training";
 import { shiftById } from "@/lib/roster";
 import { afterShiftReleased } from "@/lib/cover";
@@ -88,9 +88,9 @@ export async function markAway(input: z.infer<typeof awaySchema>): Promise<Actio
     where: { id: { in: affected.map((a) => a.id) } },
     data: { status: "RELEASED", absenceId: absence.id },
   });
-  await queueEmail(me, T.absenceConfirmed({ firstName: me.firstName, startISO: startDate, endISO: endDate, reasonLabel: ABSENCE_REASON_LABEL[reason as AbsenceReason], releasedCount: affected.length }));
+  await queueEmail(me, T.absenceConfirmed({ firstName: me.firstName, startISO: startDate, endISO: endDate, reasonLabel: ABSENCE_REASON_LABEL[reason], releasedCount: affected.length }));
   for (const a of affected) {
-    await afterShiftReleased(a.shiftId, `${fullName(me)} marked away (${ABSENCE_REASON_LABEL[reason as AbsenceReason].toLowerCase()})`);
+    await afterShiftReleased(a.shiftId, `${fullName(me)} marked away (${ABSENCE_REASON_LABEL[reason].toLowerCase()})`);
   }
   revalidateAll();
   return { ok: true, message: affected.length === 0 ? "Marked away. No regular shifts fall in that period." : `Marked away. ${affected.length} ${affected.length === 1 ? "shift" : "shifts"} released for cover.` };
@@ -184,7 +184,7 @@ export async function updateProfile(input: z.infer<typeof profileSchema>): Promi
     data: { phone: d.phone || null, suburb: d.suburb || null, emergencyName: d.emergencyName || null, emergencyPhone: d.emergencyPhone || null, availabilityNote: d.availabilityNote || null, lastMinuteOk: d.lastMinuteOk },
   });
   revalidateAll();
-  return { ok: true, message: "Profile saved. Contact changes sync to Infoodle overnight." };
+  return { ok: true, message: "Profile saved." };
 }
 
 

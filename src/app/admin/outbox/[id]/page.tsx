@@ -4,9 +4,11 @@ import { ChevronLeft } from "lucide-react";
 import { requireAdmin } from "@/lib/session";
 import { db } from "@/lib/db";
 import { formatInstant, formatInstantTime } from "@/lib/dates";
-import { EMAIL_KIND_LABEL, type EmailKind } from "@/lib/domain";
+import { EMAIL_KIND_LABEL } from "@/lib/domain";
 import { ORG } from "@/lib/brand";
+import { env, isDemo } from "@/lib/env";
 import { LogoMark } from "@/components/brand/logo";
+import { DeliveryChip } from "@/components/shared/status-chip";
 
 export const metadata = { title: "Message preview" };
 
@@ -17,17 +19,29 @@ export default async function EmailPreviewPage({ params }: { params: Promise<{ i
   if (!e) notFound();
   const paragraphs = e.body.split("\n\n");
   const push = e.channel === "PUSH";
+  const demo = isDemo();
+  const signInLink = e.kind === "ACCOUNT_INVITE" || e.kind === "PASSWORD_RESET";
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <Link href="/admin/outbox" className="-ml-1 inline-flex min-h-11 items-center gap-1 self-start pr-2 text-sm font-semibold text-muted-foreground hover:text-ink"><ChevronLeft className="size-5" aria-hidden /> Outbox</Link>
       <div>
-        <p className="eyebrow">{push ? "Push notification" : "Email preview"} · {EMAIL_KIND_LABEL[e.kind as EmailKind]}</p>
+        <p className="eyebrow">{push ? "Push notification" : "Email preview"} · {EMAIL_KIND_LABEL[e.kind]}</p>
         <h1 className="mt-1 text-2xl text-ink">{e.subject}</h1>
       </div>
       <dl className="grid grid-cols-[5rem_1fr] gap-x-3 gap-y-1 rounded-2xl border border-border bg-card px-4 py-3 text-sm">
-        <dt className="font-semibold text-muted-foreground">From</dt><dd className="text-ink">{push ? "Satisfy volunteer app" : <>{ORG.name} &lt;{ORG.coordinatorEmail}&gt;</>}</dd>
+        <dt className="font-semibold text-muted-foreground">From</dt><dd className="text-ink">{push ? "Satisfy volunteer app" : env().EMAIL_FROM}</dd>
         <dt className="font-semibold text-muted-foreground">To</dt><dd className="text-ink">{push ? `${e.toName}'s phone` : <>{e.toName} &lt;{e.toEmail}&gt;</>}</dd>
-        <dt className="font-semibold text-muted-foreground">Generated</dt><dd className="text-ink tabular">{formatInstant(e.createdAt)}</dd>
+        <dt className="font-semibold text-muted-foreground">Created</dt><dd className="text-ink tabular">{formatInstant(e.createdAt)}</dd>
+        {!demo && (
+          <>
+            <dt className="font-semibold text-muted-foreground">Status</dt>
+            <dd className="flex flex-wrap items-center gap-2 text-ink">
+              <DeliveryChip status={e.status} />
+              {e.sentAt && <span className="tabular text-ink-soft">{formatInstant(e.sentAt)}</span>}
+              {e.status === "FAILED" && e.lastError && <span className="text-status-bad">{e.lastError}</span>}
+            </dd>
+          </>
+        )}
         <dt className="font-semibold text-muted-foreground">Preview</dt><dd className="text-ink-soft">{e.preview}</dd>
       </dl>
 
@@ -72,10 +86,16 @@ export default async function EmailPreviewPage({ params }: { params: Promise<{ i
                 <Link href={e.ctaHref} className="inline-block rounded-full bg-green-fill px-6 py-3 font-display font-bold text-white no-underline hover:bg-green-fill-hover">{e.ctaLabel}</Link>
               </p>
             )}
+            {e.ctaLabel && signInLink && (
+              <p className="my-6">
+                <span className="inline-block rounded-full bg-green-fill px-6 py-3 font-display font-bold text-white">{e.ctaLabel}</span>
+                <span className="mt-2 block text-sm text-muted-foreground">The sign-in link is single-use and never stored, so it is not shown here.</span>
+              </p>
+            )}
           </div>
           <div className="bg-canvas px-6 py-4 text-xs leading-relaxed text-muted-foreground">
             <p>{ORG.name} · {ORG.base}</p>
-            <p>You are receiving this because you volunteer with Satisfy. Manage your details in the volunteer app.</p>
+            <p>{e.volunteerId ? "You are receiving this because you volunteer with Satisfy. Reply to this email to reach the volunteer coordinator." : "Sent to the volunteer coordinator by the Satisfy volunteer app."}</p>
           </div>
         </div>
       </div>

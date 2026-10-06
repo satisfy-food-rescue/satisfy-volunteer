@@ -4,12 +4,13 @@ import { Sprout, Zap } from "lucide-react";
 import { requireAdmin } from "@/lib/session";
 import { db } from "@/lib/db";
 import { todayISO, WEEKDAY_SHORT } from "@/lib/dates";
-import { ROLE_SHORT, fullName, parseRoles } from "@/lib/domain";
+import { ROLE_SHORT, fullName } from "@/lib/domain";
 import { moduleStatuses, trainingSummary } from "@/lib/training";
 import { PageHeader } from "@/components/shared/page-header";
 import { AvatarBadge } from "@/components/shared/avatar-badge";
 import { TrainingChip } from "@/components/shared/status-chip";
 import { VolunteerFilters } from "@/components/admin/volunteer-filters";
+import { AddVolunteerButton } from "@/components/admin/volunteer-admin-controls";
 
 export const metadata = { title: "Volunteers" };
 
@@ -29,7 +30,7 @@ export default async function VolunteersPage({ searchParams }: { searchParams: P
       if (sp.type === "regular" && !v.isRegular) return false;
       if (sp.type === "harvest" && !v.inHarvestPool) return false;
       if (sp.type === "casual" && (v.isRegular || v.inHarvestPool)) return false;
-      if (sp.role && !parseRoles(v.roles).includes(sp.role as never)) return false;
+      if (sp.role && !v.roles.includes(sp.role as never)) return false;
       if (sp.training === "COMPLETE" && !summary.compliant) return false;
       if (sp.training && sp.training !== "COMPLETE" && summary.worst !== sp.training && !(sp.training === "DUE_SOON" && summary.dueSoon > 0 && summary.compliant)) return false;
       return true;
@@ -37,7 +38,7 @@ export default async function VolunteersPage({ searchParams }: { searchParams: P
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-6">
-      <PageHeader eyebrow="People" title="Volunteers" description={`${volunteers.filter((x) => x.status === "ACTIVE").length} active volunteers. ${volunteers.filter((x) => x.isRegular).length} hold a regular slot, ${volunteers.filter((x) => x.inHarvestPool).length} are in the harvest pool.`} />
+      <PageHeader eyebrow="People" title="Volunteers" description={`${volunteers.filter((x) => x.status === "ACTIVE").length} active volunteers. ${volunteers.filter((x) => x.isRegular).length} hold a regular slot, ${volunteers.filter((x) => x.inHarvestPool).length} are in the harvest pool.`} actions={<AddVolunteerButton />} />
       <Suspense><VolunteerFilters /></Suspense>
       <div className="overflow-hidden rounded-2xl border border-border bg-card">
         <table className="w-full text-sm">
@@ -45,7 +46,7 @@ export default async function VolunteersPage({ searchParams }: { searchParams: P
             <tr>
               <th className="px-4 py-2.5 font-bold">Name</th>
               <th className="hidden px-4 py-2.5 font-bold md:table-cell">Roles</th>
-              <th className="hidden px-4 py-2.5 font-bold lg:table-cell">Regular slot</th>
+              <th className="hidden px-4 py-2.5 font-bold @4xl/admin:table-cell">Regular slot</th>
               <th className="px-4 py-2.5 font-bold">Training</th>
               <th className="hidden px-4 py-2.5 text-right font-bold sm:table-cell">Flags</th>
             </tr>
@@ -63,8 +64,8 @@ export default async function VolunteersPage({ searchParams }: { searchParams: P
                     </span>
                   </Link>
                 </td>
-                <td className="hidden px-4 py-2.5 text-ink-soft md:table-cell">{parseRoles(v.roles).map((r) => ROLE_SHORT[r]).join(", ")}</td>
-                <td className="hidden px-4 py-2.5 text-ink-soft lg:table-cell">
+                <td className="hidden px-4 py-2.5 text-ink-soft md:table-cell">{v.roles.map((r) => ROLE_SHORT[r]).join(", ")}</td>
+                <td className="hidden px-4 py-2.5 text-ink-soft @4xl/admin:table-cell">
                   {v.regularSlots.length === 0 ? <span className="text-muted-foreground">None</span> : v.regularSlots.map((s) => `${WEEKDAY_SHORT[s.weekday]} ${s.template.kind === "WAREHOUSE" ? "warehouse" : s.template.name.split(": ")[1]}`).join(", ")}
                 </td>
                 <td className="px-4 py-2.5"><TrainingChip status={summary.worst} size="sm" /></td>

@@ -1,34 +1,60 @@
-# Production image for Coolify (or any Docker host).
-# The SQLite database lives on a volume at /data; the container creates and
-# seeds it on first boot and reseeds when the NZ date rolls over.
+# syntax=docker/dockerfile:1.7
+# Production image for Coolify (or any Docker host). One image serves both
+# production and the sales demo; DEMO_MODE and the other settings are runtime
+# environment variables (see .env.example), so nothing is baked in at build.
+#
+# On start the container applies pending migrations, then starts Next.js,
+# whose instrumentation hook bootstraps the database (src/lib/bootstrap.ts).
 
-FROM node:24-bookworm-slim AS base
-ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH NEXT_TELEMETRY_DISABLED=1
-RUN apt-get update && apt-get install -y --no-install-recommends openssl \
-  && rm -rf /var/lib/apt/lists/* && corepack enable
+FROM node:24-alpine AS base
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN apk add --no-cache libc6-compat && corepack enable
 WORKDIR /app
 
-FROM base AS build
-# Toolchain for better-sqlite3 if no prebuilt binary matches.
-RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ \
-  && rm -rf /var/lib/apt/lists/*
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+# ---- deps: full install (the Prisma CLI is a dev dependency)
+FROM base AS deps
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml prisma.config.ts ./
 COPY prisma ./prisma
-COPY prisma.config.ts ./
 RUN pnpm install --frozen-lockfile
+
+# ---- build: Prisma client + Next.js standalone bundle
+FROM base AS build
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN pnpm build
 
-FROM base AS runtime
-ENV NODE_ENV=production PORT=3000 HOSTNAME=0.0.0.0 \
-  DATABASE_URL=file:/data/satisfy.db
-# The seed and schema push need tsx and the Prisma CLI at runtime, so the full
-# install is kept. Fine for a demo; revisit with Postgres and migrations.
-COPY --from=build --chown=node:node /app /app
-RUN mkdir -p /data && chown node:node /data
-USER node
-# Cache pnpm now so boot does not download it.
-RUN COREPACK_ENABLE_DOWNLOAD_PROMPT=0 pnpm --version
-VOLUME /data
+# ---- migrator: just the Prisma CLI, at exactly the version the app uses
+FROM base AS migrator
+WORKDIR /opt/migrator
+COPY package.json /tmp/package.json
+RUN PRISMA=$(node -p "require('/tmp/package.json').devDependencies.prisma") \
+ && DOTENV=$(node -p "require('/tmp/package.json').devDependencies.dotenv") \
+ && npm init -y >/dev/null \
+ && npm install --omit=optional --no-package-lock --no-audit --no-fund "prisma@$PRISMA" "dotenv@$DOTENV"
+
+# ---- runtime
+FROM node:24-alpine AS runtime
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0
+# openssl for the Prisma schema engine during `migrate deploy`.
+RUN apk add --no-cache openssl \
+ && addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001 -G nodejs
+WORKDIR /app
+COPY --from=migrator --chown=nextjs:nodejs /opt/migrator /opt/migrator
+COPY --from=build --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=build --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=build --chown=nextjs:nodejs /app/public ./public
+COPY --from=build --chown=nextjs:nodejs /app/prisma ./prisma
+COPY --from=build --chown=nextjs:nodejs /app/prisma.config.ts ./prisma.config.ts
+COPY --from=build --chown=nextjs:nodejs /app/scripts ./scripts
+ENV NODE_PATH=/opt/migrator/node_modules PATH=/opt/migrator/node_modules/.bin:$PATH
+USER nextjs
 EXPOSE 3000
-CMD ["pnpm", "start:prod"]
+
+# Liveness only (no database), so a Postgres blip does not restart the app.
+# start-period covers migrations and boot.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+
+# exec hands PID 1 to Node, so SIGTERM on redeploy lets in-flight requests and
+# after() email deliveries finish.
+CMD ["sh", "-c", "prisma migrate deploy && exec node server.js"]

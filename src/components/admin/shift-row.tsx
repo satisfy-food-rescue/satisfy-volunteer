@@ -13,7 +13,7 @@ export function ShiftRow({ view, showDate }: { view: ShiftView; showDate?: strin
     <Link
       href={`/admin/roster/${view.shift.id}`}
       className={cn(
-        "flex items-center gap-3 rounded-xl border bg-card px-3 py-2.5 transition-colors hover:border-green",
+        "@container/row flex items-center gap-3 rounded-xl border bg-card px-3 py-2.5 transition-colors hover:border-green",
         view.isGap ? "border-pink/40" : "border-border",
         cancelled && "opacity-60",
       )}
@@ -26,13 +26,14 @@ export function ShiftRow({ view, showDate }: { view: ShiftView; showDate?: strin
           {showDate && <span className="mr-2 text-muted-foreground">{showDate}</span>}
           {view.shift.template.name}
         </span>
-        <span className="block text-xs text-muted-foreground tabular">{formatTimeRange(view.shift.startTime, view.shift.endTime)}</span>
+        <span className="block whitespace-nowrap text-xs text-muted-foreground tabular">{formatTimeRange(view.shift.startTime, view.shift.endTime)}</span>
       </span>
-      <span className="hidden -space-x-1 sm:flex">
+      {/* Sized by the row, not the viewport: the dashboard puts rows in a narrow column. */}
+      <span className="hidden shrink-0 -space-x-1 @lg/row:flex">
         {view.confirmed.slice(0, 5).map((a) => <AvatarBadge key={a.id} person={a.volunteer} size="sm" className="size-7 text-[0.6rem] ring-2 ring-card" />)}
       </span>
-      <span className="w-12 text-right text-sm text-ink tabular">{view.confirmedCount}/{view.shift.capacity}</span>
-      <span className="w-28 text-right">
+      <span className="w-12 shrink-0 text-right text-sm text-ink tabular">{view.confirmedCount}/{view.shift.capacity}</span>
+      <span className="w-28 shrink-0 text-right">
         {cancelled ? (
           <Chip tone="neutral" icon={Ban} size="sm">Cancelled</Chip>
         ) : view.isGap ? (

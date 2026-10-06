@@ -62,7 +62,7 @@ export default async function AbsencesPage() {
                       <div className="min-w-0">
                         <Link href={`/admin/volunteers/${a.volunteerId}`} className="block truncate font-bold text-ink hover:underline">{fullName(a.volunteer)}</Link>
                         <div className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
-                          <Chip tone={REASON_TONE[a.reason as AbsenceReason]} size="sm">{ABSENCE_REASON_LABEL[a.reason as AbsenceReason]}</Chip>
+                          <Chip tone={REASON_TONE[a.reason]} size="sm">{ABSENCE_REASON_LABEL[a.reason]}</Chip>
                           <span className="tabular">{s === e ? formatDayShort(s) : `${formatDayShort(s)} to ${formatDayShort(e)}`}</span>
                         </div>
                       </div>
@@ -94,7 +94,7 @@ export default async function AbsencesPage() {
                         {inRange && (
                           <div
                             className={cn("flex h-7 items-center justify-center", iso === s && "rounded-l-full", iso === e && "rounded-r-full", rel ? (covered ? "bg-status-good/80" : "bg-status-bad") : "bg-muted-foreground/25")}
-                            title={rel ? `${rel.shift.template.name} ${covered ? "covered" : "needs cover"}` : ABSENCE_REASON_LABEL[a.reason as AbsenceReason]}
+                            title={rel ? `${rel.shift.template.name} ${covered ? "covered" : "needs cover"}` : ABSENCE_REASON_LABEL[a.reason]}
                           >
                             {rel && (covered ? <CheckCircle2 className="size-4 text-white" aria-label="Covered" /> : <HandHelping className="size-4 text-white" aria-label="Needs cover" />)}
                           </div>

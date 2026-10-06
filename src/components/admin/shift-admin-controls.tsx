@@ -7,7 +7,7 @@ import { ActionButton } from "@/components/app/action-button";
 import { AvatarBadge } from "@/components/shared/avatar-badge";
 import { Chip } from "@/components/shared/status-chip";
 import { Input } from "@/components/ui/input";
-import { fullName } from "@/lib/domain";
+import { fullName, type VolunteerRole } from "@/lib/domain";
 import { cn } from "@/lib/utils";
 
 export function AttendanceControls({ assignmentId, status, isPast }: { assignmentId: string; status: string; isPast: boolean }) {
@@ -38,7 +38,7 @@ export type Candidate = {
   phone: string | null;
   lastMinuteOk: boolean;
   coversBefore: number;
-  roles: string;
+  roles: readonly VolunteerRole[];
 };
 
 export function AddVolunteerPanel({ shiftId, candidates, isGap }: { shiftId: string; candidates: Candidate[]; isGap: boolean }) {

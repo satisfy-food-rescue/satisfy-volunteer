@@ -5,10 +5,11 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/session";
 import { addDays, addMonths, dateToISO, isoToDate, isWeekday, nzInstant, todayISO, weekdayOf, formatDay, formatInstant } from "@/lib/dates";
-import { ABSENCE_REASON_LABEL, INITIAL_VISIT_CODE, ROLE_LABEL, VOLUNTEER_ROLES, fullName, parseRoles, type AbsenceReason } from "@/lib/domain";
+import { ABSENCE_REASON_LABEL, INITIAL_VISIT_CODE, ROLE_LABEL, VOLUNTEER_ROLES, fullName, normaliseEmail, sortRoles } from "@/lib/domain";
+import { sendSignInLink } from "@/lib/auth";
 import { decorateShift, shiftInclude } from "@/lib/roster";
 import { moduleStatuses } from "@/lib/training";
-import { runReminders } from "@/lib/reminders";
+import { runReminders, runShiftReminders } from "@/lib/reminders";
 import { afterShiftReleased, runCoverChecks } from "@/lib/cover";
 import { queueEmail } from "@/lib/emails";
 import * as T from "@/lib/email-templates";
@@ -140,7 +141,7 @@ export async function recordAbsence(input: z.infer<typeof absenceSchema>): Promi
   const affected = await db.assignment.findMany({ where: { volunteerId, status: "CONFIRMED", shift: { date: { gte: isoToDate(startDate), lte: isoToDate(endDate) } } }, select: { id: true, shiftId: true } });
   await db.assignment.updateMany({ where: { id: { in: affected.map((a) => a.id) } }, data: { status: "RELEASED", absenceId: absence.id } });
   for (const a of affected) await afterShiftReleased(a.shiftId, null);
-  await queueEmail(volunteer, T.absenceConfirmed({ firstName: volunteer.firstName, startISO: startDate, endISO: endDate, reasonLabel: ABSENCE_REASON_LABEL[reason as AbsenceReason], releasedCount: affected.length }));
+  await queueEmail(volunteer, T.absenceConfirmed({ firstName: volunteer.firstName, startISO: startDate, endISO: endDate, reasonLabel: ABSENCE_REASON_LABEL[reason], releasedCount: affected.length }));
   revalidateAll();
   return { ok: true, message: `${volunteer.firstName} marked away. ${affected.length} ${affected.length === 1 ? "shift" : "shifts"} released.` };
 }
@@ -191,7 +192,7 @@ const moduleSchema = z.object({
   id: z.string(),
   name: z.string().trim().min(2).max(80),
   validityMonths: z.number().int().min(1).max(60).nullable(),
-  requiredRoles: z.array(z.enum(["WAREHOUSE", "DRIVERS_ASSISTANT", "VOLUNTEER_DRIVER"])).min(1),
+  requiredRoles: z.array(z.enum(VOLUNTEER_ROLES)).min(1),
   mandatoryBeforeFirstShift: z.boolean(),
   delivery: z.enum(["IN_PERSON", "ONLINE_CONFIRM"]),
 });
@@ -201,7 +202,7 @@ export async function updateModule(input: z.infer<typeof moduleSchema>): Promise
   const parsed = moduleSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Please check the module settings." };
   const d = parsed.data;
-  await db.trainingModule.update({ where: { id: d.id }, data: { name: d.name, validityMonths: d.validityMonths, requiredRoles: d.requiredRoles.join(","), mandatoryBeforeFirstShift: d.mandatoryBeforeFirstShift, delivery: d.delivery } });
+  await db.trainingModule.update({ where: { id: d.id }, data: { name: d.name, validityMonths: d.validityMonths, requiredRoles: sortRoles(d.requiredRoles), mandatoryBeforeFirstShift: d.mandatoryBeforeFirstShift, delivery: d.delivery } });
   revalidateAll();
   return { ok: true, message: "Module saved." };
 }
@@ -233,10 +234,13 @@ export async function recordCoordinatorCompletion(input: z.infer<typeof completi
 export async function runRemindersNow(): Promise<ActionResult> {
   await requireAdmin();
   const r = await runReminders(todayISO());
+  const s = await runShiftReminders();
   const c = await runCoverChecks();
   revalidateAll();
   const parts = [
     r.dueSoon + r.overdue > 0 && `${r.dueSoon} due-soon and ${r.overdue} overdue reminders`,
+    r.coordinator > 0 && `${r.coordinator} overdue ${r.coordinator === 1 ? "notice" : "notices"} to you`,
+    s.sent > 0 && `${s.sent} shift ${s.sent === 1 ? "reminder" : "reminders"} for tomorrow`,
     c.pushes > 0 && `${c.pushes} last-minute ${c.pushes === 1 ? "notification" : "notifications"}`,
     c.escalations > 0 && `${c.escalations} uncovered shift ${c.escalations === 1 ? "alert" : "alerts"}`,
   ].filter(Boolean);
@@ -245,16 +249,17 @@ export async function runRemindersNow(): Promise<ActionResult> {
 
 // --- Applications ---
 export async function approveApplication(id: string): Promise<ActionResult> {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const app = await db.application.findUnique({ where: { id } });
   if (!app || app.status !== "PENDING") return { ok: false, error: "Application already reviewed." };
-  const existing = await db.volunteer.findUnique({ where: { email: app.email } });
+  const email = normaliseEmail(app.email);
+  const existing = await db.volunteer.findUnique({ where: { email } });
   if (existing) return { ok: false, error: "A volunteer with this email already exists." };
   const induction = await db.trainingSession.findFirst({ where: { startsAt: { gte: new Date() }, module: { code: INITIAL_VISIT_CODE } }, include: { rsvps: { where: { status: "GOING" } } }, orderBy: { startsAt: "asc" } });
   const volunteer = await db.volunteer.create({
     data: {
-      firstName: app.firstName, lastName: app.lastName, email: app.email, phone: app.phone, suburb: app.suburb, birthYear: app.birthYear,
-      roles: app.interests || "WAREHOUSE", availabilityNote: app.availability, infoodleId: app.infoodleId, infoodleSyncedAt: new Date(), joinedAt: new Date(),
+      firstName: app.firstName, lastName: app.lastName, email, phone: app.phone, suburb: app.suburb, birthYear: app.birthYear,
+      roles: app.interests.length ? sortRoles(app.interests) : ["WAREHOUSE"], availabilityNote: app.availability, infoodleId: app.infoodleId, infoodleSyncedAt: app.infoodleId ? new Date() : null, joinedAt: new Date(),
     },
   });
   const visit = induction && induction.rsvps.length < induction.capacity ? induction : null;
@@ -262,10 +267,11 @@ export async function approveApplication(id: string): Promise<ActionResult> {
     await db.sessionRsvp.create({ data: { sessionId: visit.id, volunteerId: volunteer.id, status: "GOING" } });
   }
   await db.application.update({ where: { id }, data: { status: "APPROVED", reviewedAt: new Date(), volunteerId: volunteer.id } });
+  await db.contactLog.create({ data: { volunteerId: volunteer.id, authorId: admin.id, kind: "ACCOUNT_CREATED", summary: "Application approved." } });
   await queueEmail(volunteer, T.applicationApproved({ firstName: volunteer.firstName, inductionAt: visit?.startsAt, inductionLocation: visit?.location }));
-  await queueEmail(volunteer, T.welcome({ firstName: volunteer.firstName }));
+  const invited = await sendSignInLink(volunteer, "INVITE");
   revalidateAll();
-  return { ok: true, message: `${app.firstName} approved. Account created${visit ? " and pencilled into the next initial visit" : ""}.` };
+  return { ok: true, message: `${app.firstName} approved. Account created${visit ? " and pencilled into the next initial visit" : ""}.${invited ? "" : " The sign-in invite could not be sent; resend it from their profile."}` };
 }
 
 export async function declineApplication(id: string, note: string): Promise<ActionResult> {
@@ -327,28 +333,27 @@ export async function updateVolunteerProfile(input: z.infer<typeof profileSchema
   const labels = [...new Set(changed.map((k) => PROFILE_FIELD_LABEL[k].replace(" phone", "")))];
   await db.contactLog.create({ data: { volunteerId, authorId: admin.id, kind: "PROFILE_UPDATED", summary: `Updated ${labels.join(", ")}.` } });
   revalidateAll();
-  return { ok: true, message: "Profile saved. Contact changes sync to Infoodle overnight." };
+  return { ok: true, message: "Profile saved." };
 }
 
 export async function setVolunteerRoles(volunteerId: string, roles: string[]): Promise<ActionResult> {
   const admin = await requireAdmin();
-  const next = parseRoles(roles.join(","));
+  const next = sortRoles(roles);
   if (next.length === 0) return { ok: false, error: "Pick at least one role." };
   const [volunteer, modules] = await Promise.all([
     db.volunteer.findUnique({ where: { id: volunteerId }, include: { trainingRecords: true } }),
     db.trainingModule.findMany(),
   ]);
   if (!volunteer) return { ok: false, error: "Volunteer not found." };
-  const prev = parseRoles(volunteer.roles);
+  const prev = volunteer.roles;
   const added = next.filter((r) => !prev.includes(r));
   const removed = prev.filter((r) => !next.includes(r));
   if (added.length + removed.length === 0) return { ok: true, message: "Roles unchanged." };
-  const roles_ = VOLUNTEER_ROLES.filter((r) => next.includes(r)).join(",");
-  await db.volunteer.update({ where: { id: volunteerId }, data: { roles: roles_ } });
+  await db.volunteer.update({ where: { id: volunteerId }, data: { roles: next } });
   // Training that the new roles bring in and the volunteer does not hold yet.
-  const statuses = moduleStatuses({ roles: roles_ }, modules, volunteer.trainingRecords, todayISO());
+  const statuses = moduleStatuses({ roles: next }, modules, volunteer.trainingRecords, todayISO());
   const trainingNeeded = statuses
-    .filter((s) => (s.status === "NOT_STARTED" || s.status === "OVERDUE") && parseRoles(s.module.requiredRoles).some((r) => added.includes(r)))
+    .filter((s) => (s.status === "NOT_STARTED" || s.status === "OVERDUE") && s.module.requiredRoles.some((r) => added.includes(r)))
     .map((s) => s.module.name);
   const name = fullName(volunteer);
   const summary = [added.length && `Added ${added.map((r) => ROLE_LABEL[r]).join(", ")}`, removed.length && `Removed ${removed.map((r) => ROLE_LABEL[r]).join(", ")}`].filter(Boolean).join(". ");
@@ -453,4 +458,88 @@ export async function updateShiftType(input: z.infer<typeof shiftTypeSchema>): P
   await db.shiftTemplate.update({ where: { id }, data: { ...d, workingWith: workingWith || null } });
   revalidateAll();
   return { ok: true, message: "Shift type saved." };
+}
+
+// --- Accounts ---
+const newVolunteerSchema = z.object({
+  firstName: z.string().trim().min(1, "Add a first name.").max(60),
+  lastName: z.string().trim().max(60),
+  email: z.email("Check the email address."),
+  phone: z.string().trim().max(30),
+  roles: z.array(z.enum(VOLUNTEER_ROLES)).min(1, "Pick at least one role."),
+  sendInvite: z.boolean(),
+});
+
+export type CreateVolunteerResult = { ok: true; message: string; id: string } | { ok: false; error: string };
+
+/** Adds someone directly, e.g. an existing volunteer who never came through
+ *  an application. Optionally emails them a link to set a password. */
+export async function createVolunteer(input: z.infer<typeof newVolunteerSchema>): Promise<CreateVolunteerResult> {
+  const admin = await requireAdmin();
+  const parsed = newVolunteerSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Please check the form." };
+  const d = parsed.data;
+  const email = normaliseEmail(d.email);
+  if (await db.volunteer.findUnique({ where: { email }, select: { id: true } })) {
+    return { ok: false, error: "Someone with that email is already on the system." };
+  }
+  const volunteer = await db.volunteer.create({
+    data: { firstName: d.firstName, lastName: d.lastName || null, email, phone: d.phone || null, roles: sortRoles(d.roles) },
+  });
+  await db.contactLog.create({ data: { volunteerId: volunteer.id, authorId: admin.id, kind: "ACCOUNT_CREATED", summary: `Added by ${admin.firstName}.` } });
+  const invited = d.sendInvite ? await sendSignInLink(volunteer, "INVITE") : false;
+  revalidateAll();
+  const tail = !d.sendInvite ? "" : invited ? ` ${volunteer.firstName} has been emailed a link to set up their account.` : " The invite email could not be sent; try again from their profile.";
+  return { ok: true, id: volunteer.id, message: `${fullName(volunteer)} added.${tail}` };
+}
+
+/** Emails a fresh link to set a password. Works for first-timers and for
+ *  anyone who is locked out. */
+export async function sendVolunteerInvite(volunteerId: string): Promise<ActionResult> {
+  await requireAdmin();
+  const volunteer = await db.volunteer.findUnique({ where: { id: volunteerId } });
+  if (!volunteer) return { ok: false, error: "Volunteer not found." };
+  if (volunteer.status !== "ACTIVE") return { ok: false, error: "Reactivate the account first." };
+  const sent = await sendSignInLink(volunteer, volunteer.passwordHash || volunteer.lastSignInAt ? "PASSWORD_RESET" : "INVITE");
+  revalidateAll();
+  return sent
+    ? { ok: true, message: `Sign-in link sent to ${volunteer.email}.` }
+    : { ok: false, error: "The email could not be sent. Check the Outbox, then try again." };
+}
+
+/** Deactivating signs the person out, takes them off their regular slots and
+ *  upcoming shifts (which then show as gaps) and blocks sign-in. History and
+ *  training records are kept, so reactivating picks up where they left off. */
+export async function setVolunteerStatus(volunteerId: string, active: boolean): Promise<ActionResult> {
+  const admin = await requireAdmin();
+  if (volunteerId === admin.id) return { ok: false, error: "You cannot deactivate your own account." };
+  const volunteer = await db.volunteer.findUnique({ where: { id: volunteerId } });
+  if (!volunteer) return { ok: false, error: "Volunteer not found." };
+  if ((volunteer.status === "ACTIVE") === active) return { ok: true, message: "No change." };
+  if (active) {
+    await db.$transaction([
+      db.volunteer.update({ where: { id: volunteerId }, data: { status: "ACTIVE" } }),
+      db.contactLog.create({ data: { volunteerId, authorId: admin.id, kind: "STATUS_CHANGED", summary: "Reactivated." } }),
+    ]);
+    revalidateAll();
+    return { ok: true, message: `${volunteer.firstName} is active again. Add a regular slot or invite them to book shifts.` };
+  }
+  const upcoming = await db.assignment.findMany({
+    where: { volunteerId, status: "CONFIRMED", shift: { date: { gte: isoToDate(todayISO()) } } },
+    select: { id: true, shiftId: true },
+  });
+  const slots = await db.regularSlot.count({ where: { volunteerId } });
+  await db.$transaction([
+    db.volunteer.update({ where: { id: volunteerId }, data: { status: "INACTIVE", isRegular: false } }),
+    db.assignment.updateMany({ where: { id: { in: upcoming.map((a) => a.id) } }, data: { status: "CANCELLED" } }),
+    db.regularSlot.deleteMany({ where: { volunteerId } }),
+    db.session.deleteMany({ where: { volunteerId } }),
+    db.authToken.deleteMany({ where: { volunteerId, usedAt: null } }),
+    db.contactLog.create({
+      data: { volunteerId, authorId: admin.id, kind: "STATUS_CHANGED", summary: `Deactivated. Removed from ${slots} regular ${slots === 1 ? "slot" : "slots"} and ${upcoming.length} upcoming ${upcoming.length === 1 ? "shift" : "shifts"}.` },
+    }),
+  ]);
+  for (const shiftId of new Set(upcoming.map((a) => a.shiftId))) await afterShiftReleased(shiftId, null);
+  revalidateAll();
+  return { ok: true, message: `${volunteer.firstName} deactivated.${upcoming.length ? ` ${upcoming.length} upcoming ${upcoming.length === 1 ? "shift now needs" : "shifts now need"} cover.` : ""}` };
 }

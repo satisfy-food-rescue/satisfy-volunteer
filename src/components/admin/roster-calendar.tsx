@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 export function WeekView({ monday, shifts, today }: { monday: string; shifts: ShiftView[]; today: string }) {
   const days = workWeek(monday);
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
+    <div className="grid grid-cols-1 gap-4 @4xl/admin:grid-cols-5">
       {days.map((iso) => {
         const items = shifts.filter((s) => s.iso === iso);
         const gaps = items.filter((s) => s.isGap).length;

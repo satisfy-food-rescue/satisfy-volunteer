@@ -5,7 +5,7 @@ import { requireAdmin } from "@/lib/session";
 import { db } from "@/lib/db";
 import { formatDayLong, formatInstant, formatTimeRange, relativeDay, todayISO, dateToISO, formatDayRange } from "@/lib/dates";
 import { availableForShift, shiftById } from "@/lib/roster";
-import { ABSENCE_REASON_LABEL, fullName, type AbsenceReason } from "@/lib/domain";
+import { ABSENCE_REASON_LABEL, fullName } from "@/lib/domain";
 import { AvatarBadge } from "@/components/shared/avatar-badge";
 import { Chip } from "@/components/shared/status-chip";
 import { ShiftKindIcon } from "@/components/app/shift-card";
@@ -62,8 +62,8 @@ export default async function AdminShiftPage({ params }: { params: Promise<{ id:
         </div>
       </header>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
-        <section className="flex flex-col gap-3 lg:col-span-3" aria-labelledby="assigned-h">
+      <div className="grid grid-cols-1 gap-6 @4xl/admin:grid-cols-5">
+        <section className="flex flex-col gap-3 @4xl/admin:col-span-3" aria-labelledby="assigned-h">
           <div className="flex items-baseline justify-between">
             <h2 id="assigned-h" className="text-2xl text-ink">Assigned</h2>
             <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground tabular"><Users className="size-4" aria-hidden />{view.confirmedCount} of {view.shift.capacity} · minimum {view.shift.needed}</span>
@@ -99,7 +99,7 @@ export default async function AdminShiftPage({ params }: { params: Promise<{ id:
                     <AvatarBadge person={r.volunteer} size="sm" className="size-7 text-[0.6rem]" />
                     <span className="font-semibold">{fullName(r.volunteer)}</span>
                     <span className="text-muted-foreground">
-                      away {r.absence ? `(${ABSENCE_REASON_LABEL[r.absence.reason as AbsenceReason].toLowerCase()}, ${formatDayRange(dateToISO(r.absence.startDate), dateToISO(r.absence.endDate))})` : ""}
+                      away {r.absence ? `(${ABSENCE_REASON_LABEL[r.absence.reason].toLowerCase()}, ${formatDayRange(dateToISO(r.absence.startDate), dateToISO(r.absence.endDate))})` : ""}
                     </span>
                   </li>
                 ))}
@@ -108,7 +108,7 @@ export default async function AdminShiftPage({ params }: { params: Promise<{ id:
           )}
         </section>
 
-        <aside className="flex flex-col gap-3 lg:col-span-2" aria-labelledby="add-h">
+        <aside className="flex flex-col gap-3 @4xl/admin:col-span-2" aria-labelledby="add-h">
           <h2 id="add-h" className="text-2xl text-ink">{view.isGap ? "Find cover" : "Add a volunteer"}</h2>
           {pushedTo.length > 0 && (
             <p className="flex items-start gap-2 rounded-xl bg-pink-tint/60 px-3 py-2.5 text-sm text-ink">

@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { CalendarOff, CalendarPlus, Hand, Mail, MessageSquareText, PhoneCall, Smartphone, Tags, UserPen } from "lucide-react";
+import { CalendarOff, CalendarPlus, Hand, Mail, MessageSquareText, PhoneCall, Power, Smartphone, Tags, UserPen, UserPlus } from "lucide-react";
 import { dateToISO, formatDayRange, formatInstant } from "@/lib/dates";
-import { ABSENCE_REASON_LABEL, CONTACT_LOG_LABEL, EMAIL_KIND_LABEL, type AbsenceReason, type ContactLogKind, type EmailKind } from "@/lib/domain";
+import { ABSENCE_REASON_LABEL, CONTACT_LOG_LABEL, EMAIL_KIND_LABEL, type AbsenceReason, type Channel, type ContactLogKind, type DeliveryStatus, type EmailKind } from "@/lib/domain";
 import { cn } from "@/lib/utils";
 
 type Entry = {
@@ -23,6 +23,8 @@ const LOG_ICON: Record<ContactLogKind, Entry["icon"]> = {
   ROLES_CHANGED: Tags,
   VISIT_BOOKED: CalendarPlus,
   ROLE_REQUEST: Hand,
+  ACCOUNT_CREATED: UserPlus,
+  STATUS_CHANGED: Power,
 };
 
 export function ContactTimeline({
@@ -32,9 +34,9 @@ export function ContactTimeline({
   limit,
   showAllHref,
 }: {
-  emails: { id: string; channel: string; kind: string; subject: string; createdAt: Date }[];
-  logs: { id: string; kind: string; summary: string; createdAt: Date; author: { firstName: string } | null; authorIsVolunteer: boolean }[];
-  absences: { id: string; startDate: Date; endDate: Date; reason: string; note: string | null; createdAt: Date }[];
+  emails: { id: string; channel: Channel; kind: EmailKind; subject: string; status: DeliveryStatus; createdAt: Date }[];
+  logs: { id: string; kind: ContactLogKind; summary: string; createdAt: Date; author: { firstName: string } | null; authorIsVolunteer: boolean }[];
+  absences: { id: string; startDate: Date; endDate: Date; reason: AbsenceReason; note: string | null; createdAt: Date }[];
   limit: number | null;
   showAllHref: string;
 }) {
@@ -45,15 +47,15 @@ export function ContactTimeline({
       icon: e.channel === "PUSH" ? Smartphone : Mail,
       personal: false,
       title: e.subject,
-      meta: `${e.channel === "PUSH" ? "Push notification" : "Email"} · ${EMAIL_KIND_LABEL[e.kind as EmailKind] ?? e.kind}`,
+      meta: `${e.channel === "PUSH" ? "Push notification" : "Email"} · ${EMAIL_KIND_LABEL[e.kind]}${e.status === "FAILED" ? " · not delivered" : ""}`,
       href: `/admin/outbox/${e.id}`,
     })),
     ...logs.map((l) => ({
       id: l.id,
       at: l.createdAt,
-      icon: LOG_ICON[l.kind as ContactLogKind] ?? MessageSquareText,
+      icon: LOG_ICON[l.kind],
       personal: true,
-      title: CONTACT_LOG_LABEL[l.kind as ContactLogKind] ?? l.kind,
+      title: CONTACT_LOG_LABEL[l.kind],
       meta: l.authorIsVolunteer ? "From the volunteer app" : l.author ? `By ${l.author.firstName}` : "Coordinator",
       detail: l.summary,
     })),
@@ -66,7 +68,7 @@ export function ContactTimeline({
         icon: CalendarOff,
         personal: false,
         title: `Marked away ${formatDayRange(start, end)}`,
-        meta: `Absence · ${ABSENCE_REASON_LABEL[a.reason as AbsenceReason]}`,
+        meta: `Absence · ${ABSENCE_REASON_LABEL[a.reason]}`,
         detail: a.note,
       };
     }),

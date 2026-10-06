@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { CalendarDays } from "lucide-react"
-import { cn } from "cn"
+import { cn } from "@/lib/utils"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { formatDay } from "@/lib/dates"

@@ -58,8 +58,8 @@ export default async function AdminDashboard() {
         <StatTile label="Training compliance" value={`${Math.round((compliant / volunteers.length) * 100)}%`} hint={`${compliant} of ${volunteers.length} active volunteers current`} icon={Users} tone="neutral" href="/admin/reports" />
       </div>
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
-        <section className="flex flex-col gap-3 lg:col-span-3" aria-labelledby="today-h">
+      <div className="grid grid-cols-1 gap-8 @4xl/admin:grid-cols-5">
+        <section className="flex flex-col gap-3 @4xl/admin:col-span-3" aria-labelledby="today-h">
           <div className="flex items-baseline justify-between">
             <h2 id="today-h" className="text-2xl text-ink">Today&apos;s roster</h2>
             <Link href="/admin/roster" className="text-sm font-semibold text-green-text hover:underline">Full roster</Link>
@@ -90,7 +90,7 @@ export default async function AdminDashboard() {
           )}
         </section>
 
-        <div className="flex flex-col gap-8 lg:col-span-2">
+        <div className="flex flex-col gap-8 @4xl/admin:col-span-2">
           <section className="flex flex-col gap-3" aria-labelledby="training-h">
             <div className="flex items-baseline justify-between">
               <h2 id="training-h" className="text-2xl text-ink">Training attention</h2>

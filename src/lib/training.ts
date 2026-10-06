@@ -4,7 +4,6 @@ import {
   DUE_SOON_DAYS,
   ROLE_LABEL,
   SHIFT_KIND_LABEL,
-  parseRoles,
   type ShiftKind,
   type TrainingStatus,
   type VolunteerRole,
@@ -22,16 +21,16 @@ export type ModuleStatus = {
 };
 
 export function moduleStatuses(
-  volunteer: { roles: string },
+  volunteer: { roles: readonly VolunteerRole[] },
   modules: TrainingModule[],
   records: TrainingRecord[],
   today: string,
 ): ModuleStatus[] {
-  const roles = parseRoles(volunteer.roles);
+  const roles = volunteer.roles;
   return [...modules]
     .sort((a, b) => a.order - b.order)
     .map((module) => {
-      const required = parseRoles(module.requiredRoles).some((r) => roles.includes(r));
+      const required = module.requiredRoles.some((r) => roles.includes(r));
       const record =
         records
           .filter((r) => r.moduleId === module.id)
@@ -83,24 +82,23 @@ export type Eligibility = {
 /** The training gate. A volunteer can only book a shift kind when they hold
  *  the role and every module required for that role is current. */
 export function eligibilityFor(
-  volunteer: { roles: string },
+  volunteer: { roles: readonly VolunteerRole[] },
   kind: ShiftKind,
   statuses: ModuleStatus[],
 ): Eligibility {
-  const roles = parseRoles(volunteer.roles);
-  const hasRole = roles.includes(kind as VolunteerRole);
+  const hasRole = volunteer.roles.includes(kind);
   const kindLabel = SHIFT_KIND_LABEL[kind].toLowerCase();
   if (!hasRole) {
     return {
       eligible: false,
       hasRole: false,
       blockers: [],
-      reason: `${SHIFT_KIND_LABEL[kind]} shifts need the ${ROLE_LABEL[kind as VolunteerRole].toLowerCase()} role. Ask the coordinator to add it to your profile.`,
+      reason: `${SHIFT_KIND_LABEL[kind]} shifts need the ${ROLE_LABEL[kind].toLowerCase()} role. Ask the coordinator to add it to your profile.`,
     };
   }
   const blockers: Blocker[] = [];
   for (const m of statuses) {
-    if (!parseRoles(m.module.requiredRoles).includes(kind as VolunteerRole)) continue;
+    if (!m.module.requiredRoles.includes(kind)) continue;
     if (m.status === "OVERDUE") {
       blockers.push({ module: m.module, status: m.status, message: `Complete the ${m.module.name} refresher to book ${kindLabel} shifts` });
     } else if (m.status === "NOT_STARTED") {

@@ -2,9 +2,10 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { ArrowDown, ArrowRight, ArrowUp, BellRing, Clock, Mail, MapPin, Smartphone, Users } from "lucide-react";
 import { requireAdmin } from "@/lib/session";
+import { isDemo } from "@/lib/env";
 import { db } from "@/lib/db";
 import { formatInstant, formatInstantTime, todayISO, formatDate } from "@/lib/dates";
-import { DELIVERY_LABEL, EMAIL_KIND_LABEL, ROLE_SHORT, fullName, parseRoles, type Delivery, type EmailKind } from "@/lib/domain";
+import { DELIVERY_LABEL, EMAIL_KIND_LABEL, ROLE_SHORT, fullName } from "@/lib/domain";
 import { moduleStatuses, type ModuleStatus } from "@/lib/training";
 import { REMINDER_RULES } from "@/lib/reminders";
 import { PageHeader } from "@/components/shared/page-header";
@@ -46,6 +47,7 @@ function trainingHref(sp: Search, patch: Partial<Search>) {
 
 export default async function TrainingAdminPage({ searchParams }: { searchParams: Promise<Search> }) {
   await requireAdmin();
+  const demo = isDemo();
   const sp = await searchParams;
   const { tab } = sp;
   const today = todayISO();
@@ -114,8 +116,8 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
                   <p className="mt-1 text-sm text-muted-foreground">{m.description}</p>
                   <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink-soft">
                     <span><span className="font-semibold text-ink">{m.validityMonths ? `Every ${m.validityMonths} months` : "Once"}</span></span>
-                    <span>{DELIVERY_LABEL[m.delivery as Delivery]}</span>
-                    <span>Required for {parseRoles(m.requiredRoles).map((r) => ROLE_SHORT[r].toLowerCase()).join(", ")}</span>
+                    <span>{DELIVERY_LABEL[m.delivery]}</span>
+                    <span>Required for {m.requiredRoles.map((r) => ROLE_SHORT[r].toLowerCase()).join(", ")}</span>
                     {m.mandatoryBeforeFirstShift && <span className="font-semibold text-green-text">Mandatory before first shift</span>}
                   </p>
                 </div>
@@ -136,7 +138,7 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
                 </div>
               </div>
               <div className="mt-3">
-                <ModuleEditor module={{ id: m.id, name: m.name, validityMonths: m.validityMonths, requiredRoles: parseRoles(m.requiredRoles), mandatoryBeforeFirstShift: m.mandatoryBeforeFirstShift, delivery: m.delivery as "IN_PERSON" | "ONLINE_CONFIRM" }} />
+                <ModuleEditor module={{ id: m.id, name: m.name, validityMonths: m.validityMonths, requiredRoles: m.requiredRoles, mandatoryBeforeFirstShift: m.mandatoryBeforeFirstShift, delivery: m.delivery as "IN_PERSON" | "ONLINE_CONFIRM" }} />
               </div>
             </article>
           ))}
@@ -161,7 +163,7 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
                 {rows.map(({ v, s }) => (
                   <tr key={v.id + s.module.id} className="hover:bg-muted/40">
                     <td className="px-4 py-2.5"><Link href={`/admin/volunteers/${v.id}`} className="flex items-center gap-2 font-bold text-ink hover:underline"><AvatarBadge person={v} size="sm" className="size-7 text-[0.6rem]" />{fullName(v)}</Link></td>
-                    <td className="px-4 py-2.5 text-ink-soft">{s.module.name}<span className="block text-xs text-muted-foreground">{DELIVERY_LABEL[s.module.delivery as Delivery]}</span></td>
+                    <td className="px-4 py-2.5 text-ink-soft">{s.module.name}<span className="block text-xs text-muted-foreground">{DELIVERY_LABEL[s.module.delivery]}</span></td>
                     <td className="hidden px-4 py-2.5 text-ink-soft tabular md:table-cell">{s.completedISO ? formatDate(s.completedISO) : <span className="text-muted-foreground">Never</span>}</td>
                     <td className="hidden px-4 py-2.5 tabular sm:table-cell">
                       {s.expiresISO ? (
@@ -195,8 +197,8 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
         </TabsContent>
 
         <TabsContent value="reminders" className="flex flex-col gap-6">
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
-            <section className="lg:col-span-3">
+          <div className="grid grid-cols-1 gap-6 @4xl/admin:grid-cols-5">
+            <section className="@4xl/admin:col-span-3">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                 <h2 className="text-2xl text-ink">Automatic messages</h2>
                 <RunRemindersButton />
@@ -213,9 +215,9 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
                   </li>
                 ))}
               </ol>
-              <p className="mt-3 flex items-start gap-2 text-sm text-muted-foreground"><BellRing className="mt-0.5 size-4 shrink-0" aria-hidden />In production training reminders run nightly and cover checks run hourly. Nothing is sent from this demo; every email and notification lands in the Outbox instead.</p>
+              <p className="mt-3 flex items-start gap-2 text-sm text-muted-foreground"><BellRing className="mt-0.5 size-4 shrink-0" aria-hidden />{demo ? "In production these checks run every hour. Nothing is sent from this demo; every email and notification lands in the Outbox instead." : "These checks run automatically every hour. Each message is only ever sent once, so running them early is safe."}</p>
             </section>
-            <section className="lg:col-span-2">
+            <section className="@4xl/admin:col-span-2">
               <div className="mb-3 flex items-baseline justify-between">
                 <h2 className="text-2xl text-ink">Recent reminders</h2>
                 <Link href="/admin/outbox" className="text-sm font-semibold text-green-text hover:underline">Open Outbox</Link>
@@ -229,7 +231,7 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
                         : <Mail className={cn("mt-0.5 size-4 shrink-0", e.kind === "TRAINING_OVERDUE" || e.kind === "GAP_ESCALATION" ? "text-status-bad" : "text-status-warn")} aria-hidden />}
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-bold text-ink">{e.subject}</span>
-                        <span className="block text-xs text-muted-foreground">To {e.toName} · {EMAIL_KIND_LABEL[e.kind as EmailKind]} · {formatInstant(e.createdAt)}</span>
+                        <span className="block text-xs text-muted-foreground">To {e.toName} · {EMAIL_KIND_LABEL[e.kind]} · {formatInstant(e.createdAt)}</span>
                       </span>
                       <ArrowRight className="mt-1 size-4 text-muted-foreground" aria-hidden />
                     </Link>

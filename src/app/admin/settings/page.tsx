@@ -1,5 +1,6 @@
 import { Mail, Palette, Plug, ShieldCheck, Type } from "lucide-react";
 import { requireAdmin } from "@/lib/session";
+import { isDemo } from "@/lib/env";
 import { db } from "@/lib/db";
 import { formatInstant } from "@/lib/dates";
 import { EMAIL_KIND_LABEL, type EmailKind } from "@/lib/domain";
@@ -31,6 +32,7 @@ const SECONDARY = [
 
 export default async function SettingsPage() {
   await requireAdmin();
+  const demo = isDemo();
   const [lastSync, templates] = await Promise.all([
     db.volunteer.findFirst({ where: { infoodleSyncedAt: { not: null } }, orderBy: { infoodleSyncedAt: "desc" }, select: { infoodleSyncedAt: true } }),
     db.email.groupBy({ by: ["kind"], _count: { _all: true } }),
@@ -48,7 +50,7 @@ export default async function SettingsPage() {
             <p className="mt-2 text-sm text-muted-foreground">File: <code className="rounded bg-muted px-1.5 py-0.5 text-xs">src/app/globals.css</code> · fonts in <code className="rounded bg-muted px-1.5 py-0.5 text-xs">src/app/layout.tsx</code></p>
           </div>
         </div>
-        <ul className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <ul className="mt-5 grid gap-3 sm:grid-cols-2 @4xl/admin:grid-cols-4">
           {SWATCHES.map(([name, v, use]) => (
             <li key={v} className="flex items-center gap-3 rounded-xl border border-border p-3">
               <span className="size-10 shrink-0 rounded-lg ring-1 ring-black/10" style={{ background: `var(${v})` }} aria-hidden />
@@ -101,7 +103,10 @@ export default async function SettingsPage() {
             </ul>
           </div>
         </div>
-        <p className="mt-4 text-sm text-muted-foreground">Mocked in this demo: last sync shown as {lastSync?.infoodleSyncedAt ? formatInstant(lastSync.infoodleSyncedAt) : "never"}. If Infoodle has no API, the fallback is a scheduled CSV import/export with the same field mapping.</p>
+        <p className="mt-4 text-sm text-muted-foreground">
+          {demo ? `Mocked in this demo: last sync shown as ${lastSync?.infoodleSyncedAt ? formatInstant(lastSync.infoodleSyncedAt) : "never"}. ` : "Not connected yet: contact details are kept here until the sync is in place. "}
+          If Infoodle has no API, the fallback is a scheduled CSV import/export with the same field mapping.
+        </p>
       </section>
 
       <section className="rounded-2xl border border-border bg-card p-5" aria-labelledby="tpl-h">
@@ -112,7 +117,7 @@ export default async function SettingsPage() {
             <p className="mt-1 text-ink-soft">Every template renders with the brand header and a single call to action. Wording lives in one file so the coordinator&apos;s edits are quick to apply. Click a template to see a real example from the Outbox.</p>
           </div>
         </div>
-        <ul className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="mt-4 grid gap-2 sm:grid-cols-2 @4xl/admin:grid-cols-3">
           {(Object.keys(EMAIL_KIND_LABEL) as EmailKind[]).map((k) => {
             const count = templates.find((t) => t.kind === k)?._count._all ?? 0;
             return (
@@ -127,15 +132,17 @@ export default async function SettingsPage() {
         </ul>
       </section>
 
-      <section className="rounded-2xl border border-dashed border-border bg-card/60 p-5 text-sm text-muted-foreground">
-        <p className="font-bold text-ink">What is mocked in this demo</p>
-        <ul className="mt-2 list-disc space-y-1 pl-5">
-          <li>Sign-in: four personas set a cookie. Production uses email sign-in with passkeys.</li>
-          <li>Email and push notifications: nothing is sent; every message is captured in the Outbox.</li>
-          <li>Infoodle: sync status and record ids are sample data.</li>
-          <li>Database: SQLite for zero setup. The schema is Postgres-compatible for production.</li>
-        </ul>
-      </section>
+      {demo && (
+        <section className="rounded-2xl border border-dashed border-border bg-card/60 p-5 text-sm text-muted-foreground">
+          <p className="font-bold text-ink">What is different in this demo</p>
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            <li>Sign-in: pick a persona. Production uses a password, Google or a passkey.</li>
+            <li>Email and push notifications: nothing is sent; every message is captured in the Outbox.</li>
+            <li>Infoodle: sync status and record ids are sample data.</li>
+            <li>Data: regenerated every day relative to today.</li>
+          </ul>
+        </section>
+      )}
     </div>
   );
 }

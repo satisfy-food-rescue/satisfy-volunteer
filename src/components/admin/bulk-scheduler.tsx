@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { addDays, formatDay, formatTimeRange, WEEKDAY_SHORT } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
-type TemplateLite = { id: string; name: string; startTime: string; endTime: string; capacity: number; needed: number; weekdays: string; regulars: number };
+type TemplateLite = { id: string; name: string; startTime: string; endTime: string; capacity: number; needed: number; weekdays: number[]; regulars: number };
 
 export function BulkScheduler({ templates, today }: { templates: TemplateLite[]; today: string }) {
   const router = useRouter();
@@ -50,8 +50,8 @@ export function BulkScheduler({ templates, today }: { templates: TemplateLite[];
   }, [preview]);
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
-      <div className="flex flex-col gap-6 lg:col-span-2">
+    <div className="grid grid-cols-1 gap-6 @4xl/admin:grid-cols-5">
+      <div className="flex flex-col gap-6 @4xl/admin:col-span-2">
         <fieldset className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-4">
           <legend className="font-display px-1 text-sm font-bold uppercase tracking-wide text-muted-foreground">Shift templates</legend>
           {templates.map((t) => (
@@ -60,7 +60,7 @@ export function BulkScheduler({ templates, today }: { templates: TemplateLite[];
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-bold text-ink">{t.name}</span>
                 <span className="block text-xs text-muted-foreground tabular">
-                  {formatTimeRange(t.startTime, t.endTime)} · {t.weekdays.split(",").map((d) => WEEKDAY_SHORT[Number(d)]).join(" ")} · capacity {t.capacity}, min {t.needed} · {t.regulars} regulars
+                  {formatTimeRange(t.startTime, t.endTime)} · {t.weekdays.map((d) => WEEKDAY_SHORT[d]).join(" ")} · capacity {t.capacity}, min {t.needed} · {t.regulars} regulars
                 </span>
               </span>
             </label>
@@ -109,7 +109,7 @@ export function BulkScheduler({ templates, today }: { templates: TemplateLite[];
         </div>
       </div>
 
-      <div className="lg:col-span-3">
+      <div className="@4xl/admin:col-span-3">
         {!preview ? (
           <div className="flex h-full min-h-64 flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card/60 p-8 text-center">
             <Pencil className="size-8 text-muted-foreground" aria-hidden />

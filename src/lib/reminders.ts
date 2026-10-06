@@ -1,8 +1,14 @@
 import { db } from "./db";
-import { addDays, dateToISO, daysBetween } from "./dates";
-import { DUE_SOON_DAYS } from "./domain";
-import { trainingDueSoon, trainingOverdue } from "./email-templates";
+import { addDays, dateToISO, daysBetween, isoToDate, nzInstant, todayISO } from "./dates";
+import { DUE_SOON_DAYS, fullName } from "./domain";
+import { shiftReminder, trainingDueSoon, trainingOverdue, trainingOverdueCoordinator } from "./email-templates";
 import { queueEmail } from "./emails";
+import { shiftLocation } from "./roster";
+
+/** NZ wall-clock time the day-before shift reminder goes out. */
+export const SHIFT_REMINDER_TIME = "16:00";
+/** Overdue this long and the coordinator hears about it, once. */
+const COORDINATOR_OVERDUE_DAYS = 21;
 
 export const REMINDER_RULES = [
   {
@@ -22,7 +28,7 @@ export const REMINDER_RULES = [
   {
     id: "overdue-weekly",
     when: "Every 7 days while overdue",
-    audience: "The volunteer, coordinator copied after 3 weeks",
+    audience: "The volunteer. The coordinator is told once, at 3 weeks overdue",
     template: "Training overdue",
     detail: "Stops automatically the moment the module is refreshed.",
   },
@@ -56,8 +62,9 @@ export const REMINDER_RULES = [
   },
 ] as const;
 
-/** Generates any reminders that are due today and not yet in the Outbox.
- *  In production this is a nightly job; in the demo it runs on demand. */
+/** Sends any training reminders that are due today and not yet sent. Safe to
+ *  run as often as you like: every message has a de-duplication ref. Runs
+ *  hourly in production; on demand from Training > Reminders. */
 export async function runReminders(today: string) {
   const records = await db.trainingRecord.findMany({
     where: { expiresAt: { not: null }, volunteer: { status: "ACTIVE" } },
@@ -72,6 +79,7 @@ export async function runReminders(today: string) {
   }
   let dueSoon = 0;
   let overdue = 0;
+  let coordinator = 0;
   for (const r of latest.values()) {
     const expISO = dateToISO(r.expiresAt!);
     const days = daysBetween(today, expISO);
@@ -94,7 +102,46 @@ export async function runReminders(today: string) {
         await queueEmail(person, trainingOverdue({ firstName: person.firstName, moduleName: r.module.name, expiredISO: expISO, online, blocks }), ref);
         overdue++;
       }
+      if (-days >= COORDINATOR_OVERDUE_DAYS) {
+        const coordRef = `training-overdue-coordinator:${r.id}`;
+        if (!(await db.email.findFirst({ where: { ref: coordRef }, select: { id: true } }))) {
+          await queueEmail(null, trainingOverdueCoordinator({ volunteerName: fullName(r.volunteer), volunteerId: r.volunteer.id, moduleName: r.module.name, expiredISO: expISO, phone: r.volunteer.phone }), coordRef);
+          coordinator++;
+        }
+      }
     }
   }
-  return { dueSoon, overdue, checked: latest.size, nextRun: addDays(today, 1) };
+  return { dueSoon, overdue, coordinator, checked: latest.size, nextRun: addDays(today, 1) };
+}
+
+/** From 4pm NZ, reminds everyone rostered on tomorrow. People who booked after
+ *  4pm today just saw the shift, so they are skipped. */
+export async function runShiftReminders(now = new Date()) {
+  const today = todayISO(now);
+  const sendFrom = nzInstant(today, SHIFT_REMINDER_TIME);
+  if (now < sendFrom) return { sent: 0 };
+  const assignments = await db.assignment.findMany({
+    where: {
+      status: "CONFIRMED",
+      createdAt: { lt: sendFrom },
+      volunteer: { status: "ACTIVE" },
+      shift: { date: isoToDate(addDays(today, 1)), status: "SCHEDULED" },
+    },
+    include: { volunteer: true, shift: { include: { template: { include: { route: true } } } } },
+  });
+  const refs = assignments.map((a) => `shift-reminder:${a.id}`);
+  const already = new Set((await db.email.findMany({ where: { ref: { in: refs } }, select: { ref: true } })).map((e) => e.ref));
+  let sent = 0;
+  for (const a of assignments) {
+    const ref = `shift-reminder:${a.id}`;
+    if (already.has(ref)) continue;
+    const { shift } = a;
+    await queueEmail(
+      a.volunteer,
+      shiftReminder({ firstName: a.volunteer.firstName, shiftName: shift.template.name, dateISO: dateToISO(shift.date), start: shift.startTime, end: shift.endTime, shiftId: shift.id, where: shiftLocation(shift.template) }),
+      ref,
+    );
+    sent++;
+  }
+  return { sent };
 }

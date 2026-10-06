@@ -1,12 +1,12 @@
-// Satisfy Food Rescue - volunteer management demo.
+// Satisfy Food Rescue - volunteer management.
 //
-// SQLite for the zero-setup demo. The schema deliberately avoids anything
-// SQLite-specific so production is a datasource swap to Postgres:
-//  - No Prisma enums (SQLite has none). Enum-like columns are String and the
-//    allowed values live as TypeScript unions in src/lib/domain.ts.
-//  - Calendar dates (shift date, absence range, expiry) are stored as DateTime
-//    at UTC midnight and treated as pure dates. Wall-clock times are "HH:MM".
-//  - Instants (session start, sync time, emails) are ordinary UTC DateTime.
+// Postgres. Conventions:
+//  - Calendar dates (shift date, absence range, training completion and
+//    expiry) are `@db.Date`. Prisma returns them as a Date at UTC midnight and
+//    src/lib/dates.ts treats them as pure "YYYY-MM-DD" days. Wall-clock times
+//    are "HH:MM" strings, always Pacific/Auckland.
+//  - Instants (sessions, emails, sync times) are ordinary timestamps (UTC).
+//  - Display labels for every enum live in src/lib/domain.ts.
 
 generator client {
   provider = "prisma-client"
@@ -14,41 +14,177 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum AccountRole {
+  ADMIN
+  VOLUNTEER
+}
+
+enum VolunteerStatus {
+  ACTIVE
+  INACTIVE
+}
+
+// What a volunteer can do, and the kind of a shift type. Holding the role is
+// the first half of the booking gate; current training is the second.
+enum VolunteerRole {
+  WAREHOUSE
+  DRIVERS_ASSISTANT
+  VOLUNTEER_DRIVER
+}
+
+enum ShiftStatus {
+  SCHEDULED
+  CANCELLED
+}
+
+enum AssignmentSource {
+  REGULAR
+  BOOKED
+  COVER
+  ADMIN
+}
+
+enum AssignmentStatus {
+  CONFIRMED
+  RELEASED
+  CANCELLED
+  ATTENDED
+  NO_SHOW
+}
+
+enum AbsenceReason {
+  HOLIDAY
+  SICK
+  OTHER
+}
+
+enum Delivery {
+  IN_PERSON
+  ONLINE_CONFIRM
+}
+
+enum TrainingMethod {
+  SESSION
+  ONLINE
+  COORDINATOR
+}
+
+enum RsvpStatus {
+  GOING
+  DECLINED
+}
+
+enum ApplicationStatus {
+  PENDING
+  APPROVED
+  DECLINED
+}
+
+enum Channel {
+  EMAIL
+  PUSH
+}
+
+enum EmailKind {
+  TRAINING_DUE_SOON
+  TRAINING_OVERDUE
+  TRAINING_OVERDUE_COORDINATOR
+  SHIFT_REMINDER
+  ABSENCE_CONFIRMED
+  COVER_CONFIRMED
+  GAP_ALERT
+  APPLICATION_APPROVED
+  TRAINING_COMPLETED
+  SESSION_CONFIRMED
+  HARVEST_CALLOUT
+  LAST_MINUTE_CALLOUT
+  GAP_ESCALATION
+  ROLES_CHANGED
+  ROLE_CHANGE_REQUEST
+  ACCOUNT_INVITE
+  PASSWORD_RESET
+}
+
+// PENDING: recorded, not yet handed to the mail provider (retried by the
+// hourly job). CAPTURED: demo mode, recorded for the Outbox and never sent.
+enum DeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+  CAPTURED
+}
+
+enum ContactLogKind {
+  CALL
+  NOTE
+  PROFILE_UPDATED
+  ROLES_CHANGED
+  VISIT_BOOKED
+  ROLE_REQUEST
+  ACCOUNT_CREATED
+  STATUS_CHANGED
+}
+
+enum AuthTokenPurpose {
+  // Emailed when an admin creates an account: set a password and sign in.
+  INVITE
+  // "Forgot password" and "first time here" both land on this.
+  PASSWORD_RESET
+}
+
+// ---------------------------------------------------------------------------
+// People and sign-in
+// ---------------------------------------------------------------------------
 
 // A person: coordinator/admin or volunteer. Applicants are separate until
 // approved (see Application), at which point a Volunteer row is created.
 model Volunteer {
-  id                String   @id @default(cuid())
-  // Demo sign-in only. The four personas have a stable key; everyone else null.
-  personaKey        String?  @unique
-  firstName         String
-  lastName          String?
-  email             String   @unique
-  phone             String?
-  suburb            String?
-  birthYear         Int?
-  // ADMIN | VOLUNTEER
-  role              String   @default("VOLUNTEER")
-  // ACTIVE | INACTIVE
-  status            String   @default("ACTIVE")
-  // Comma-separated volunteer roles: WAREHOUSE, DRIVERS_ASSISTANT, VOLUNTEER_DRIVER
-  roles             String   @default("WAREHOUSE")
-  isRegular         Boolean  @default(false)
-  inHarvestPool     Boolean  @default(false)
-  // Happy to be phoned for same-day cover. Feeds the "last-minute available" list.
-  lastMinuteOk      Boolean  @default(false)
-  emergencyName     String?
-  emergencyPhone    String?
-  availabilityNote  String?
-  notes             String?
-  joinedAt          DateTime @default(now())
-  infoodleId        String?
-  infoodleSyncedAt  DateTime?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id               String          @id @default(cuid())
+  firstName        String
+  lastName         String?
+  // Always stored lower-cased and trimmed (see normaliseEmail).
+  email            String          @unique
+  phone            String?
+  suburb           String?
+  birthYear        Int?
+  role             AccountRole     @default(VOLUNTEER)
+  status           VolunteerStatus @default(ACTIVE)
+  roles            VolunteerRole[] @default([WAREHOUSE])
+  isRegular        Boolean         @default(false)
+  inHarvestPool    Boolean         @default(false)
+  // Opted in to last-minute cover requests.
+  lastMinuteOk     Boolean         @default(false)
+  emergencyName    String?
+  emergencyPhone   String?
+  availabilityNote String?
+  notes            String?
+  joinedAt         DateTime        @default(now()) @db.Date
+  infoodleId       String?
+  infoodleSyncedAt DateTime?
 
+  // Null for accounts that have only used Google or a passkey, or have not
+  // accepted their invite yet. Password sign-in treats null as "no password"
+  // and still runs bcrypt so it fails in constant time.
+  passwordHash    String?
+  // Set by redeeming an invite or reset link, or by a Google sign-in whose
+  // email Google has verified.
+  emailVerifiedAt DateTime?
+  lastSignInAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sessions        Session[]
+  passkeys        Passkey[]
+  oauthAccounts   OAuthAccount[]
+  authTokens      AuthToken[]
   regularSlots    RegularSlot[]
   assignments     Assignment[]
   absences        Absence[]
@@ -56,21 +192,95 @@ model Volunteer {
   sessionRsvps    SessionRsvp[]
   harvestRsvps    HarvestRsvp[]
   emails          Email[]
-  contactLogs     ContactLog[] @relation("ContactLogVolunteer")
-  authoredLogs    ContactLog[] @relation("ContactLogAuthor")
+  contactLogs     ContactLog[]     @relation("ContactLogVolunteer")
+  authoredLogs    ContactLog[]     @relation("ContactLogAuthor")
 }
+
+// A signed-in browser. Only the SHA-256 of the cookie value is stored, so a
+// leaked row cannot be replayed as a session.
+model Session {
+  id          String    @id @default(cuid())
+  tokenHash   String    @unique
+  volunteerId String
+  volunteer   Volunteer @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+  // Refreshed at most daily; lets an admin see stale sessions.
+  lastSeenAt  DateTime  @default(now())
+  userAgent   String?
+
+  @@index([volunteerId])
+  @@index([expiresAt])
+}
+
+// Single-use invite and password-reset links. Only the SHA-256 of the token
+// is stored: a reset grants full account takeover, so a leaked row must not be
+// redeemable. One live token per volunteer and purpose.
+model AuthToken {
+  id          String           @id @default(cuid())
+  tokenHash   String           @unique
+  volunteerId String
+  volunteer   Volunteer        @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
+  purpose     AuthTokenPurpose
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdAt   DateTime         @default(now())
+
+  @@index([volunteerId, purpose])
+}
+
+// A registered WebAuthn credential. Discoverable (resident) credentials, so
+// the sign-in page offers usernameless login. publicKey is the raw COSE key.
+model Passkey {
+  id           String    @id @default(cuid())
+  volunteerId  String
+  volunteer    Volunteer @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
+  // base64url credential id from the authenticator.
+  credentialId String    @unique
+  publicKey    Bytes
+  counter      Int       @default(0)
+  transports   String[]
+  deviceType   String?
+  backedUp     Boolean   @default(false)
+  // User-facing label so people can tell devices apart.
+  name         String
+  createdAt    DateTime  @default(now())
+  lastUsedAt   DateTime?
+
+  @@index([volunteerId])
+}
+
+// A linked Google identity. `providerAccountId` is Google's stable `sub`.
+model OAuthAccount {
+  id                String    @id @default(cuid())
+  volunteerId       String
+  volunteer         Volunteer @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
+  provider          String
+  providerAccountId String
+  email             String?
+  createdAt         DateTime  @default(now())
+
+  @@unique([provider, providerAccountId])
+  // At most one account per provider per person, enforced by the database so
+  // a double-submitted connect cannot slip past the application check.
+  @@unique([volunteerId, provider])
+}
+
+// ---------------------------------------------------------------------------
+// Operations
+// ---------------------------------------------------------------------------
 
 // A collection route. Every route has a paid driver except the one that is
 // fully volunteer-driven (isVolunteerDriven). Who drives is shown per shift
 // type (ShiftTemplate.workingWith).
 model Route {
-  id                String   @id @default(cuid())
+  id                String          @id @default(cuid())
   name              String
   area              String
-  isVolunteerDriven Boolean  @default(false)
-  order             Int      @default(0)
-  donors    Donor[]
-  templates ShiftTemplate[]
+  isVolunteerDriven Boolean         @default(false)
+  order             Int             @default(0)
+  donors            Donor[]
+  templates         ShiftTemplate[]
 }
 
 // A supermarket or food retailer we collect from.
@@ -93,45 +303,42 @@ model Recipient {
 // The recurring shape of a shift. Shifts are generated from templates
 // (bulk scheduling) and regular slots point at a template + weekday.
 model ShiftTemplate {
-  id        String  @id @default(cuid())
-  // WAREHOUSE | DRIVERS_ASSISTANT | VOLUNTEER_DRIVER
-  kind      String
-  name      String
-  routeId   String?
-  route     Route?  @relation(fields: [routeId], references: [id], onDelete: SetNull)
-  startTime String
-  endTime   String
-  capacity  Int
+  id              String        @id @default(cuid())
+  kind            VolunteerRole
+  name            String
+  routeId         String?
+  route           Route?        @relation(fields: [routeId], references: [id], onDelete: SetNull)
+  startTime       String
+  endTime         String
+  capacity        Int
   // Minimum crew for the shift to run comfortably. Confirmed < needed = gap.
-  needed    Int
-  // Comma-separated ISO weekdays this template normally runs on, e.g. "1,2,3,4,5"
-  weekdays  String
+  needed          Int
+  // ISO weekdays this template normally runs on (1 = Monday).
+  weekdays        Int[]
   // The supervisor or driver volunteers work alongside, e.g. "Dave (staff driver)".
-  workingWith      String?
-  // A gap that opens within this many hours of the start sends a push
-  // notification to eligible last-minute volunteers.
-  lastMinuteHours  Int     @default(48)
+  workingWith     String?
+  // A gap that opens within this many hours of the start notifies eligible
+  // last-minute volunteers.
+  lastMinuteHours Int           @default(48)
   // Still uncovered this many hours before the start: alert the coordinator.
-  escalateHours    Int     @default(24)
-  order     Int     @default(0)
-  active    Boolean @default(true)
-  shifts       Shift[]
-  regularSlots RegularSlot[]
+  escalateHours   Int           @default(24)
+  order           Int           @default(0)
+  active          Boolean       @default(true)
+  shifts          Shift[]
+  regularSlots    RegularSlot[]
 }
 
 model Shift {
-  id         String   @id @default(cuid())
-  templateId String
-  template   ShiftTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
-  // Calendar date at UTC midnight.
-  date       DateTime
-  startTime  String
-  endTime    String
-  capacity   Int
-  needed     Int
-  // SCHEDULED | CANCELLED
-  status     String   @default("SCHEDULED")
-  notes      String?
+  id          String        @id @default(cuid())
+  templateId  String
+  template    ShiftTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  date        DateTime      @db.Date
+  startTime   String
+  endTime     String
+  capacity    Int
+  needed      Int
+  status      ShiftStatus   @default(SCHEDULED)
+  notes       String?
   assignments Assignment[]
 
   @@unique([templateId, date])
@@ -140,9 +347,9 @@ model Shift {
 
 // A volunteer's standing weekly commitment.
 model RegularSlot {
-  id          String @id @default(cuid())
+  id          String        @id @default(cuid())
   volunteerId String
-  volunteer   Volunteer @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
+  volunteer   Volunteer     @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
   templateId  String
   template    ShiftTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
   // ISO weekday 1 (Mon) .. 5 (Fri)
@@ -154,68 +361,67 @@ model RegularSlot {
 // A volunteer on a shift. Regular slots materialise into assignments; an
 // absence RELEASES them (creating a gap) and a cover creates a fresh one.
 model Assignment {
-  id          String   @id @default(cuid())
+  id          String           @id @default(cuid())
   shiftId     String
-  shift       Shift    @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  shift       Shift            @relation(fields: [shiftId], references: [id], onDelete: Cascade)
   volunteerId String
-  volunteer   Volunteer @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
-  // REGULAR | BOOKED | COVER | ADMIN
-  source      String   @default("BOOKED")
-  // CONFIRMED | RELEASED | CANCELLED | ATTENDED | NO_SHOW
-  status      String   @default("CONFIRMED")
+  volunteer   Volunteer        @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
+  source      AssignmentSource @default(BOOKED)
+  status      AssignmentStatus @default(CONFIRMED)
   absenceId   String?
-  absence     Absence? @relation(fields: [absenceId], references: [id], onDelete: SetNull)
-  createdAt   DateTime @default(now())
+  absence     Absence?         @relation(fields: [absenceId], references: [id], onDelete: SetNull)
+  createdAt   DateTime         @default(now())
 
   @@index([shiftId])
   @@index([volunteerId])
 }
 
 model Absence {
-  id          String   @id @default(cuid())
-  volunteerId String
-  volunteer   Volunteer @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
-  startDate   DateTime
-  endDate     DateTime
-  // HOLIDAY | SICK | OTHER
-  reason      String
-  note        String?
-  createdAt   DateTime @default(now())
+  id                  String        @id @default(cuid())
+  volunteerId         String
+  volunteer           Volunteer     @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
+  startDate           DateTime      @db.Date
+  endDate             DateTime      @db.Date
+  reason              AbsenceReason
+  note                String?
+  createdAt           DateTime      @default(now())
   releasedAssignments Assignment[]
 
   @@index([startDate, endDate])
 }
 
+// ---------------------------------------------------------------------------
+// Training
+// ---------------------------------------------------------------------------
+
 model TrainingModule {
-  id                        String  @id @default(cuid())
-  code                      String  @unique
+  id                        String            @id @default(cuid())
+  code                      String            @unique
   name                      String
   description               String
   // Null = valid once, never expires.
   validityMonths            Int?
-  // Comma-separated roles this module is required for.
-  requiredRoles             String
-  mandatoryBeforeFirstShift Boolean @default(false)
-  // IN_PERSON | ONLINE_CONFIRM
-  delivery                  String
-  // Short read-and-confirm content for ONLINE_CONFIRM modules.
+  requiredRoles             VolunteerRole[]
+  mandatoryBeforeFirstShift Boolean           @default(false)
+  delivery                  Delivery
+  // Read-and-confirm content for ONLINE_CONFIRM modules, paragraphs separated
+  // by blank lines.
   content                   String?
-  order                     Int     @default(0)
-  records  TrainingRecord[]
-  sessions TrainingSession[]
+  order                     Int               @default(0)
+  records                   TrainingRecord[]
+  sessions                  TrainingSession[]
 }
 
 model TrainingRecord {
-  id          String   @id @default(cuid())
+  id          String           @id @default(cuid())
   volunteerId String
-  volunteer   Volunteer @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
+  volunteer   Volunteer        @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
   moduleId    String
-  module      TrainingModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  completedAt DateTime
+  module      TrainingModule   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  completedAt DateTime         @db.Date
   // Null = never expires.
-  expiresAt   DateTime?
-  // SESSION | ONLINE | COORDINATOR
-  method      String
+  expiresAt   DateTime?        @db.Date
+  method      TrainingMethod
   sessionId   String?
   session     TrainingSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
 
@@ -224,127 +430,139 @@ model TrainingRecord {
 }
 
 model TrainingSession {
-  id        String   @id @default(cuid())
-  moduleId  String
-  module    TrainingModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  startsAt  DateTime
-  endsAt    DateTime
-  location  String
-  capacity  Int
-  notes     String?
-  rsvps     SessionRsvp[]
-  records   TrainingRecord[]
+  id       String           @id @default(cuid())
+  moduleId String
+  module   TrainingModule   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  startsAt DateTime
+  endsAt   DateTime
+  location String
+  capacity Int
+  notes    String?
+  rsvps    SessionRsvp[]
+  records  TrainingRecord[]
 }
 
 model SessionRsvp {
-  id          String   @id @default(cuid())
+  id          String          @id @default(cuid())
   sessionId   String
   session     TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   volunteerId String
-  volunteer   Volunteer @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
-  // GOING | DECLINED
-  status      String   @default("GOING")
+  volunteer   Volunteer       @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
+  status      RsvpStatus      @default(GOING)
   attendedAt  DateTime?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime        @default(now())
 
   @@unique([sessionId, volunteerId])
 }
 
+// ---------------------------------------------------------------------------
+// Harvests
+// ---------------------------------------------------------------------------
+
 model HarvestCallout {
-  id          String   @id @default(cuid())
+  id          String        @id @default(cuid())
   title       String
-  date        DateTime
+  date        DateTime      @db.Date
   startTime   String
   endTime     String
   location    String
   partner     String
   description String
   needed      Int
-  rsvps HarvestRsvp[]
+  rsvps       HarvestRsvp[]
 }
 
 model HarvestRsvp {
-  id          String   @id @default(cuid())
+  id          String         @id @default(cuid())
   calloutId   String
   callout     HarvestCallout @relation(fields: [calloutId], references: [id], onDelete: Cascade)
   volunteerId String
-  volunteer   Volunteer @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
-  // GOING | DECLINED
-  status      String
-  createdAt   DateTime @default(now())
+  volunteer   Volunteer      @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
+  status      RsvpStatus
+  createdAt   DateTime       @default(now())
 
   @@unique([calloutId, volunteerId])
 }
 
-// Applicants arriving from the Infoodle sign-up form (mocked).
+// ---------------------------------------------------------------------------
+// Applications and communication
+// ---------------------------------------------------------------------------
+
+// A volunteer application awaiting review.
 model Application {
-  id           String   @id @default(cuid())
+  id           String            @id @default(cuid())
   firstName    String
   lastName     String
   email        String
   phone        String?
   suburb       String?
   birthYear    Int?
-  interests    String
+  interests    VolunteerRole[]
   availability String
   message      String?
-  source       String   @default("INFOODLE_FORM")
+  source       String            @default("INFOODLE_FORM")
   infoodleId   String?
   submittedAt  DateTime
-  // PENDING | APPROVED | DECLINED
-  status       String   @default("PENDING")
+  status       ApplicationStatus @default(PENDING)
   reviewedAt   DateTime?
   reviewNote   String?
   volunteerId  String?
 }
 
-// Every email or push notification the system would send, captured for the
-// Outbox instead of sent.
+// Every email and notification the app sends, in one log. It drives the
+// Outbox, the profile communication history and reminder de-duplication
+// (`ref`), and doubles as the delivery queue: rows are written PENDING and
+// handed to the mail provider after the response; failures are retried by the
+// hourly job.
 model Email {
-  id          String   @id @default(cuid())
+  id          String         @id @default(cuid())
   volunteerId String?
-  volunteer   Volunteer? @relation(fields: [volunteerId], references: [id], onDelete: SetNull)
-  // EMAIL | PUSH
-  channel     String   @default("EMAIL")
+  volunteer   Volunteer?     @relation(fields: [volunteerId], references: [id], onDelete: SetNull)
+  channel     Channel        @default(EMAIL)
   toName      String
   toEmail     String
-  // TRAINING_DUE_SOON | TRAINING_OVERDUE | SHIFT_REMINDER | ABSENCE_CONFIRMED |
-  // COVER_CONFIRMED | GAP_ALERT | APPLICATION_APPROVED | TRAINING_COMPLETED |
-  // SESSION_CONFIRMED | HARVEST_CALLOUT | WELCOME | LAST_MINUTE_CALLOUT |
-  // GAP_ESCALATION | ROLES_CHANGED | ROLE_CHANGE_REQUEST
-  kind        String
+  kind        EmailKind
   subject     String
   preview     String
-  // Paragraphs separated by blank lines. Rendered by the email preview page.
+  // Paragraphs separated by blank lines.
   body        String
   ctaLabel    String?
+  // App-relative path; made absolute when the email is rendered. Null for
+  // sign-in links, which are never stored.
   ctaHref     String?
-  // Dedupe key for automated reminders, e.g. "training-due:<recordId>".
+  // Dedupe key for automated messages, e.g. "training-due:<recordId>".
   ref         String?
-  createdAt   DateTime @default(now())
+  status      DeliveryStatus @default(PENDING)
+  attempts    Int            @default(0)
+  lastError   String?
+  providerId  String?
+  sentAt      DateTime?
+  createdAt   DateTime       @default(now())
 
   @@index([createdAt])
   @@index([ref])
+  @@index([volunteerId, createdAt])
+  @@index([status, createdAt])
 }
 
 // The coordinator's record of contact with a volunteer: phone calls, notes and
 // changes made on their behalf. Shown on the profile timeline alongside the
 // emails and notifications they were sent.
 model ContactLog {
-  id          String   @id @default(cuid())
+  id          String         @id @default(cuid())
   volunteerId String
-  volunteer   Volunteer @relation("ContactLogVolunteer", fields: [volunteerId], references: [id], onDelete: Cascade)
+  volunteer   Volunteer      @relation("ContactLogVolunteer", fields: [volunteerId], references: [id], onDelete: Cascade)
   authorId    String?
-  author      Volunteer? @relation("ContactLogAuthor", fields: [authorId], references: [id], onDelete: SetNull)
-  // CALL | NOTE | PROFILE_UPDATED | ROLES_CHANGED | VISIT_BOOKED | ROLE_REQUEST
-  kind        String
+  author      Volunteer?     @relation("ContactLogAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  kind        ContactLogKind
   summary     String
-  createdAt   DateTime @default(now())
+  createdAt   DateTime       @default(now())
 
   @@index([volunteerId, createdAt])
 }
 
-// Seed bookkeeping so `pnpm dev` can reseed when the demo date rolls over.
+// Small key/value store for operational bookkeeping, e.g. the date the demo
+// data was last generated.
 model Meta {
   key   String @id
   value String

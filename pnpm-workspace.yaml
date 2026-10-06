@@ -10,5 +10,7 @@ allowBuilds:
   esbuild: true
   sharp: true
   unrs-resolver: true
-  better-sqlite3: true
   workerd: false
+  # Pulled in by the Prisma CLI for its local `prisma dev` server; Postgres
+  # never needs it, so its native build is skipped.
+  better-sqlite3: false

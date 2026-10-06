@@ -73,9 +73,11 @@ const SECTIONS: { label: string; links: NavLink[] }[] = [
 export function AdminSidebar({
   user,
   badges,
+  demo,
 }: {
   user: { firstName: string; lastName: string | null; email: string };
   badges: Record<NonNullable<NavLink["badge"]>, number>;
+  demo: boolean;
 }) {
   const pathname = usePathname();
   return (
@@ -134,15 +136,21 @@ export function AdminSidebar({
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border p-3">
-        <div className="flex items-center gap-2.5 group-data-[collapsible=icon]:justify-center">
-          <AvatarBadge person={user} size="sm" />
-          <div className="min-w-0 flex-1 leading-tight group-data-[collapsible=icon]:hidden">
-            <p className="truncate text-sm font-bold text-ink">{fullName(user)}</p>
-            <p className="truncate text-xs text-muted-foreground">{user.email}</p>
-          </div>
+        <div className="flex items-center gap-1 group-data-[collapsible=icon]:justify-center">
+          <Link
+            href="/admin/security"
+            title="Sign-in and security"
+            className="flex min-h-11 min-w-0 flex-1 items-center gap-2.5 rounded-lg px-1 hover:bg-muted group-data-[collapsible=icon]:flex-none group-data-[collapsible=icon]:px-0"
+          >
+            <AvatarBadge person={user} size="sm" />
+            <span className="min-w-0 flex-1 leading-tight group-data-[collapsible=icon]:hidden">
+              <span className="block truncate text-sm font-bold text-ink">{fullName(user)}</span>
+              <span className="block truncate text-xs text-muted-foreground">{user.email}</span>
+            </span>
+          </Link>
           <form action={signOut} className="group-data-[collapsible=icon]:hidden">
-            <button type="submit" className="tap flex items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-ink" aria-label="Switch persona">
-              <LogOut className="size-4" />
+            <button type="submit" className="tap flex items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-ink" aria-label={demo ? "Switch persona" : "Sign out"} title={demo ? "Switch persona" : "Sign out"}>
+              <LogOut className="size-4" aria-hidden />
             </button>
           </form>
         </div>

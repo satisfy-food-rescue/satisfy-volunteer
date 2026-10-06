@@ -97,8 +97,8 @@ export function NewSessionForm({ modules, today }: { modules: { id: string; name
   const router = useRouter();
   if (!open) return <Button size="lg" className="h-11" onClick={() => setOpen(true)}><CalendarPlus className="size-4" /> Schedule a session</Button>;
   return (
-    <form className="grid grid-cols-1 gap-4 rounded-2xl border border-green/40 bg-card p-4 sm:grid-cols-2 lg:grid-cols-3" onSubmit={(e) => { e.preventDefault(); run(async () => { const r = await createSession(v); if (r.ok) { toast.success(r.message); setOpen(false); router.refresh(); } else toast.error(r.error); }); }}>
-      <div className="flex flex-col gap-1.5 lg:col-span-3">
+    <form className="grid grid-cols-1 gap-4 rounded-2xl border border-green/40 bg-card p-4 sm:grid-cols-2 @4xl/admin:grid-cols-3" onSubmit={(e) => { e.preventDefault(); run(async () => { const r = await createSession(v); if (r.ok) { toast.success(r.message); setOpen(false); router.refresh(); } else toast.error(r.error); }); }}>
+      <div className="flex flex-col gap-1.5 @4xl/admin:col-span-3">
         <Label htmlFor="s-mod">Module</Label>
         <OptionSelect id="s-mod" value={v.moduleId} onValueChange={(moduleId) => setV({ ...v, moduleId })} options={modules.map((m) => ({ value: m.id, label: m.name }))} />
       </div>
@@ -107,8 +107,8 @@ export function NewSessionForm({ modules, today }: { modules: { id: string; name
       <div className="flex flex-col gap-1.5"><Label htmlFor="s-end">End</Label><OptionSelect id="s-end" value={v.endTime} onValueChange={(endTime) => setV({ ...v, endTime })} options={TIMES.filter((t) => t.value > v.startTime)} /></div>
       <div className="flex flex-col gap-1.5 sm:col-span-2"><Label htmlFor="s-loc">Location</Label><Input id="s-loc" value={v.location} onChange={(e) => setV({ ...v, location: e.target.value })} className="h-11 text-base" /></div>
       <div className="flex flex-col gap-1.5"><Label htmlFor="s-cap">Capacity</Label><Input id="s-cap" type="number" min={1} max={60} value={v.capacity} onChange={(e) => setV({ ...v, capacity: Number(e.target.value) })} className="h-11 text-base" /></div>
-      <div className="flex flex-col gap-1.5 lg:col-span-3"><Label htmlFor="s-notes">Notes for volunteers</Label><Textarea id="s-notes" rows={2} value={v.notes} onChange={(e) => setV({ ...v, notes: e.target.value })} className="text-base" /></div>
-      <div className="flex gap-2 lg:col-span-3">
+      <div className="flex flex-col gap-1.5 @4xl/admin:col-span-3"><Label htmlFor="s-notes">Notes for volunteers</Label><Textarea id="s-notes" rows={2} value={v.notes} onChange={(e) => setV({ ...v, notes: e.target.value })} className="text-base" /></div>
+      <div className="flex gap-2 @4xl/admin:col-span-3">
         <Button type="submit" size="sm" className="h-10" disabled={pending}>{pending ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />} Schedule</Button>
         <Button type="button" variant="ghost" size="sm" className="h-10" onClick={() => setOpen(false)}><X className="size-4" /> Cancel</Button>
       </div>

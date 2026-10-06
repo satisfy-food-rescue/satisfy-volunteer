@@ -3,8 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { CalendarPlus, Check, ClipboardCheck, Loader2, MessageSquareText, Pencil, PhoneCall, Save, X } from "lucide-react";
-import { bookInitialVisit, logContact, recordCoordinatorCompletion, saveVolunteerNotes, setVolunteerRoles, updateVolunteerProfile } from "@/app/admin/actions";
+import { CalendarPlus, Check, ClipboardCheck, Loader2, MessageSquareText, Pencil, PhoneCall, Power, Save, Send, UserPlus, X } from "lucide-react";
+import { bookInitialVisit, createVolunteer, logContact, recordCoordinatorCompletion, saveVolunteerNotes, sendVolunteerInvite, setVolunteerRoles, setVolunteerStatus, updateVolunteerProfile } from "@/app/admin/actions";
 import type { ActionResult } from "@/app/app/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -264,6 +264,148 @@ export function BookInitialVisitButton({
             <Button variant="ghost" className="h-10" onClick={() => setOpen(false)}>Cancel</Button>
             <Button className="h-10" disabled={pending || (mode === "existing" && !slot)} onClick={submit}>
               {pending ? <Spinner /> : <Check className="size-4" />} {rebook ? "Move visit" : "Book visit"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+export function AccountControls({
+  volunteer,
+  isSelf,
+  upcomingShifts,
+  regularSlots,
+}: {
+  volunteer: { id: string; firstName: string; active: boolean; hasSignedIn: boolean };
+  isSelf: boolean;
+  upcomingShifts: number;
+  regularSlots: number;
+}) {
+  const [pending, run] = useAction();
+  const [confirming, setConfirming] = useState(false);
+  const { id, firstName, active } = volunteer;
+  if (!active) {
+    return (
+      <Button variant="outline" className="h-11 self-start px-4" disabled={pending} onClick={() => run(() => setVolunteerStatus(id, true))}>
+        {pending ? <Spinner /> : <Power className="size-4" aria-hidden />} Reactivate {firstName}
+      </Button>
+    );
+  }
+  const consequences = [
+    regularSlots > 0 && `taken off ${regularSlots} regular ${regularSlots === 1 ? "slot" : "slots"}`,
+    upcomingShifts > 0 && `removed from ${upcomingShifts} upcoming ${upcomingShifts === 1 ? "shift, which will need" : "shifts, which will need"} cover`,
+  ].filter(Boolean);
+  return (
+    <div className="flex flex-wrap gap-2">
+      <Button variant="outline" className="h-11 px-4" disabled={pending} onClick={() => run(() => sendVolunteerInvite(id))}>
+        {pending ? <Spinner /> : <Send className="size-4" aria-hidden />} {volunteer.hasSignedIn ? "Send password reset link" : "Send sign-in invite"}
+      </Button>
+      {!isSelf && (
+        <Button variant="ghost" className="h-11 px-4 text-muted-foreground hover:text-status-bad" disabled={pending} onClick={() => setConfirming(true)}>
+          <Power className="size-4" aria-hidden /> Deactivate
+        </Button>
+      )}
+      <Dialog open={confirming} onOpenChange={setConfirming}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl text-ink">Deactivate {firstName}?</DialogTitle>
+            <DialogDescription>
+              {firstName} will be signed out and will not be able to sign in{consequences.length ? `, and will be ${consequences.join(" and ")}` : ""}. Their history and training records are kept, and you can reactivate them at any time.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" className="h-11" onClick={() => setConfirming(false)}>Keep active</Button>
+            <Button variant="destructive" className="h-11" disabled={pending} onClick={() => run(() => setVolunteerStatus(id, false), () => setConfirming(false))}>
+              {pending ? <Spinner /> : <Power className="size-4" aria-hidden />} Deactivate
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+const EMPTY_VOLUNTEER = { firstName: "", lastName: "", email: "", phone: "", roles: ["WAREHOUSE"] as VolunteerRole[], sendInvite: true };
+
+export function AddVolunteerButton() {
+  const [open, setOpen] = useState(false);
+  const [v, setV] = useState(EMPTY_VOLUNTEER);
+  const [pending, start] = useTransition();
+  const router = useRouter();
+  const set = (k: "firstName" | "lastName" | "email" | "phone") => (e: React.ChangeEvent<HTMLInputElement>) => setV({ ...v, [k]: e.target.value });
+  return (
+    <>
+      <Button size="lg" className="h-11 px-4" onClick={() => setOpen(true)}>
+        <UserPlus className="size-4" aria-hidden /> Add volunteer
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="top-[8vh] translate-y-0 sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-xl text-ink">Add a volunteer</DialogTitle>
+            <DialogDescription>For people who did not come through an application, such as existing volunteers. You can fill in the rest of their details on their profile.</DialogDescription>
+          </DialogHeader>
+          <form
+            id="add-volunteer"
+            className="flex flex-col gap-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              start(async () => {
+                const r = await createVolunteer(v);
+                if (!r.ok) return void toast.error(r.error);
+                toast.success(r.message);
+                setOpen(false);
+                setV(EMPTY_VOLUNTEER);
+                router.push(`/admin/volunteers/${r.id}`);
+              });
+            }}
+          >
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="nv-first" className="text-base">First name</Label>
+                <Input id="nv-first" required value={v.firstName} onChange={set("firstName")} className="h-11 text-base" />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="nv-last" className="text-base">Last name</Label>
+                <Input id="nv-last" value={v.lastName} onChange={set("lastName")} className="h-11 text-base" />
+              </div>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="nv-email" className="text-base">Email</Label>
+              <Input id="nv-email" type="email" required value={v.email} onChange={set("email")} className="h-11 text-base" />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="nv-phone" className="text-base">Mobile</Label>
+              <Input id="nv-phone" type="tel" value={v.phone} onChange={set("phone")} className="h-11 text-base" />
+            </div>
+            <fieldset className="flex flex-col gap-2">
+              <legend className="mb-1.5 text-base font-medium">Roles</legend>
+              <div className="flex flex-wrap gap-2">
+                {VOLUNTEER_ROLES.map((r) => {
+                  const on = v.roles.includes(r);
+                  return (
+                    <label key={r} className={cn("flex h-11 cursor-pointer items-center gap-2 rounded-full border px-4 text-sm font-semibold transition-colors has-focus-visible:outline-3 has-focus-visible:outline-green", on ? "border-green bg-green-tint text-green-deep" : "border-border bg-card text-muted-foreground hover:text-ink")}>
+                      <input type="checkbox" className="sr-only" checked={on} onChange={() => setV({ ...v, roles: on ? v.roles.filter((x) => x !== r) : [...v.roles, r] })} />
+                      {on && <Check className="size-4" aria-hidden />}
+                      {ROLE_LABEL[r]}
+                    </label>
+                  );
+                })}
+              </div>
+            </fieldset>
+            <label className="flex min-h-11 cursor-pointer items-center justify-between gap-4">
+              <span>
+                <span className="block font-semibold text-ink">Email them a sign-in invite</span>
+                <span className="block text-sm text-muted-foreground">A link to choose a password, valid for 7 days.</span>
+              </span>
+              <Switch checked={v.sendInvite} onCheckedChange={(c) => setV({ ...v, sendInvite: c })} />
+            </label>
+          </form>
+          <DialogFooter>
+            <Button variant="outline" className="h-11" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button type="submit" form="add-volunteer" className="h-11" disabled={pending}>
+              {pending ? <Spinner /> : <UserPlus className="size-4" aria-hidden />} Add volunteer
             </Button>
           </DialogFooter>
         </DialogContent>
