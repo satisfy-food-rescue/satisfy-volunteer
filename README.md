@@ -4,7 +4,7 @@ Demo volunteer management app for Satisfy Food Rescue (Rangiora, North Canterbur
 
 ## Run it
 
-Requires Node 20+ and pnpm (Corepack picks the pinned version).
+Requires Node 24 and pnpm (Corepack picks the pinned version).
 
 ```bash
 pnpm install
@@ -18,6 +18,23 @@ pnpm db:reset
 ```
 
 Other scripts: `pnpm lint`, `pnpm typecheck`, `pnpm build`.
+
+## CI
+
+`.github/workflows/ci.yaml` runs on every pull request and on pushes to `main`:
+
+- **Lint, types and schema**: `pnpm lint --max-warnings 0`, `pnpm typecheck`, `prisma validate` and `prisma format --check`.
+- **Build and smoke test**: builds, boots `pnpm start:prod` on a fresh database (the same create-and-seed path a deploy takes), then `pnpm test:smoke` renders every page as every persona and fails on anything but a 200. Pages are found from `src/app`, so new pages are covered automatically; a new dynamic segment needs a resolver in `scripts/smoke.ts`.
+- **Docker image**: builds the production image and boots it on an empty volume.
+
+To run the smoke test locally, start a production server and point it there:
+
+```bash
+pnpm build && PORT=3100 pnpm start:prod
+BASE_URL=http://localhost:3100 pnpm test:smoke
+```
+
+Dependabot opens weekly npm and monthly Actions and Docker base image updates.
 
 ## Persona switcher
 
