@@ -49,8 +49,8 @@ export default async function TrainingPage() {
               key={s.module.id}
               className={cn(
                 "flex-1 border-r-2 border-card last:border-r-0",
-                s.status === "COMPLETE" && "bg-status-good",
-                s.status === "DUE_SOON" && "bg-status-warn",
+                s.status === "COMPLETE" && "bg-green",
+                s.status === "DUE_SOON" && "bg-orange",
                 s.status === "OVERDUE" && "bg-status-bad",
                 s.status === "NOT_STARTED" && "bg-transparent",
               )}
@@ -102,7 +102,7 @@ export default async function TrainingPage() {
           return (
             <li key={s.module.id}>
               {actionable ? (
-                <Link href={online ? `/app/training/${s.module.code}` : "#sessions"} className="block rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-green">
+                <Link href={online ? `/app/training/${s.module.code}` : "#sessions"} className="block rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-teal/60">
                   {Inner}
                 </Link>
               ) : (
@@ -124,7 +124,7 @@ export default async function TrainingPage() {
               const going = s.rsvps.filter((r) => r.status === "GOING").length;
               const relevant = relevantSessions.includes(s);
               return (
-                <li key={s.id} className={cn("rounded-2xl border bg-card p-4 shadow-sm", relevant ? "border-green/50" : "border-border")}>
+                <li key={s.id} className={cn("rounded-2xl border bg-card p-4 shadow-sm", relevant ? "border-teal/50" : "border-border")}>
                   <p className="font-bold text-ink">{s.module.name}</p>
                   <p className="mt-0.5 text-sm text-ink-soft tabular">{formatInstant(s.startsAt)} to {formatInstantTime(s.endsAt)}</p>
                   <p className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground">

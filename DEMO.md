@@ -9,7 +9,7 @@ Sign in as **Phillipa**.
 - Dashboard: point at the four tiles. "Gaps, next 14 days" is the pain point from the discovery call: who is away and what is uncovered.
 - Scroll to **Coverage gaps**: two seeded absences (Brian on holiday, Heather off sick) have released their shifts. The line under each gap says exactly why it exists.
 - **Training attention** on the right: Tony's Manual Handling is overdue, several others are due within 30 days.
-- Click **Roster** in the sidebar: week view with each day's shifts, pink edge on anything short. Flip to **Month** to show the whole picture. Mention **Bulk schedule** (preview before anything is created, regulars land on their weekday).
+- Click **Roster** in the sidebar: week view with each day's shifts, anything short tinted orange with a gap count. Flip to **Month** to show the whole picture. Mention **Bulk schedule** (preview before anything is created, regulars land on their weekday).
 
 ## 2. The training gate (Tony) - 3 min
 
@@ -27,7 +27,7 @@ Still as Tony:
 - Tap **Me**, then **My regular slot and absences** (or Home > Mark me away). Pick next week, reason Holiday. The preview says which of his regular Wednesday route shifts will be released. Submit.
 - Switch persona back to **Phillipa**. The dashboard now shows a new gap: "Driver help: Rangiora / Kaiapoi ... Tony Ratana away (holiday)". Click it.
 - On the shift page, the **Find cover** panel lists only volunteers who hold the driver help role, are training-current, are not away and are free that day. The **Last-minute available** group is people who opted in to last-minute cover. Click **Add** on one (Steve Kirkwood is the backup driver). The chip flips to Covered.
-- For a gap close to the start, the panel also says who already got a last-minute push notification. The seed always has one: a route shift on the next working day that someone called in sick for this morning (Roster, pink edge).
+- For a gap close to the start, the panel also says who already got a last-minute push notification. The seed always has one: a route shift on the next working day that someone called in sick for this morning (Roster, tinted orange).
 - **Absences** in the sidebar shows the same story as a calendar: bars for who is away, with each released shift marked open or covered.
 
 ## 4. Automatic reminders - 1 min
@@ -50,7 +50,7 @@ Still as Tony:
 
 ## 7. Rebrand-ready and Infoodle - 1 min
 
-- **Settings**. First card: the brand colours and fonts from the Brand Guidelines, all theme tokens in one file. Second card: the Infoodle panel with "API: pending confirmation" and what would sync in each direction. Third: the email templates.
+- **Settings**. First card: the logo, colours, tints, footer and font from the 2026 brand refresh, all theme tokens in one file. Second card: the Infoodle panel with "API: pending confirmation" and what would sync in each direction. Third: the email templates.
 
 ## If something looks off
 

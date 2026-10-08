@@ -25,9 +25,9 @@ export default async function OutboxPage({ searchParams }: { searchParams: Promi
     <div className="mx-auto flex max-w-6xl flex-col gap-6">
       <PageHeader eyebrow="Outbox" title="Every email and notification the system would send" description="Nothing leaves this demo. Each entry is exactly what the volunteer or coordinator would receive, rendered from the same templates production will use. Push notifications go to the volunteer app on their phone." />
       <div className="flex flex-wrap gap-1.5">
-        <Link href="/admin/outbox" className={cn("flex h-10 items-center rounded-full border px-3 text-sm font-semibold", !kind ? "border-green bg-green-tint text-green-deep" : "border-border bg-card text-muted-foreground hover:text-ink")}>All ({kinds.reduce((n, k) => n + k._count._all, 0)})</Link>
+        <Link href="/admin/outbox" className={cn("flex h-10 items-center rounded-full border px-3 text-sm font-semibold", !kind ? "border-teal bg-teal-tint text-teal-deep" : "border-border bg-card text-muted-foreground hover:text-ink")}>All ({kinds.reduce((n, k) => n + k._count._all, 0)})</Link>
         {kinds.sort((a, b) => b._count._all - a._count._all).map((k) => (
-          <Link key={k.kind} href={`/admin/outbox?kind=${k.kind}`} className={cn("flex h-10 items-center rounded-full border px-3 text-sm font-semibold", kind === k.kind ? "border-green bg-green-tint text-green-deep" : "border-border bg-card text-muted-foreground hover:text-ink")}>
+          <Link key={k.kind} href={`/admin/outbox?kind=${k.kind}`} className={cn("flex h-10 items-center rounded-full border px-3 text-sm font-semibold", kind === k.kind ? "border-teal bg-teal-tint text-teal-deep" : "border-border bg-card text-muted-foreground hover:text-ink")}>
             {EMAIL_KIND_LABEL[k.kind as EmailKind]} ({k._count._all})
           </Link>
         ))}
@@ -37,7 +37,7 @@ export default async function OutboxPage({ searchParams }: { searchParams: Promi
         {emails.map((e) => (
           <li key={e.id}>
             <Link href={`/admin/outbox/${e.id}`} className="flex items-start gap-3 px-4 py-3 hover:bg-muted">
-              <span className={cn("mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg", e.channel === "PUSH" ? "bg-pink-tint text-pink-text" : "bg-muted text-muted-foreground")}>
+              <span className={cn("mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg", e.channel === "PUSH" ? "bg-orange-tint text-orange-text" : "bg-muted text-muted-foreground")}>
                 {e.channel === "PUSH" ? <Smartphone className="size-4" aria-label="Push notification" /> : <Mail className="size-4" aria-label="Email" />}
               </span>
               <span className="min-w-0 flex-1">

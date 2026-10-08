@@ -4,6 +4,7 @@ import { gapsBetween } from "@/lib/roster";
 import { trainingContext } from "@/lib/volunteer-data";
 import { BottomNav } from "@/components/app/bottom-nav";
 import { AppHeader } from "@/components/app/app-header";
+import { BrandFooter } from "@/components/brand/logo";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <div className="relative flex min-h-dvh w-full max-w-[30rem] flex-col bg-background pb-24 md:border-x md:border-border">
         <AppHeader person={me} />
         <main className="flex flex-1 flex-col">{children}</main>
+        <BrandFooter className="mt-4 pb-4" />
         <BottomNav badges={{ "/app/gaps": gaps.filter((g) => !g.released.some((r) => r.volunteerId === me.id)).length || undefined, "/app/training": attention || undefined }} />
       </div>
     </div>

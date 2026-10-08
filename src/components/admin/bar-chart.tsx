@@ -12,7 +12,7 @@ export function BarChart({
   max,
   title,
   className,
-  tone = "green",
+  tone = "teal",
 }: {
   data: BarDatum[];
   unit?: string;
@@ -20,7 +20,7 @@ export function BarChart({
   max?: number;
   title: string;
   className?: string;
-  tone?: "green" | "pink";
+  tone?: "teal" | "green" | "orange";
 }) {
   const top = Math.max(max ?? 0, ...data.map((d) => d.value), 1);
   const nice = niceCeil(top);
@@ -30,7 +30,7 @@ export function BarChart({
   const padB = 10;
   const gap = 3.2;
   const bw = (W - gap * (data.length + 1)) / data.length;
-  const fill = tone === "green" ? "var(--brand-green)" : "var(--pink-fill)";
+  const fill = { teal: "var(--brand-teal)", green: "var(--brand-green)", orange: "var(--brand-orange)" }[tone];
   return (
     <figure className={cn("flex flex-col gap-2", className)}>
       <svg viewBox={`0 0 ${W} ${H + padB}`} className="h-auto w-full" role="img" aria-label={`${title}: ${data.map((d) => `${d.label} ${format(d.value)}${unit}`).join(", ")}`}>

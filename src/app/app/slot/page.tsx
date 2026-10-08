@@ -32,13 +32,13 @@ export default async function SlotPage() {
           icon={CalendarCheck}
           title="No regular slot yet"
           description="Most volunteers hold a weekly slot. Once your training is done, talk to the coordinator or book a few one-off shifts to find a morning that suits."
-          action={<Link href="/app/shifts" className="font-semibold text-green-text hover:underline">Browse shifts</Link>}
+          action={<Link href="/app/shifts" className="font-semibold text-teal hover:underline">Browse shifts</Link>}
         />
       ) : (
         <ul className="flex flex-col gap-2.5">
           {slots.map((s) => (
-            <li key={s.id} className="flex items-center gap-4 rounded-2xl border border-green/40 bg-green-tint-soft p-4">
-              <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-white text-green-text">
+            <li key={s.id} className="flex items-center gap-4 rounded-2xl border border-teal/25 bg-teal-tint-soft p-4">
+              <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-white text-teal">
                 <CalendarCheck className="size-6" aria-hidden />
               </span>
               <span className="min-w-0">

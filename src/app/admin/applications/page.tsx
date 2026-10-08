@@ -24,7 +24,7 @@ export default async function ApplicationsPage() {
       <PageHeader eyebrow="Applications" title="New volunteer applications" description="Applicants fill in the sign-up form on the website, which lands in Infoodle. Approved applicants get an account here and a welcome email. Then give them a call and book their initial visit from their profile." />
 
       <div className="flex items-start gap-3 rounded-2xl border border-border bg-card p-4 text-sm">
-        <RefreshCw className="mt-0.5 size-5 shrink-0 text-green-text" aria-hidden />
+        <RefreshCw className="mt-0.5 size-5 shrink-0 text-sky" aria-hidden />
         <div>
           <p className="font-bold text-ink">Source: Infoodle sign-up form (mocked)</p>
           <p className="text-muted-foreground">When the Infoodle API is confirmed, new form submissions appear here automatically. Until then the coordinator can add them by hand. On approval: account created, welcome email queued{induction ? `, pencilled into the next open initial-visit slot (${formatInstant(induction.startsAt)}) if there is room` : ""}, Infoodle record flagged as active volunteer.</p>
@@ -41,9 +41,9 @@ export default async function ApplicationsPage() {
               <div className="min-w-0 flex-1">
                 <h3 className="text-xl font-bold text-ink">{a.firstName} {a.lastName}{a.birthYear ? <span className="ml-2 text-base font-normal text-muted-foreground">{new Date().getFullYear() - a.birthYear}</span> : null}</h3>
                 <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink-soft">
-                  {a.suburb && <span className="inline-flex items-center gap-1"><MapPin className="size-4 text-green-text" aria-hidden />{a.suburb}</span>}
-                  <span className="inline-flex items-center gap-1"><Mail className="size-4 text-green-text" aria-hidden />{a.email}</span>
-                  {a.phone && <span className="inline-flex items-center gap-1 tabular"><Phone className="size-4 text-green-text" aria-hidden />{a.phone}</span>}
+                  {a.suburb && <span className="inline-flex items-center gap-1"><MapPin className="size-4 text-sky" aria-hidden />{a.suburb}</span>}
+                  <span className="inline-flex items-center gap-1"><Mail className="size-4 text-sky" aria-hidden />{a.email}</span>
+                  {a.phone && <span className="inline-flex items-center gap-1 tabular"><Phone className="size-4 text-sky" aria-hidden />{a.phone}</span>}
                 </p>
                 <dl className="mt-3 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
                   <div><dt className="font-display text-xs font-bold uppercase tracking-wide text-muted-foreground">Interested in</dt><dd className="mt-0.5 flex flex-wrap gap-1">{parseRoles(a.interests).map((r) => <Chip key={r} tone="good" size="sm">{ROLE_SHORT[r]}</Chip>)}</dd></div>
@@ -54,7 +54,7 @@ export default async function ApplicationsPage() {
               </div>
             </div>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
-              <p className="inline-flex items-start gap-2 text-sm text-muted-foreground"><UserPlus className="mt-0.5 size-4 shrink-0 text-green-text" aria-hidden />Approving creates the account and queues the welcome email. Book the initial visit from their profile.</p>
+              <p className="inline-flex items-start gap-2 text-sm text-muted-foreground"><UserPlus className="mt-0.5 size-4 shrink-0 text-sky" aria-hidden />Approving creates the account and queues the welcome email. Book the initial visit from their profile.</p>
               <ApplicationReview id={a.id} firstName={a.firstName} />
             </div>
           </article>
@@ -72,7 +72,7 @@ export default async function ApplicationsPage() {
                 <span className="block text-xs text-muted-foreground">{a.status === "APPROVED" ? "Approved" : "Declined"} {a.reviewedAt ? formatInstant(a.reviewedAt) : ""}{a.reviewNote ? ` · ${a.reviewNote}` : ""}</span>
               </span>
               {a.status === "APPROVED" ? <Chip tone="good" size="sm" icon={CalendarCheck}>Approved</Chip> : <Chip tone="neutral" size="sm">Declined</Chip>}
-              {a.volunteerId && <Link href={`/admin/volunteers/${a.volunteerId}`} className="text-sm font-semibold text-green-text hover:underline">Profile</Link>}
+              {a.volunteerId && <Link href={`/admin/volunteers/${a.volunteerId}`} className="text-sm font-semibold text-teal hover:underline">Profile</Link>}
             </li>
           ))}
         </ul>

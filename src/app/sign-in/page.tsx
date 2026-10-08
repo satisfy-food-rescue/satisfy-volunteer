@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { AlertTriangle, ClipboardList, ShieldCheck, Sprout, Truck, Warehouse } from "lucide-react";
-import { LogoMark } from "@/components/brand/logo";
+import { BrandFooter, FoodIcon, Logo } from "@/components/brand/logo";
 import { db } from "@/lib/db";
 import { todayISO, formatDayLong } from "@/lib/dates";
 import { fullName } from "@/lib/domain";
@@ -56,26 +56,29 @@ export default async function SignInPage() {
 
   return (
     <main className="flex flex-1 flex-col">
-      <div className="border-b border-border bg-green-tint-soft">
-        <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-5 py-10 md:flex-row md:items-end md:justify-between md:px-10 md:py-14">
+      <div className="bg-teal text-white">
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-5 py-10 md:flex-row md:items-end md:justify-between md:px-10 md:py-14">
           <div>
-            <LogoMark size={96} />
-            <h1 className="mt-6 max-w-xl text-4xl text-ink md:text-5xl">
+            <Logo tone="white" className="h-28 md:h-32" />
+            <h1 className="mt-8 max-w-xl text-4xl text-white md:text-5xl">
               Volunteer roster, training and cover in one place.
             </h1>
-            <p className="mt-3 max-w-xl text-lg text-ink-soft">
+            <p className="mt-3 max-w-xl text-lg text-white/85">
               Demo build for Satisfy Food Rescue. Pick a persona to explore. Nothing here sends real email or touches Infoodle.
             </p>
           </div>
-          <dl className="grid grid-cols-3 gap-3 md:w-96 md:shrink-0">
-            {[
-              [compactCount(IMPACT.kgRescued), "kg of kai rescued"],
-              [compactCount(IMPACT.meals), "meals shared"],
-              [`${formatCount(IMPACT.co2Tonnes)} t`, `CO2e avoided ${IMPACT.co2Period}`],
-            ].map(([n, l]) => (
-              <div key={l} className="rounded-xl bg-white/80 px-3 py-3 ring-1 ring-green/30">
-                <dd className="whitespace-nowrap font-display text-xl font-bold text-green-text tabular sm:text-2xl">{n}</dd>
-                <dt className="mt-0.5 text-xs font-semibold leading-snug text-ink-soft">{l}</dt>
+          <dl className="grid grid-cols-3 gap-3 md:w-[25rem] md:shrink-0">
+            {(
+              [
+                ["broccoli", compactCount(IMPACT.kgRescued), "kg of kai rescued"],
+                ["carrot", compactCount(IMPACT.meals), "meals shared"],
+                ["apple", `${formatCount(IMPACT.co2Tonnes)} t`, `CO2e avoided ${IMPACT.co2Period}`],
+              ] as const
+            ).map(([icon, n, l]) => (
+              <div key={l} className="flex flex-col rounded-2xl bg-white/10 px-3 py-3.5 ring-1 ring-white/15">
+                <FoodIcon kind={icon} className="size-8 rounded-full ring-2 ring-white/80" />
+                <dd className="mt-3 whitespace-nowrap font-display text-xl font-bold text-white tabular sm:text-2xl">{n}</dd>
+                <dt className="mt-0.5 text-xs font-semibold leading-snug text-white/80">{l}</dt>
               </div>
             ))}
           </dl>
@@ -103,11 +106,11 @@ export default async function SignInPage() {
                   type="submit"
                   className={cn(
                     "group flex w-full flex-col gap-3 rounded-2xl border border-border bg-card p-5 text-left shadow-sm transition-all",
-                    "hover:-translate-y-0.5 hover:border-green hover:shadow-md active:translate-y-0",
+                    "hover:-translate-y-0.5 hover:border-teal/60 hover:shadow-md active:translate-y-0",
                   )}
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <span className="flex size-12 items-center justify-center rounded-xl bg-green-tint text-green-deep">
+                    <span className="flex size-12 items-center justify-center rounded-full bg-teal-tint text-teal transition-colors group-hover:bg-teal group-hover:text-white">
                       <Icon className="size-6" aria-hidden />
                     </span>
                     <span className="font-display rounded-full bg-muted px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-muted-foreground">
@@ -116,7 +119,7 @@ export default async function SignInPage() {
                   </div>
                   <div>
                     <p className="text-xl font-bold text-ink">{fullName(person)}</p>
-                    <p className="text-sm font-semibold text-green-text">{p.label}</p>
+                    <p className="text-sm font-semibold text-teal">{p.label}</p>
                   </div>
                   <p className="text-base leading-snug text-ink-soft">{p.blurb}</p>
                   <div className="mt-auto flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
@@ -152,6 +155,7 @@ export default async function SignInPage() {
           Switching persona sets a cookie. There is no real authentication in this demo; the production build uses email sign-in with passkeys, the same as the Fair Food portal.
         </p>
       </div>
+      <BrandFooter className="mt-auto pb-6" />
     </main>
   );
 }

@@ -37,7 +37,7 @@ export default async function ShiftDetailPage({ params }: { params: Promise<{ id
       </Link>
 
       <header className="flex items-start gap-4">
-        <span className={view.kind === "WAREHOUSE" ? "flex size-14 shrink-0 items-center justify-center rounded-2xl bg-green-tint text-green-deep" : "flex size-14 shrink-0 items-center justify-center rounded-2xl bg-blue-tint text-blue-text"}>
+        <span className={view.kind === "WAREHOUSE" ? "flex size-14 shrink-0 items-center justify-center rounded-2xl bg-green-tint text-green-deep" : "flex size-14 shrink-0 items-center justify-center rounded-2xl bg-sky-tint text-sky-text"}>
           <ShiftKindIcon kind={view.kind} className="size-7" />
         </span>
         <div className="min-w-0">
@@ -48,7 +48,7 @@ export default async function ShiftDetailPage({ params }: { params: Promise<{ id
 
       <dl className="grid gap-3 rounded-2xl border border-border bg-card p-4">
         <div className="flex items-start gap-3">
-          <Clock className="mt-0.5 size-5 shrink-0 text-green-text" aria-hidden />
+          <Clock className="mt-0.5 size-5 shrink-0 text-sky" aria-hidden />
           <div>
             <dt className="sr-only">When</dt>
             <dd className="font-bold text-ink">{formatDayLong(view.iso)}</dd>
@@ -56,7 +56,7 @@ export default async function ShiftDetailPage({ params }: { params: Promise<{ id
           </div>
         </div>
         <div className="flex items-start gap-3">
-          <MapPin className="mt-0.5 size-5 shrink-0 text-green-text" aria-hidden />
+          <MapPin className="mt-0.5 size-5 shrink-0 text-sky" aria-hidden />
           <div>
             <dt className="sr-only">Where</dt>
             <dd className="text-ink">{view.location}</dd>
@@ -65,7 +65,7 @@ export default async function ShiftDetailPage({ params }: { params: Promise<{ id
         </div>
         {view.shift.template.workingWith && (
           <div className="flex items-start gap-3">
-            <UserRound className="mt-0.5 size-5 shrink-0 text-green-text" aria-hidden />
+            <UserRound className="mt-0.5 size-5 shrink-0 text-sky" aria-hidden />
             <div>
               <dt className="sr-only">Working with</dt>
               <dd className="text-ink">Working with {view.shift.template.workingWith}</dd>
@@ -74,7 +74,7 @@ export default async function ShiftDetailPage({ params }: { params: Promise<{ id
         )}
         {donors.length > 0 && (
           <div className="flex items-start gap-3">
-            <Store className="mt-0.5 size-5 shrink-0 text-green-text" aria-hidden />
+            <Store className="mt-0.5 size-5 shrink-0 text-sky" aria-hidden />
             <div>
               <dt className="sr-only">Stops</dt>
               <dd className="text-ink">{donors.map((d) => d.name).join(", ")}</dd>
@@ -82,7 +82,7 @@ export default async function ShiftDetailPage({ params }: { params: Promise<{ id
           </div>
         )}
         <div className="flex items-start gap-3">
-          <Users className="mt-0.5 size-5 shrink-0 text-green-text" aria-hidden />
+          <Users className="mt-0.5 size-5 shrink-0 text-sky" aria-hidden />
           <div className="flex flex-wrap items-center gap-2">
             <dt className="sr-only">Crew</dt>
             <dd className="text-ink tabular">{view.confirmedCount} of {view.shift.capacity} places filled</dd>
@@ -92,7 +92,7 @@ export default async function ShiftDetailPage({ params }: { params: Promise<{ id
       </dl>
 
       {view.isGap && view.causes.length > 0 && (
-        <p className="rounded-xl bg-pink-tint px-4 py-3 text-sm font-semibold text-pink-text">
+        <p className="rounded-xl bg-orange-tint px-4 py-3 text-sm font-semibold text-orange-text">
           {view.causes.join(". ")}.
         </p>
       )}

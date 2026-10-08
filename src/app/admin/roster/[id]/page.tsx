@@ -36,17 +36,17 @@ export default async function AdminShiftPage({ params }: { params: Promise<{ id:
 
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-start gap-4">
-          <span className={cn("flex size-14 shrink-0 items-center justify-center rounded-2xl", view.kind === "WAREHOUSE" ? "bg-green-tint text-green-deep" : "bg-blue-tint text-blue-text")}>
+          <span className={cn("flex size-14 shrink-0 items-center justify-center rounded-2xl", view.kind === "WAREHOUSE" ? "bg-green-tint text-green-deep" : "bg-sky-tint text-sky-text")}>
             <ShiftKindIcon kind={view.kind} className="size-7" />
           </span>
           <div>
             <p className="eyebrow">{relativeDay(view.iso, today)}</p>
             <h1 className="mt-1 text-3xl text-ink">{view.shift.template.name}</h1>
             <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-ink-soft">
-              <span className="inline-flex items-center gap-1.5"><Clock className="size-4 text-green-text" aria-hidden />{formatDayLong(view.iso)}, <span className="tabular">{formatTimeRange(view.shift.startTime, view.shift.endTime)}</span></span>
-              <span className="inline-flex items-center gap-1.5"><MapPin className="size-4 text-green-text" aria-hidden />{view.location}</span>
-              {view.shift.template.workingWith && <span className="inline-flex items-center gap-1.5"><UserRound className="size-4 text-green-text" aria-hidden />With {view.shift.template.workingWith}</span>}
-              {donors.length > 0 && <span className="inline-flex items-center gap-1.5"><Store className="size-4 text-green-text" aria-hidden />{donors.map((d) => d.name).join(", ")}</span>}
+              <span className="inline-flex items-center gap-1.5"><Clock className="size-4 text-sky" aria-hidden />{formatDayLong(view.iso)}, <span className="tabular">{formatTimeRange(view.shift.startTime, view.shift.endTime)}</span></span>
+              <span className="inline-flex items-center gap-1.5"><MapPin className="size-4 text-sky" aria-hidden />{view.location}</span>
+              {view.shift.template.workingWith && <span className="inline-flex items-center gap-1.5"><UserRound className="size-4 text-sky" aria-hidden />With {view.shift.template.workingWith}</span>}
+              {donors.length > 0 && <span className="inline-flex items-center gap-1.5"><Store className="size-4 text-sky" aria-hidden />{donors.map((d) => d.name).join(", ")}</span>}
             </p>
           </div>
         </div>
@@ -91,8 +91,8 @@ export default async function AdminShiftPage({ params }: { params: Promise<{ id:
           )}
 
           {view.released.length > 0 && (
-            <div className="rounded-2xl border border-pink/30 bg-pink-tint/50 p-4">
-              <p className="text-sm font-bold text-pink-text">Released from this shift</p>
+            <div className="rounded-2xl border border-orange/50 bg-orange-tint/50 p-4">
+              <p className="text-sm font-bold text-orange-text">Released from this shift</p>
               <ul className="mt-2 flex flex-col gap-1.5">
                 {view.released.map((r) => (
                   <li key={r.id} className="flex items-center gap-2 text-sm text-ink">
@@ -111,8 +111,8 @@ export default async function AdminShiftPage({ params }: { params: Promise<{ id:
         <aside className="flex flex-col gap-3 lg:col-span-2" aria-labelledby="add-h">
           <h2 id="add-h" className="text-2xl text-ink">{view.isGap ? "Find cover" : "Add a volunteer"}</h2>
           {pushedTo.length > 0 && (
-            <p className="flex items-start gap-2 rounded-xl bg-pink-tint/60 px-3 py-2.5 text-sm text-ink">
-              <Smartphone className="mt-0.5 size-4 shrink-0 text-pink-text" aria-hidden />
+            <p className="flex items-start gap-2 rounded-xl bg-orange-tint/60 px-3 py-2.5 text-sm text-ink">
+              <Smartphone className="mt-0.5 size-4 shrink-0 text-orange-text" aria-hidden />
               <span>Last-minute notification sent {formatInstant(pushes[0].createdAt)} to {pushedTo.join(", ")}.</span>
             </p>
           )}

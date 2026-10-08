@@ -49,7 +49,7 @@ export function VolunteerFilters() {
         {TYPE.map(([v, l]) => {
           const active = (sp.get("type") ?? "all") === v;
           return (
-            <button key={v} type="button" role="tab" aria-selected={active} onClick={() => set("type", v === "all" ? "" : v)} className={cn("h-10 rounded-full border px-4 text-sm font-semibold transition-colors", active ? "border-green bg-green-tint text-green-deep" : "border-border bg-card text-muted-foreground hover:text-ink")}>
+            <button key={v} type="button" role="tab" aria-selected={active} onClick={() => set("type", v === "all" ? "" : v)} className={cn("h-10 rounded-full border px-4 text-sm font-semibold transition-colors", active ? "border-teal bg-teal-tint text-teal-deep" : "border-border bg-card text-muted-foreground hover:text-ink")}>
               {l}
             </button>
           );

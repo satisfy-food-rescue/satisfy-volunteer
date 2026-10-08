@@ -38,7 +38,7 @@ export function StatTile({
   );
   const cls = "flex flex-col rounded-2xl border border-border bg-card p-4 shadow-sm";
   return href ? (
-    <Link href={href} className={cn(cls, "transition-colors hover:border-green")}>{body}</Link>
+    <Link href={href} className={cn(cls, "transition-colors hover:border-teal/60")}>{body}</Link>
   ) : (
     <div className={cls}>{body}</div>
   );

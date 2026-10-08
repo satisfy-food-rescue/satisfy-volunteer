@@ -39,15 +39,15 @@ export function ShiftCard({
     <Link
       href={`/app/shifts/${view.shift.id}`}
       className={cn(
-        "group flex items-stretch gap-3 rounded-2xl border bg-card p-4 shadow-sm transition-colors hover:border-green",
+        "group flex items-stretch gap-3 rounded-2xl border bg-card p-4 shadow-sm transition-colors hover:border-teal/60",
         mine ? "border-green/60" : "border-border",
-        view.isGap && !mine && "border-pink/40",
+        view.isGap && !mine && "border-orange/60",
       )}
     >
       <span
         className={cn(
           "flex w-11 shrink-0 items-center justify-center rounded-xl",
-          view.kind === "WAREHOUSE" ? "bg-green-tint text-green-deep" : "bg-blue-tint text-blue-text",
+          view.kind === "WAREHOUSE" ? "bg-green-tint text-green-deep" : "bg-sky-tint text-sky-text",
         )}
       >
         <ShiftKindIcon kind={view.kind} className="size-6" />

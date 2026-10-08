@@ -62,7 +62,7 @@ export default async function AdminDashboard() {
         <section className="flex flex-col gap-3 lg:col-span-3" aria-labelledby="today-h">
           <div className="flex items-baseline justify-between">
             <h2 id="today-h" className="text-2xl text-ink">Today&apos;s roster</h2>
-            <Link href="/admin/roster" className="text-sm font-semibold text-green-text hover:underline">Full roster</Link>
+            <Link href="/admin/roster" className="text-sm font-semibold text-teal hover:underline">Full roster</Link>
           </div>
           {todays.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-border bg-card p-6 text-center text-muted-foreground">
@@ -94,7 +94,7 @@ export default async function AdminDashboard() {
           <section className="flex flex-col gap-3" aria-labelledby="training-h">
             <div className="flex items-baseline justify-between">
               <h2 id="training-h" className="text-2xl text-ink">Training attention</h2>
-              <Link href="/admin/training?tab=people" className="text-sm font-semibold text-green-text hover:underline">All</Link>
+              <Link href="/admin/training?tab=people" className="text-sm font-semibold text-teal hover:underline">All</Link>
             </div>
             <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
               {attention.slice(0, 7).map(({ v, statuses, summary }) => {
@@ -122,7 +122,7 @@ export default async function AdminDashboard() {
           <section className="flex flex-col gap-3" aria-labelledby="apps-h">
             <div className="flex items-baseline justify-between">
               <h2 id="apps-h" className="text-2xl text-ink">Applications</h2>
-              <Link href="/admin/applications" className="text-sm font-semibold text-green-text hover:underline">Review</Link>
+              <Link href="/admin/applications" className="text-sm font-semibold text-teal hover:underline">Review</Link>
             </div>
             <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
               {applications.map((a) => (
@@ -147,7 +147,7 @@ export default async function AdminDashboard() {
               {sessions.map((s) => (
                 <li key={s.id}>
                   <Link href={`/admin/training/sessions/${s.id}`} className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted">
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-green-tint-soft text-green-text"><Clock className="size-4" aria-hidden /></span>
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-teal-tint-soft text-teal"><Clock className="size-4" aria-hidden /></span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-bold text-ink">{s.module.name}</span>
                       <span className="block text-xs text-muted-foreground tabular">{formatInstant(s.startsAt)} · {s.rsvps.filter((r) => r.status === "GOING").length}/{s.capacity} booked</span>

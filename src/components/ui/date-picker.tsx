@@ -62,11 +62,11 @@ export function DatePicker({
         aria-label={ariaLabel}
         aria-describedby={valueId}
         className={cn(
-          "flex h-11 w-full items-center gap-2 rounded-lg border border-input bg-card px-3 text-left text-base text-ink transition-colors outline-none hover:border-green/60 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 data-popup-open:border-ring",
+          "flex h-11 w-full items-center gap-2 rounded-lg border border-input bg-card px-3 text-left text-base text-ink transition-colors outline-none hover:border-teal/50 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 data-popup-open:border-ring",
           className
         )}
       >
-        <CalendarDays className="size-4 shrink-0 text-green-text" aria-hidden />
+        <CalendarDays className="size-4 shrink-0 text-sky" aria-hidden />
         <span id={valueId} className={cn("flex-1 truncate", !value && "text-muted-foreground")}>
           {value ? label(value) : placeholder}
         </span>

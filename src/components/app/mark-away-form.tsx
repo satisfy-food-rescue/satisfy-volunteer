@@ -72,8 +72,8 @@ export function MarkAwayForm({
             <label
               key={r.value}
               className={cn(
-                "flex min-h-14 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border px-2 py-2 text-sm font-bold transition-colors has-focus-visible:outline-3 has-focus-visible:outline-green",
-                reason === r.value ? "border-green bg-green-tint text-green-deep" : "border-border bg-card text-ink hover:bg-muted",
+                "flex min-h-14 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border px-2 py-2 text-sm font-bold transition-colors has-focus-visible:outline-3 has-focus-visible:outline-ring",
+                reason === r.value ? "border-teal bg-teal-tint text-teal-deep" : "border-border bg-card text-ink hover:bg-muted",
               )}
             >
               <input type="radio" name="reason" value={r.value} checked={reason === r.value} onChange={() => setReason(r.value)} className="sr-only" />

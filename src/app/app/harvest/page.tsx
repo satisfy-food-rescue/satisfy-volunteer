@@ -1,9 +1,10 @@
-import { Apple, MapPin, Sprout, Users } from "lucide-react";
+import { MapPin, Users } from "lucide-react";
 import { requireVolunteer } from "@/lib/session";
 import { db } from "@/lib/db";
 import { dateToISO, formatDayLong, formatTimeRange, isoToDate, todayISO } from "@/lib/dates";
 import { HarvestPoolToggle, HarvestRsvp } from "@/components/app/harvest-controls";
 import { AvatarBadge } from "@/components/shared/avatar-badge";
+import { FoodIcon } from "@/components/brand/logo";
 import { cn } from "@/lib/utils";
 
 export const metadata = { title: "Harvest pool" };
@@ -25,9 +26,7 @@ export default async function HarvestPage() {
 
       <section className={cn("rounded-2xl p-5", me.inHarvestPool ? "bg-green-tint-soft ring-1 ring-green/40" : "bg-card ring-1 ring-border")}>
         <div className="flex items-start gap-3">
-          <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-white text-green-text ring-1 ring-green/30">
-            <Sprout className="size-6" aria-hidden />
-          </span>
+          <FoodIcon kind="broccoli" className="size-12" />
           <div>
             <p className="font-bold text-ink">{me.inHarvestPool ? "You're in the pool" : "Join the harvest pool"}</p>
             <p className="mt-1 text-sm text-ink-soft">
@@ -52,15 +51,15 @@ export default async function HarvestPage() {
               const mine = c.rsvps.find((r) => r.volunteerId === me.id)?.status ?? null;
               return (
                 <li key={c.id} className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-                  <div className="flex items-center gap-3 bg-green-deep px-4 py-3 text-white">
-                    <Apple className="size-6 text-green" aria-hidden />
+                  <div className="flex items-center gap-3 bg-teal px-4 py-3 text-white">
+                    <FoodIcon kind="apple" className="size-9 rounded-full ring-2 ring-white/80" />
                     <div>
                       <p className="font-bold">{c.title}</p>
                       <p className="text-sm text-white/80 tabular">{formatDayLong(iso)}, {formatTimeRange(c.startTime, c.endTime)}</p>
                     </div>
                   </div>
                   <div className="flex flex-col gap-3 p-4">
-                    <p className="inline-flex items-start gap-1.5 text-sm text-ink-soft"><MapPin className="mt-0.5 size-4 shrink-0 text-green-text" aria-hidden />{c.location} · with {c.partner}</p>
+                    <p className="inline-flex items-start gap-1.5 text-sm text-ink-soft"><MapPin className="mt-0.5 size-4 shrink-0 text-sky" aria-hidden />{c.location} · with {c.partner}</p>
                     <p className="text-ink">{c.description}</p>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Users className="size-4" aria-hidden />

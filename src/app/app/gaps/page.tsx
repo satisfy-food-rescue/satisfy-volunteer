@@ -31,7 +31,7 @@ export default async function GapsPage() {
       </div>
 
       {list.length === 0 ? (
-        <EmptyState icon={Sparkles} title="Everything is covered" description="No open gaps in the next four weeks. Check back after the weekend." action={<Link href="/app/shifts" className="font-semibold text-green-text hover:underline">Browse all shifts</Link>} />
+        <EmptyState icon={Sparkles} title="Everything is covered" description="No open gaps in the next four weeks. Check back after the weekend." action={<Link href="/app/shifts" className="font-semibold text-teal hover:underline">Browse all shifts</Link>} />
       ) : (
         [...byDate.entries()].map(([iso, items]) => (
           <section key={iso} aria-labelledby={`gap-${iso}`}>
@@ -44,15 +44,15 @@ export default async function GapsPage() {
                 const elig = eligibilityFor(me, view.kind, training.statuses);
                 const mine = view.confirmed.find((a) => a.volunteerId === me.id) ?? null;
                 return (
-                  <article key={view.shift.id} className={cn("rounded-2xl border bg-card p-4 shadow-sm", mine ? "border-green/60" : "border-pink/40")}>
+                  <article key={view.shift.id} className={cn("rounded-2xl border bg-card p-4 shadow-sm", mine ? "border-green/60" : "border-orange/60")}>
                     <div className="flex items-start gap-3">
-                      <span className={view.kind === "WAREHOUSE" ? "flex size-11 shrink-0 items-center justify-center rounded-xl bg-green-tint text-green-deep" : "flex size-11 shrink-0 items-center justify-center rounded-xl bg-blue-tint text-blue-text"}>
+                      <span className={view.kind === "WAREHOUSE" ? "flex size-11 shrink-0 items-center justify-center rounded-xl bg-green-tint text-green-deep" : "flex size-11 shrink-0 items-center justify-center rounded-xl bg-sky-tint text-sky-text"}>
                         <ShiftKindIcon kind={view.kind} className="size-6" />
                       </span>
                       <div className="min-w-0 flex-1">
                         <Link href={`/app/shifts/${view.shift.id}`} className="block font-bold text-ink hover:underline">{view.shift.template.name}</Link>
                         <p className="text-sm text-muted-foreground tabular">{formatTimeRange(view.shift.startTime, view.shift.endTime)} · {view.location}</p>
-                        <p className="mt-1.5 inline-flex items-start gap-1.5 text-sm font-semibold text-pink-text">
+                        <p className="mt-1.5 inline-flex items-start gap-1.5 text-sm font-semibold text-orange-text">
                           <HandHelping className="mt-0.5 size-4 shrink-0" aria-hidden />
                           <span>Needs {view.shortBy} more. {view.causes[0]}.</span>
                         </p>

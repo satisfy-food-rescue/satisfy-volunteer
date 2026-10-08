@@ -6,27 +6,24 @@ import { EMAIL_KIND_LABEL, type EmailKind } from "@/lib/domain";
 import { PageHeader } from "@/components/shared/page-header";
 import { Chip } from "@/components/shared/status-chip";
 import Link from "next/link";
+import { BrandFooter, Logo } from "@/components/brand/logo";
 
 export const metadata = { title: "Settings" };
 
+// The 2026 brand refresh palette and the role each colour plays in the app.
 const SWATCHES = [
-  ["Satisfy green", "--brand-green", "Primary. Fills, buttons, active states"],
-  ["Green text", "--green-text", "Links, icons, text on white (AA)"],
-  ["Deep green", "--green-deep", "Text on green fills"],
-  ["Pale green", "--green-tint", "Tinted panels and badges"],
-  ["Pink", "--pink-fill", "One high-emphasis action: cover a gap"],
-  ["Ink", "--ink", "Headings and body text"],
-  ["Canvas", "--canvas", "Page background"],
+  ["Satisfy Green", "--brand-green", "#00A651", "Logo, success, warehouse shifts"],
+  ["Blue/Teal", "--brand-teal", "#106379", "Buttons, links, selection, navigation"],
+  ["Orange", "--brand-orange", "#E08C3C", "Needs cover, last-minute, badges"],
+  ["Light Blue", "--brand-light-blue", "#4395A2", "Driver shifts, info, focus rings"],
 ];
 
-// Secondary colours from the Brand Guidelines, used for charts and avatars.
-const SECONDARY = [
-  ["Yellow", "--brand-yellow"],
-  ["Orange", "--brand-orange"],
-  ["Pink", "--brand-pink"],
-  ["Dark blue", "--brand-dark-blue"],
-  ["Light blue", "--brand-light-blue"],
-  ["Teal", "--brand-teal"],
+// Tints printed in the brand refresh, used in the footer ribbons and food icons.
+const TINTS = [
+  ["Green 50%", "--brand-green-50"],
+  ["Green 75%", "--brand-green-75"],
+  ["Blue/Teal 90%", "--brand-teal-90"],
+  ["Orange 50%", "--brand-orange-50"],
 ];
 
 export default async function SettingsPage() {
@@ -41,34 +38,44 @@ export default async function SettingsPage() {
 
       <section className="rounded-2xl border border-border bg-card p-5" aria-labelledby="brand-h">
         <div className="flex items-start gap-3">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-green-tint text-green-deep"><Palette className="size-5" aria-hidden /></span>
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-teal-tint text-teal"><Palette className="size-5" aria-hidden /></span>
           <div className="min-w-0 flex-1">
             <h2 id="brand-h" className="text-2xl text-ink">Brand colours and fonts</h2>
-            <p className="mt-1 text-ink-soft">The volunteer app and this admin follow the Satisfy Food Rescue Brand Guidelines. Every colour, radius and typeface lives in one theme file, so a future re-skin is a single-file change: update the values, and every screen, chip, chart and email preview follows. No component contains a hard-coded colour.</p>
+            <p className="mt-1 text-ink-soft">The volunteer app and this admin follow the 2026 Satisfy Food Rescue brand refresh. Every colour, radius and typeface lives in one theme file, so a future re-skin is a single-file change: update the values, and every screen, chip, chart and email preview follows. No component contains a hard-coded colour.</p>
             <p className="mt-2 text-sm text-muted-foreground">File: <code className="rounded bg-muted px-1.5 py-0.5 text-xs">src/app/globals.css</code> · fonts in <code className="rounded bg-muted px-1.5 py-0.5 text-xs">src/app/layout.tsx</code></p>
           </div>
         </div>
-        <ul className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {SWATCHES.map(([name, v, use]) => (
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          <div className="flex items-center justify-center rounded-xl bg-teal p-6"><Logo tone="white" className="h-24" /></div>
+          <div className="flex items-center justify-center rounded-xl border border-border p-6"><Logo className="h-24" /></div>
+        </div>
+        <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {SWATCHES.map(([name, v, hex, use]) => (
             <li key={v} className="flex items-center gap-3 rounded-xl border border-border p-3">
-              <span className="size-10 shrink-0 rounded-lg ring-1 ring-black/10" style={{ background: `var(${v})` }} aria-hidden />
-              <span className="min-w-0"><span className="block text-sm font-bold text-ink">{name}</span><span className="block truncate text-xs text-muted-foreground">{use}</span></span>
+              <span className="size-11 shrink-0 rounded-full ring-1 ring-black/10" style={{ background: `var(${v})` }} aria-hidden />
+              <span className="min-w-0">
+                <span className="block text-sm font-bold text-ink">{name} <span className="font-semibold text-muted-foreground tabular">{hex}</span></span>
+                <span className="block text-xs text-muted-foreground">{use}</span>
+              </span>
             </li>
           ))}
         </ul>
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-border p-3">
-          <span className="eyebrow">Secondary</span>
-          {SECONDARY.map(([name, v]) => (
+          <span className="eyebrow">Tints</span>
+          {TINTS.map(([name, v]) => (
             <span key={v} className="inline-flex items-center gap-2 text-sm text-ink">
               <span className="size-4 shrink-0 rounded-full ring-1 ring-black/10" style={{ background: `var(${v})` }} aria-hidden />
               {name}
             </span>
           ))}
         </div>
-        <div className="mt-4 flex flex-wrap gap-4 rounded-xl bg-muted/60 p-4">
-          <div className="flex items-center gap-3"><Type className="size-5 text-green-text" aria-hidden /><div><p className="font-display font-bold text-xl text-ink">Montserrat</p><p className="text-xs text-muted-foreground">Headings and subheadings, the logo font</p></div></div>
-          <div className="flex items-center gap-3"><Type className="size-5 text-green-text" aria-hidden /><div><p className="text-xl font-semibold text-ink">Roboto Slab</p><p className="text-xs text-muted-foreground">Body, stand-in for Stag until a web licence is in place</p></div></div>
-          <div className="flex items-center gap-3"><ShieldCheck className="size-5 text-green-text" aria-hidden /><div><p className="font-semibold text-ink">WCAG AA checked</p><p className="text-xs text-muted-foreground">16px minimum body, 44px tap targets, status never colour-only</p></div></div>
+        <div className="mt-3 overflow-hidden rounded-xl border border-border pt-3">
+          <p className="eyebrow px-3">Footer</p>
+          <BrandFooter className="pb-3 pt-1" />
+        </div>
+        <div className="mt-4 flex flex-wrap gap-x-8 gap-y-4 rounded-xl bg-muted/60 p-4">
+          <div className="flex items-center gap-3"><Type className="size-5 text-teal" aria-hidden /><div><p className="font-display text-xl font-bold text-ink">Montserrat</p><p className="text-xs text-muted-foreground">Headings, labels and body: the logo font, as used in the brand refresh</p></div></div>
+          <div className="flex items-center gap-3"><ShieldCheck className="size-5 text-teal" aria-hidden /><div><p className="font-semibold text-ink">WCAG AA checked</p><p className="text-xs text-muted-foreground">16px minimum body, 44px tap targets, status never colour-only</p></div></div>
         </div>
       </section>
 
@@ -85,7 +92,7 @@ export default async function SettingsPage() {
         </div>
         <div className="mt-5 grid gap-4 md:grid-cols-2">
           <div className="rounded-xl border border-border p-4">
-            <p className="font-display text-xs font-bold uppercase tracking-wide text-green-text">Infoodle to this app</p>
+            <p className="font-display text-xs font-bold uppercase tracking-wide text-teal">Infoodle to this app</p>
             <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-ink">
               <li>New sign-up form submissions appear in Applications automatically.</li>
               <li>Approved applicants keep their Infoodle record id, so nothing is double-entered.</li>
@@ -93,7 +100,7 @@ export default async function SettingsPage() {
             </ul>
           </div>
           <div className="rounded-xl border border-border p-4">
-            <p className="font-display text-xs font-bold uppercase tracking-wide text-green-text">This app to Infoodle</p>
+            <p className="font-display text-xs font-bold uppercase tracking-wide text-teal">This app to Infoodle</p>
             <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-ink">
               <li>Phone, emergency contact and availability edits made by volunteers.</li>
               <li>Volunteer status (active, inactive) and role tags.</li>
@@ -117,7 +124,7 @@ export default async function SettingsPage() {
             const count = templates.find((t) => t.kind === k)?._count._all ?? 0;
             return (
               <li key={k}>
-                <Link href={`/admin/outbox?kind=${k}`} className="flex items-center justify-between gap-2 rounded-xl border border-border px-3 py-2.5 text-sm hover:border-green">
+                <Link href={`/admin/outbox?kind=${k}`} className="flex items-center justify-between gap-2 rounded-xl border border-border px-3 py-2.5 text-sm hover:border-teal/60">
                   <span className="font-semibold text-ink">{EMAIL_KIND_LABEL[k]}</span>
                   <span className="text-xs text-muted-foreground tabular">{count} in Outbox</span>
                 </Link>

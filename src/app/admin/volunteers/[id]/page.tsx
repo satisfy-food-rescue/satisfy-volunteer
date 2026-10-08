@@ -68,9 +68,9 @@ export default async function VolunteerProfilePage({ params, searchParams }: { p
         <div className="min-w-0 flex-1">
           <h1 className="text-3xl text-ink">{fullName(v)}</h1>
           <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink-soft">
-            {v.suburb && <span className="inline-flex items-center gap-1"><MapPin className="size-4 text-green-text" aria-hidden />{v.suburb}{v.birthYear ? `, ${new Date().getFullYear() - v.birthYear}` : ""}</span>}
-            {v.phone && <span className="inline-flex items-center gap-1 tabular"><Phone className="size-4 text-green-text" aria-hidden />{v.phone}</span>}
-            <span className="inline-flex items-center gap-1"><Mail className="size-4 text-green-text" aria-hidden />{v.email}</span>
+            {v.suburb && <span className="inline-flex items-center gap-1"><MapPin className="size-4 text-sky" aria-hidden />{v.suburb}{v.birthYear ? `, ${new Date().getFullYear() - v.birthYear}` : ""}</span>}
+            {v.phone && <span className="inline-flex items-center gap-1 tabular"><Phone className="size-4 text-sky" aria-hidden />{v.phone}</span>}
+            <span className="inline-flex items-center gap-1"><Mail className="size-4 text-sky" aria-hidden />{v.email}</span>
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
             <TrainingChip status={summary.worst} size="sm" />
@@ -196,7 +196,7 @@ export default async function VolunteerProfilePage({ params, searchParams }: { p
             <h2 id="slot-h" className="text-xl text-ink">Regular slot</h2>
             {v.regularSlots.length === 0 ? <p className="mt-2 text-sm text-muted-foreground">No regular slot. Books one-off shifts.</p> : (
               <ul className="mt-2 flex flex-col gap-1.5">
-                {v.regularSlots.map((s) => <li key={s.id} className="rounded-xl bg-green-tint-soft px-3 py-2 text-sm"><span className="font-bold text-ink">{WEEKDAY_LONG[s.weekday]}s</span> · {s.template.name} · <span className="tabular">{formatTimeRange(s.template.startTime, s.template.endTime)}</span></li>)}
+                {v.regularSlots.map((s) => <li key={s.id} className="rounded-xl bg-teal-tint-soft px-3 py-2 text-sm"><span className="font-bold text-ink">{WEEKDAY_LONG[s.weekday]}s</span> · {s.template.name} · <span className="tabular">{formatTimeRange(s.template.startTime, s.template.endTime)}</span></li>)}
               </ul>
             )}
             {upcoming.length > 0 && (
@@ -220,13 +220,13 @@ export default async function VolunteerProfilePage({ params, searchParams }: { p
               </ul>
             )}
             <details className="mt-3">
-              <summary className="cursor-pointer text-sm font-semibold text-green-text">Record an absence for {v.firstName}</summary>
+              <summary className="cursor-pointer text-sm font-semibold text-teal">Record an absence for {v.firstName}</summary>
               <div className="mt-3"><RecordAbsenceForm today={today} defaultVolunteerId={v.id} volunteers={[{ id: v.id, name: fullName(v) }]} /></div>
             </details>
           </section>
 
           <div className="flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-sm">
-            <RefreshCw className="size-4 text-green-text" aria-hidden />
+            <RefreshCw className="size-4 text-sky" aria-hidden />
             <span className="text-ink">Infoodle {v.infoodleId}</span>
             <span className="ml-auto text-xs text-muted-foreground">{v.infoodleSyncedAt ? `synced ${formatInstant(v.infoodleSyncedAt)}` : "not synced"}</span>
           </div>

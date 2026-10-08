@@ -6,7 +6,7 @@ import { db } from "@/lib/db";
 import { formatInstant, formatInstantTime } from "@/lib/dates";
 import { EMAIL_KIND_LABEL, type EmailKind } from "@/lib/domain";
 import { ORG } from "@/lib/brand";
-import { LogoMark } from "@/components/brand/logo";
+import { BrandFooter, Logo, LogoIcon } from "@/components/brand/logo";
 
 export const metadata = { title: "Message preview" };
 
@@ -33,12 +33,12 @@ export default async function EmailPreviewPage({ params }: { params: Promise<{ i
 
       {push ? (
         // Rendered like a lock-screen notification. Tapping opens the shift in the app.
-        <div className="rounded-2xl border border-border bg-green-deep p-6 sm:p-10">
+        <div className="rounded-2xl bg-teal-deep p-6 sm:p-10">
           <div className="mx-auto max-w-[24rem]">
             <p className="text-center font-display text-5xl font-bold text-white tabular">{formatInstantTime(e.createdAt)}</p>
             <div className="mt-6 rounded-2xl bg-white/90 p-3.5 shadow-lg backdrop-blur">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <LogoMark size={20} />
+                <span className="flex size-5 items-center justify-center rounded-md bg-teal"><LogoIcon tone="white" className="size-3.5" /></span>
                 <span className="font-semibold uppercase tracking-wide">Satisfy</span>
                 <span className="ml-auto">now</span>
               </div>
@@ -56,12 +56,8 @@ export default async function EmailPreviewPage({ params }: { params: Promise<{ i
       /* Rendered like the real email: brand header, one call to action, quiet footer. */
       <div className="rounded-2xl border border-border bg-app-backdrop p-4 sm:p-8">
         <div className="mx-auto max-w-[36rem] overflow-hidden rounded-xl bg-white shadow-sm">
-          <div className="flex items-center gap-3 border-b-4 border-green px-6 py-5">
-            <LogoMark size={44} />
-            <div className="leading-tight">
-              <p className="font-display text-base font-bold tracking-[0.08em] text-ink">SATISFY</p>
-              <p className="text-[0.62rem] font-display font-bold uppercase tracking-[0.2em] text-green-text">food rescue</p>
-            </div>
+          <div className="flex justify-center bg-teal px-6 py-6">
+            <Logo tone="white" className="h-16" />
           </div>
           <div className="px-6 py-6 text-[1.05rem] leading-relaxed text-ink">
             {paragraphs.map((p, i) => (
@@ -69,11 +65,12 @@ export default async function EmailPreviewPage({ params }: { params: Promise<{ i
             ))}
             {e.ctaLabel && e.ctaHref && (
               <p className="my-6">
-                <Link href={e.ctaHref} className="inline-block rounded-full bg-green-fill px-6 py-3 font-display font-bold text-white no-underline hover:bg-green-fill-hover">{e.ctaLabel}</Link>
+                <Link href={e.ctaHref} className="inline-block rounded-full bg-teal px-6 py-3 font-display font-bold text-white no-underline hover:bg-teal-deep">{e.ctaLabel}</Link>
               </p>
             )}
           </div>
-          <div className="bg-canvas px-6 py-4 text-xs leading-relaxed text-muted-foreground">
+          <BrandFooter className="pt-2" />
+          <div className="px-6 pb-5 pt-3 text-xs leading-relaxed text-muted-foreground">
             <p>{ORG.name} · {ORG.base}</p>
             <p>You are receiving this because you volunteer with Satisfy. Manage your details in the volunteer app.</p>
           </div>

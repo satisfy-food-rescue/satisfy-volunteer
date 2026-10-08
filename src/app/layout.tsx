@@ -1,21 +1,14 @@
 import type { Metadata, Viewport } from "next";
-import { Montserrat, Roboto_Slab } from "next/font/google";
+import { Montserrat } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
 
-// Fonts are theme tokens too: swap these two imports to rebrand the type.
-// Brand Guidelines: Montserrat (the logo font) for headings and subheadings,
-// Stag for body text. Stag is a commercial face with no web licence yet, so
-// Roboto Slab stands in; with a licensed file, swap it for next/font/local.
-const headline = Montserrat({
-  variable: "--font-headline",
-  subsets: ["latin"],
-  display: "swap",
-});
-
-const body = Roboto_Slab({
-  variable: "--font-body",
+// Fonts are theme tokens too: swap this import to rebrand the type. The 2026
+// brand refresh sets everything in Montserrat, the logo font, so headings,
+// labels and body text share one family.
+const brand = Montserrat({
+  variable: "--font-brand",
   subsets: ["latin"],
   display: "swap",
 });
@@ -29,14 +22,14 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#00a551",
+  themeColor: "#106379",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang="en-NZ"
-      className={`${headline.variable} ${body.variable} h-full antialiased`}
+      className={`${brand.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
         <TooltipProvider>{children}</TooltipProvider>
