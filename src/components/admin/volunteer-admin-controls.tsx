@@ -59,7 +59,7 @@ export function RolesEditor({ volunteerId, initial }: { volunteerId: string; ini
         {VOLUNTEER_ROLES.map((r) => {
           const on = roles.includes(r);
           return (
-            <label key={r} className={cn("flex h-10 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-sm font-semibold transition-colors has-focus-visible:outline-3 has-focus-visible:outline-green", on ? "border-green bg-green-tint text-green-deep" : "border-border bg-card text-muted-foreground hover:text-ink")}>
+            <label key={r} className={cn("flex h-10 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-sm font-semibold transition-colors has-focus-visible:outline-3 has-focus-visible:outline-ring", on ? "border-teal bg-teal-tint text-teal-deep" : "border-border bg-card text-muted-foreground hover:text-ink")}>
               <input type="checkbox" className="sr-only" checked={on} onChange={() => setRoles(on ? roles.filter((x) => x !== r) : VOLUNTEER_ROLES.filter((x) => x === r || roles.includes(x)))} />
               {on && <Check className="size-4" aria-hidden />}
               {ROLE_LABEL[r]}
@@ -181,7 +181,7 @@ export function ContactLogForm({ volunteerId, firstName }: { volunteerId: string
     >
       <div className="flex gap-1.5" role="radiogroup" aria-label="Entry type">
         {([["CALL", "Log a call", PhoneCall], ["NOTE", "Add a note", MessageSquareText]] as const).map(([k, label, Icon]) => (
-          <button key={k} type="button" role="radio" aria-checked={kind === k} onClick={() => setKind(k)} className={cn("flex h-9 items-center gap-1.5 rounded-full border px-3 text-sm font-semibold transition-colors", kind === k ? "border-green bg-green-tint text-green-deep" : "border-border text-muted-foreground hover:text-ink")}>
+          <button key={k} type="button" role="radio" aria-checked={kind === k} onClick={() => setKind(k)} className={cn("flex h-9 items-center gap-1.5 rounded-full border px-3 text-sm font-semibold transition-colors", kind === k ? "border-teal bg-teal-tint text-teal-deep" : "border-border text-muted-foreground hover:text-ink")}>
             <Icon className="size-4" aria-hidden /> {label}
           </button>
         ))}
@@ -241,7 +241,7 @@ export function BookInitialVisitButton({
           {openSlots.length > 0 && (
             <div className="flex gap-1.5" role="radiogroup" aria-label="Visit time">
               {([["new", "A new time"], ["existing", `An open slot (${openSlots.length})`]] as const).map(([k, label]) => (
-                <button key={k} type="button" role="radio" aria-checked={mode === k} onClick={() => setMode(k)} className={cn("h-10 rounded-full border px-4 text-sm font-semibold transition-colors", mode === k ? "border-green bg-green-tint text-green-deep" : "border-border text-muted-foreground hover:text-ink")}>
+                <button key={k} type="button" role="radio" aria-checked={mode === k} onClick={() => setMode(k)} className={cn("h-10 rounded-full border px-4 text-sm font-semibold transition-colors", mode === k ? "border-teal bg-teal-tint text-teal-deep" : "border-border text-muted-foreground hover:text-ink")}>
                   {label}
                 </button>
               ))}

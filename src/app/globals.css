@@ -2,25 +2,27 @@
    Satisfy Food Rescue volunteer app - THEME FILE
    --------------------------------------------------------------------------
    Every colour, radius and font used anywhere in the app is defined here as a
-   CSS variable and exposed to Tailwind through @theme. Values follow the
-   Satisfy Food Rescue Brand Guidelines: primary green #00A551 plus the
-   secondary suite (yellow, orange, pink, dark blue, light blue, teal). To
-   re-skin the app, change the values in the ":root" block below and swap the
-   two font imports in src/app/layout.tsx. Nothing else needs touching.
-   Components never use raw hex values.
+   CSS variable and exposed to Tailwind through @theme. Values follow the 2026
+   Satisfy Food Rescue brand refresh:
 
-   Contrast notes (WCAG AA, checked numerically):
-   - Brand green #00A551 is too light for text on white (3.2:1) and for white
-     text on it, so it stays a decorative fill (bars, rings, focus outlines).
-     Buttons and other fills that carry text use --green-fill (#008543, the
-     brand hue 17% darker) with white text (4.8:1), darkening on hover to
-     #007A3D (5.5:1). Text and icons in green use --green-text (#007A3D, 5.5:1
-     on white, 4.6:1 on the pale tint).
-   - Brand pink #FF0066 with white text is 3.9:1, so fills use --pink-fill
-     (#D6005A, 5.2:1) and pink text uses --pink-text (#B8004D, 5.6:1 on the
-     pink tint). The brand shade stays as a decorative accent (--brand-pink).
-   - The other secondary colours are light or saturated, so each has a pale
-     tint for backgrounds and a darkened text shade (all 6:1 or better).
+     Primary     Satisfy Green #00A651   Blue/Teal  #106379
+     Secondary   Orange        #E08C3C   Light Blue #4395A2
+     Tints       Green 50% and 75%, Blue/Teal 90%, Orange 50%
+
+   Roles in the interface:
+   - Blue/Teal is the working colour: buttons, links, selection, navigation
+     chrome and the admin sidebar. White on it is 6.8:1.
+   - Satisfy Green is the brand and "all good" colour: the logo, success
+     states, warehouse shifts and progress. It is too light for text or for
+     white text on it (3.2:1), so green text uses --green-text (5.6:1).
+   - Orange is for attention: shifts needing cover, last-minute pushes and
+     count badges. White on orange fails AA, so orange fills carry ink text
+     (5.3:1) and orange text uses --orange-text (5.6:1 on its tint).
+   - Light Blue marks driver shifts, info and secondary icons (3.5:1 on
+     white, fine for icons; text uses --sky-text at 7.6:1).
+
+   To re-skin the app, change the values in the ":root" block below and the
+   font import in src/app/layout.tsx. Components never use raw hex values.
    ========================================================================== */
 
 @import "tailwindcss";
@@ -31,9 +33,9 @@
 
 @theme inline {
   /* Fonts (loaded via next/font in layout.tsx, which sets these variables) */
-  --font-sans: var(--font-body);
-  --font-display: var(--font-headline);
-  --font-heading: var(--font-headline);
+  --font-sans: var(--font-brand);
+  --font-display: var(--font-brand);
+  --font-heading: var(--font-brand);
   --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
 
   /* shadcn semantic tokens */
@@ -70,26 +72,24 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  /* Satisfy brand tokens, usable as bg-green, text-green-text, etc. */
+  /* Satisfy brand tokens, usable as bg-teal, text-green-text, etc. */
   --color-green: var(--brand-green);
   --color-green-text: var(--green-text);
   --color-green-deep: var(--green-deep);
-  --color-green-fill: var(--green-fill);
-  --color-green-fill-hover: var(--green-fill-hover);
   --color-green-tint: var(--green-tint);
   --color-green-tint-soft: var(--green-tint-soft);
-  --color-pink: var(--pink-fill);
-  --color-pink-brand: var(--brand-pink);
-  --color-pink-text: var(--pink-text);
-  --color-pink-tint: var(--pink-tint);
-  --color-blue-tint: var(--blue-tint);
-  --color-blue-text: var(--blue-text);
+  --color-teal: var(--brand-teal);
+  --color-teal-deep: var(--teal-deep);
   --color-teal-tint: var(--teal-tint);
-  --color-teal-text: var(--teal-text);
-  --color-yellow-tint: var(--yellow-tint);
-  --color-yellow-text: var(--yellow-text);
-  --color-orange-tint: var(--orange-tint);
+  --color-teal-tint-soft: var(--teal-tint-soft);
+  --color-teal-on: var(--teal-on);
+  --color-orange: var(--brand-orange);
+  --color-orange-hover: var(--orange-hover);
   --color-orange-text: var(--orange-text);
+  --color-orange-tint: var(--orange-tint);
+  --color-sky: var(--brand-light-blue);
+  --color-sky-text: var(--sky-text);
+  --color-sky-tint: var(--sky-tint);
   --color-app-backdrop: var(--app-backdrop);
   --color-ink: var(--ink);
   --color-ink-soft: var(--ink-soft);
@@ -117,53 +117,55 @@
 }
 
 :root {
-  /* ---- Primary brand colour (Brand Guidelines: Green, Pantone 354) ---- */
-  --brand-green: #00a551;
-  --green-tint: #d3f2df;
-  --green-tint-soft: #ebf8f0;
-  --green-text: #007a3d;
-  --green-deep: #00220f;
-  --green-fill: #008543;
-  --green-fill-hover: #007a3d;
+  /* ---- Primary brand colours ---- */
+  --brand-green: #00a651;
+  --brand-teal: #106379;
 
-  /* ---- Secondary brand colours (Brand Guidelines) ---- */
-  --brand-yellow: #ffc000;
-  --brand-orange: #ff9900;
-  --brand-pink: #ff0066;
-  --brand-dark-blue: #000099;
-  --brand-light-blue: #0070c0;
-  --brand-teal: #33cccc;
+  /* ---- Secondary brand colours ---- */
+  --brand-orange: #e08c3c;
+  --brand-light-blue: #4395a2;
 
-  /* Accessible fills, tints and text shades derived from the secondaries */
-  --pink-fill: #d6005a;
-  --pink-text: #b8004d;
-  --pink-tint: #ffe3ee;
-  --blue-tint: #e0eefa;
-  --blue-text: var(--brand-dark-blue);
-  --teal-tint: #d9f5f5;
-  --teal-text: #0b5c5c;
-  --yellow-tint: #fff2cc;
-  --yellow-text: #6b4a00;
-  --orange-tint: #ffebcc;
-  --orange-text: #8a4500;
+  /* ---- Brand tints, as printed in the brand refresh ---- */
+  --brand-green-50: #80d190;
+  --brand-green-75: #40bb6a;
+  --brand-teal-90: #386983;
+  --brand-orange-50: #f0ba84;
 
-  /* ---- Neutrals ---- */
-  --ink: #1c2a22;
-  --ink-soft: #4f5a53;
-  --canvas: #f5faf7;
-  --app-backdrop: #e9f1ec;
+  /* ---- Accessible shades and tints derived from the brand colours ---- */
+  --green-text: #00783b;
+  --green-deep: #005a2c;
+  --green-tint: #dbf2e3;
+  --green-tint-soft: #edf8f1;
+
+  --teal-deep: #0b4a5b;
+  --teal-tint: #dcebef;
+  --teal-tint-soft: #eef5f7;
+  --teal-on: #b8e3c4; /* small text and icons on a teal fill (4.8:1) */
+
+  --orange-hover: #eaa465;
+  --orange-text: #8f4a10;
+  --orange-tint: #fbe9d7;
+
+  --sky-text: #1d5c66;
+  --sky-tint: #dfeff1;
+
+  /* ---- Neutrals, cooled towards the blue/teal ---- */
+  --ink: #10303a;
+  --ink-soft: #48616a;
+  --canvas: #f3f7f8;
+  --app-backdrop: #e3edf0;
 
   /* ---- Status palette ---- */
   --status-good: var(--green-text);
-  --status-good-bg: #dcf3e5;
-  --status-warn: #92400e;
-  --status-warn-bg: var(--yellow-tint);
+  --status-good-bg: var(--green-tint);
+  --status-warn: var(--orange-text);
+  --status-warn-bg: var(--orange-tint);
   --status-bad: #b42318;
   --status-bad-bg: #fee4e2;
-  --status-neutral: #4b5563;
-  --status-neutral-bg: #eef0ee;
-  --status-info: #005a9c;
-  --status-info-bg: var(--blue-tint);
+  --status-neutral: #4b5d64;
+  --status-neutral-bg: #e9eff1;
+  --status-info: var(--sky-text);
+  --status-info-bg: var(--sky-tint);
 
   /* ---- Semantic mapping used by shadcn components ---- */
   --background: var(--canvas);
@@ -172,63 +174,60 @@
   --card-foreground: var(--ink);
   --popover: #ffffff;
   --popover-foreground: var(--ink);
-  --primary: var(--green-fill);
+  --primary: var(--brand-teal);
   --primary-foreground: #ffffff;
-  --primary-hover: var(--green-fill-hover);
-  --secondary: var(--green-tint-soft);
-  --secondary-foreground: var(--green-deep);
-  --muted: #edf3ef;
-  --muted-foreground: #566159;
-  --accent: var(--green-tint-soft);
-  --accent-foreground: var(--green-deep);
+  --primary-hover: var(--teal-deep);
+  --secondary: var(--teal-tint-soft);
+  --secondary-foreground: var(--teal-deep);
+  --muted: #eaf1f3;
+  --muted-foreground: #52676f;
+  --accent: var(--teal-tint-soft);
+  --accent-foreground: var(--teal-deep);
   --destructive: #b42318;
-  --border: #dbe6df;
-  --input: #cbd9d0;
-  --ring: var(--brand-green);
-  --chart-1: var(--brand-green);
-  --chart-2: var(--brand-light-blue);
-  --chart-3: var(--brand-teal);
-  --chart-4: var(--pink-fill);
-  --chart-5: var(--brand-orange);
+  --border: #d6e3e7;
+  --input: #c3d4da;
+  --ring: var(--brand-light-blue);
+  --chart-1: var(--brand-teal);
+  --chart-2: var(--brand-green);
+  --chart-3: var(--brand-orange);
+  --chart-4: var(--brand-light-blue);
+  --chart-5: var(--brand-green-50);
   --radius: 0.875rem;
 
-  --sidebar: #ffffff;
-  --sidebar-foreground: var(--ink);
-  --sidebar-primary: var(--green-fill);
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: var(--green-tint-soft);
-  --sidebar-accent-foreground: var(--green-deep);
-  --sidebar-border: var(--border);
-  --sidebar-ring: var(--brand-green);
+  /* Admin sidebar: the blue/teal block from the brand sheet, white logo. */
+  --sidebar: var(--brand-teal);
+  --sidebar-foreground: rgb(255 255 255 / 86%);
+  --sidebar-primary: #ffffff;
+  --sidebar-primary-foreground: var(--brand-teal);
+  --sidebar-accent: rgb(255 255 255 / 10%);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgb(255 255 255 / 14%);
+  --sidebar-ring: var(--teal-on);
 }
 
 /* Dark mode is not part of the demo scope but the tokens exist so a future
    re-skin has somewhere to put them. */
 .dark {
-  --background: #101613;
-  --foreground: #f2f6f1;
-  --card: #18201b;
-  --card-foreground: #f2f6f1;
-  --popover: #18201b;
-  --popover-foreground: #f2f6f1;
-  --primary: var(--green-fill);
-  --primary-foreground: #ffffff;
-  --primary-hover: var(--green-fill-hover);
-  --secondary: #1f2b23;
-  --secondary-foreground: #f2f6f1;
-  --muted: #1f2b23;
-  --muted-foreground: #a3b0a8;
-  --accent: #1f2b23;
-  --accent-foreground: #f2f6f1;
+  --background: #0b1f26;
+  --foreground: #eef5f7;
+  --card: #122a33;
+  --card-foreground: #eef5f7;
+  --popover: #122a33;
+  --popover-foreground: #eef5f7;
+  --primary: var(--brand-light-blue);
+  --primary-foreground: #0b1f26;
+  --primary-hover: #5aa9b5;
+  --secondary: #1a3640;
+  --secondary-foreground: #eef5f7;
+  --muted: #1a3640;
+  --muted-foreground: #9fb6bd;
+  --accent: #1a3640;
+  --accent-foreground: #eef5f7;
   --destructive: #f87171;
   --border: rgb(255 255 255 / 12%);
   --input: rgb(255 255 255 / 16%);
-  --ring: var(--brand-green);
-  --sidebar: #18201b;
-  --sidebar-foreground: #f2f6f1;
-  --sidebar-accent: #1f2b23;
-  --sidebar-accent-foreground: #f2f6f1;
-  --sidebar-border: rgb(255 255 255 / 12%);
+  --ring: var(--brand-light-blue);
+  --sidebar: #0b4a5b;
 }
 
 @layer base {
@@ -253,11 +252,11 @@
     line-height: 1.1;
   }
   ::selection {
-    background-color: var(--brand-green);
-    color: var(--green-deep);
+    background-color: var(--brand-green-50);
+    color: var(--ink);
   }
   :focus-visible {
-    outline: 3px solid var(--brand-green);
+    outline: 3px solid var(--ring);
     outline-offset: 2px;
   }
 }
@@ -265,7 +264,7 @@
 @layer components {
   /* Small uppercase label used above headings and on data lists. */
   .eyebrow {
-    @apply font-display text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground;
+    @apply font-display text-xs font-bold uppercase tracking-[0.14em] text-teal;
   }
   .tabular {
     font-variant-numeric: tabular-nums;

@@ -55,8 +55,8 @@ export function BulkScheduler({ templates, today }: { templates: TemplateLite[];
         <fieldset className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-4">
           <legend className="font-display px-1 text-sm font-bold uppercase tracking-wide text-muted-foreground">Shift templates</legend>
           {templates.map((t) => (
-            <label key={t.id} className={cn("flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors", selected.has(t.id) ? "border-green bg-green-tint-soft" : "border-border hover:bg-muted")}>
-              <input type="checkbox" className="mt-1 size-4 accent-[var(--brand-green)]" checked={selected.has(t.id)} onChange={() => { invalidate(); setSelected(toggle(selected, t.id)); }} />
+            <label key={t.id} className={cn("flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors", selected.has(t.id) ? "border-teal bg-teal-tint-soft" : "border-border hover:bg-muted")}>
+              <input type="checkbox" className="mt-1 size-4 accent-[var(--brand-teal)]" checked={selected.has(t.id)} onChange={() => { invalidate(); setSelected(toggle(selected, t.id)); }} />
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-bold text-ink">{t.name}</span>
                 <span className="block text-xs text-muted-foreground tabular">
@@ -83,7 +83,7 @@ export function BulkScheduler({ templates, today }: { templates: TemplateLite[];
             <p className="mb-1.5 text-sm font-medium">Repeat on</p>
             <div className="grid grid-cols-5 gap-1.5">
               {[1, 2, 3, 4, 5].map((d) => (
-                <label key={d} className={cn("flex h-11 cursor-pointer items-center justify-center rounded-lg border text-sm font-bold transition-colors has-focus-visible:outline-3 has-focus-visible:outline-green", weekdays.has(d) ? "border-green bg-green-tint text-green-deep" : "border-border text-muted-foreground hover:bg-muted")}>
+                <label key={d} className={cn("flex h-11 cursor-pointer items-center justify-center rounded-lg border text-sm font-bold transition-colors has-focus-visible:outline-3 has-focus-visible:outline-ring", weekdays.has(d) ? "border-teal bg-teal-tint text-teal-deep" : "border-border text-muted-foreground hover:bg-muted")}>
                   <input type="checkbox" className="sr-only" checked={weekdays.has(d)} onChange={() => { invalidate(); setWeekdays(toggle(weekdays, d)); }} />
                   {WEEKDAY_SHORT[d]}
                 </label>
@@ -92,7 +92,7 @@ export function BulkScheduler({ templates, today }: { templates: TemplateLite[];
             <p className="mt-1.5 text-xs text-muted-foreground">Satisfy runs Monday to Friday, so weekends are never offered.</p>
           </div>
           <label className="flex cursor-pointer items-start gap-3">
-            <input type="checkbox" className="mt-1 size-4 accent-[var(--brand-green)]" checked={assignRegulars} onChange={(e) => { invalidate(); setAssignRegulars(e.target.checked); }} />
+            <input type="checkbox" className="mt-1 size-4 accent-[var(--brand-teal)]" checked={assignRegulars} onChange={(e) => { invalidate(); setAssignRegulars(e.target.checked); }} />
             <span className="text-sm text-ink">Roster regular volunteers onto their usual weekday automatically</span>
           </label>
         </fieldset>

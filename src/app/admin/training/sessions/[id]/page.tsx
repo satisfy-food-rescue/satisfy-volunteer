@@ -28,9 +28,9 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
         <p className="eyebrow">Training session</p>
         <h1 className="mt-1 text-3xl text-ink">{s.module.name}</h1>
         <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-ink-soft">
-          <span className="inline-flex items-center gap-1.5 tabular"><Clock className="size-4 text-green-text" aria-hidden />{formatInstant(s.startsAt)} to {formatInstantTime(s.endsAt)}</span>
-          <span className="inline-flex items-center gap-1.5"><MapPin className="size-4 text-green-text" aria-hidden />{s.location}</span>
-          <span className="inline-flex items-center gap-1.5 tabular"><Users className="size-4 text-green-text" aria-hidden />{going.length} of {s.capacity} booked</span>
+          <span className="inline-flex items-center gap-1.5 tabular"><Clock className="size-4 text-sky" aria-hidden />{formatInstant(s.startsAt)} to {formatInstantTime(s.endsAt)}</span>
+          <span className="inline-flex items-center gap-1.5"><MapPin className="size-4 text-sky" aria-hidden />{s.location}</span>
+          <span className="inline-flex items-center gap-1.5 tabular"><Users className="size-4 text-sky" aria-hidden />{going.length} of {s.capacity} booked</span>
         </p>
         {s.notes && <p className="mt-2 text-sm text-muted-foreground">{s.notes}</p>}
       </header>

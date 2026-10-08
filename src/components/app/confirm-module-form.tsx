@@ -13,9 +13,9 @@ export function ConfirmModuleForm({ moduleId, moduleName }: { moduleId: string; 
   const [pending, run] = useTransition();
   const router = useRouter();
   return (
-    <div className="flex flex-col gap-4 rounded-2xl border border-green/40 bg-green-tint-soft p-5">
-      <label className={cn("flex cursor-pointer items-start gap-3 rounded-xl border bg-white p-4 transition-colors has-focus-visible:outline-3 has-focus-visible:outline-green", checked ? "border-green" : "border-border")}>
-        <input type="checkbox" className="mt-1 size-5 shrink-0 accent-[var(--brand-green)]" checked={checked} onChange={(e) => setChecked(e.target.checked)} />
+    <div className="flex flex-col gap-4 rounded-2xl border border-teal/25 bg-teal-tint-soft p-5">
+      <label className={cn("flex cursor-pointer items-start gap-3 rounded-xl border bg-white p-4 transition-colors has-focus-visible:outline-3 has-focus-visible:outline-ring", checked ? "border-teal" : "border-border")}>
+        <input type="checkbox" className="mt-1 size-5 shrink-0 accent-[var(--brand-teal)]" checked={checked} onChange={(e) => setChecked(e.target.checked)} />
         <span className="text-base leading-snug text-ink">
           I have read and understood the {moduleName} refresher and will follow it on every shift.
         </span>

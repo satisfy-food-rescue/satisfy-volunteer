@@ -37,7 +37,7 @@ export default async function ProfilePage() {
       </section>
 
       <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3">
-        <RefreshCw className="size-5 shrink-0 text-green-text" aria-hidden />
+        <RefreshCw className="size-5 shrink-0 text-sky" aria-hidden />
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-ink">Synced with Infoodle</p>
           <p className="text-sm text-muted-foreground">
@@ -52,7 +52,7 @@ export default async function ProfilePage() {
           { href: "/app/harvest", label: "Harvest pool", icon: Sprout },
         ].map((l) => (
           <Link key={l.href} href={l.href} className="flex min-h-14 items-center gap-3 border-b border-border px-4 last:border-b-0 hover:bg-muted">
-            <l.icon className="size-5 text-green-text" aria-hidden />
+            <l.icon className="size-5 text-teal" aria-hidden />
             <span className="flex-1 font-semibold text-ink">{l.label}</span>
             <ChevronRight className="size-5 text-muted-foreground" aria-hidden />
           </Link>

@@ -40,7 +40,7 @@ export default async function AbsencesPage() {
             <tr className="border-b border-border bg-muted/60">
               <th className="font-display sticky left-0 z-10 bg-muted/60 px-3 py-2 text-left text-xs font-bold uppercase tracking-wide text-muted-foreground">Volunteer</th>
               {days.map((iso) => (
-                <th key={iso} className={cn("font-display px-0.5 py-2 text-center text-[0.65rem] font-bold uppercase leading-tight text-muted-foreground", iso === today && "text-green-text")}>
+                <th key={iso} className={cn("font-display px-0.5 py-2 text-center text-[0.65rem] font-bold uppercase leading-tight text-muted-foreground", iso === today && "text-teal")}>
                   {WEEKDAY_SHORT[weekdayOf(iso)]}<br /><span className="text-xs tabular">{Number(iso.slice(8))}</span>
                 </th>
               ))}
@@ -90,10 +90,10 @@ export default async function AbsencesPage() {
                     const rel = released.find((r) => dateToISO(r.shift.date) === iso);
                     const covered = rel ? rel.shift.assignments.filter((x) => x.status === "CONFIRMED" || x.status === "ATTENDED").length >= rel.shift.needed : false;
                     return (
-                      <td key={iso} className={cn("h-12 px-0.5 py-2", iso === today && "bg-green-tint-soft/60")}>
+                      <td key={iso} className={cn("h-12 px-0.5 py-2", iso === today && "bg-teal-tint-soft")}>
                         {inRange && (
                           <div
-                            className={cn("flex h-7 items-center justify-center", iso === s && "rounded-l-full", iso === e && "rounded-r-full", rel ? (covered ? "bg-status-good/80" : "bg-status-bad") : "bg-muted-foreground/25")}
+                            className={cn("flex h-7 items-center justify-center", iso === s && "rounded-l-full", iso === e && "rounded-r-full", rel ? (covered ? "bg-green" : "bg-status-bad") : "bg-muted-foreground/25")}
                             title={rel ? `${rel.shift.template.name} ${covered ? "covered" : "needs cover"}` : ABSENCE_REASON_LABEL[a.reason as AbsenceReason]}
                           >
                             {rel && (covered ? <CheckCircle2 className="size-4 text-white" aria-label="Covered" /> : <HandHelping className="size-4 text-white" aria-label="Needs cover" />)}
@@ -111,7 +111,7 @@ export default async function AbsencesPage() {
       <p className="-mt-4 flex flex-wrap gap-4 text-xs text-muted-foreground">
         <span className="inline-flex items-center gap-1.5"><span className="inline-block h-3 w-6 rounded-full bg-muted-foreground/25" /> Away, no shift that day</span>
         <span className="inline-flex items-center gap-1.5"><span className="inline-flex h-3 w-6 items-center justify-center rounded-full bg-status-bad" /> Released shift, still open</span>
-        <span className="inline-flex items-center gap-1.5"><span className="inline-flex h-3 w-6 items-center justify-center rounded-full bg-status-good/80" /> Released shift, covered</span>
+        <span className="inline-flex items-center gap-1.5"><span className="inline-flex h-3 w-6 items-center justify-center rounded-full bg-green" /> Released shift, covered</span>
       </p>
 
       <section className="rounded-2xl border border-border bg-card p-5" aria-labelledby="rec-h">

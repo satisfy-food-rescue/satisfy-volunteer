@@ -29,7 +29,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { LogoMark } from "@/components/brand/logo";
+import { Logo, LogoIcon } from "@/components/brand/logo";
 import { signOut } from "@/app/sign-in/actions";
 import { AvatarBadge } from "@/components/shared/avatar-badge";
 import { fullName } from "@/lib/domain";
@@ -79,20 +79,18 @@ export function AdminSidebar({
 }) {
   const pathname = usePathname();
   return (
-    <Sidebar collapsible="icon" className="border-r border-sidebar-border">
-      <SidebarHeader className="border-b border-sidebar-border px-3 py-3">
-        <Link href="/admin" className="flex items-center gap-2.5 group-data-[collapsible=icon]:justify-center">
-          <LogoMark size={36} />
-          <span className="flex flex-col leading-tight group-data-[collapsible=icon]:hidden">
-            <span className="font-display font-bold text-[0.95rem] tracking-[0.08em] text-ink">SATISFY</span>
-            <span className="font-display text-[0.62rem] font-bold uppercase tracking-[0.2em] text-green-text">Coordinator</span>
-          </span>
+    <Sidebar collapsible="icon" className="border-r-0">
+      <SidebarHeader className="px-3 pb-2 pt-5 group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:pt-4">
+        <Link href="/admin" className="flex flex-col items-center gap-2 rounded-lg py-1" aria-label="Satisfy Food Rescue coordinator dashboard">
+          <Logo tone="white" className="h-20 group-data-[collapsible=icon]:hidden" />
+          <LogoIcon tone="white" className="hidden size-8 group-data-[collapsible=icon]:block" />
+          <span className="rounded-full bg-white/12 px-2.5 py-0.5 font-display text-[0.65rem] font-bold uppercase tracking-[0.18em] text-white group-data-[collapsible=icon]:hidden">Coordinator</span>
         </Link>
       </SidebarHeader>
       <SidebarContent>
         {SECTIONS.map((section) => (
           <SidebarGroup key={section.label}>
-            <SidebarGroupLabel className="eyebrow">{section.label}</SidebarGroupLabel>
+            <SidebarGroupLabel className="eyebrow text-white/60">{section.label}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {section.links.map((link) => {
@@ -103,14 +101,14 @@ export function AdminSidebar({
                       <SidebarMenuButton
                         isActive={active}
                         tooltip={link.label}
-                        className="h-10 text-[0.95rem] data-active:bg-green-tint data-active:font-bold data-active:text-green-deep"
+                        className="h-10 rounded-full px-3 text-[0.95rem] data-active:bg-white data-active:font-bold data-active:text-teal data-active:hover:bg-white data-active:hover:text-teal"
                         render={<Link href={link.href} />}
                       >
                         <link.icon className="size-4" />
                         <span>{link.label}</span>
                       </SidebarMenuButton>
                       {count > 0 && (
-                        <SidebarMenuBadge className="bg-pink-tint font-display font-bold text-pink-text tabular peer-data-[size=default]/menu-button:top-2.5">{count}</SidebarMenuBadge>
+                        <SidebarMenuBadge className="right-2 rounded-full bg-orange font-display font-bold text-ink tabular peer-data-[size=default]/menu-button:top-2.5 peer-hover/menu-button:text-ink peer-data-active/menu-button:text-ink">{count}</SidebarMenuBadge>
                       )}
                     </SidebarMenuItem>
                   );
@@ -120,11 +118,11 @@ export function AdminSidebar({
           </SidebarGroup>
         ))}
         <SidebarGroup>
-          <SidebarGroupLabel className="eyebrow">Preview</SidebarGroupLabel>
+          <SidebarGroupLabel className="eyebrow text-white/60">Preview</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton tooltip="Volunteer app" className="h-10 text-[0.95rem]" render={<Link href="/app" />}>
+                <SidebarMenuButton tooltip="Volunteer app" className="h-10 rounded-full px-3 text-[0.95rem]" render={<Link href="/app" />}>
                   <Smartphone className="size-4" />
                   <span>Volunteer app</span>
                 </SidebarMenuButton>
@@ -135,13 +133,13 @@ export function AdminSidebar({
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border p-3">
         <div className="flex items-center gap-2.5 group-data-[collapsible=icon]:justify-center">
-          <AvatarBadge person={user} size="sm" />
+          <AvatarBadge person={user} size="sm" className="ring-2 ring-white/70" />
           <div className="min-w-0 flex-1 leading-tight group-data-[collapsible=icon]:hidden">
-            <p className="truncate text-sm font-bold text-ink">{fullName(user)}</p>
-            <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+            <p className="truncate text-sm font-bold text-white">{fullName(user)}</p>
+            <p className="truncate text-xs text-white/70">{user.email}</p>
           </div>
           <form action={signOut} className="group-data-[collapsible=icon]:hidden">
-            <button type="submit" className="tap flex items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-ink" aria-label="Switch persona">
+            <button type="submit" className="tap flex items-center justify-center rounded-full text-white/75 hover:bg-white/10 hover:text-white" aria-label="Switch persona">
               <LogOut className="size-4" />
             </button>
           </form>

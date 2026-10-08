@@ -116,13 +116,13 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
                     <span><span className="font-semibold text-ink">{m.validityMonths ? `Every ${m.validityMonths} months` : "Once"}</span></span>
                     <span>{DELIVERY_LABEL[m.delivery as Delivery]}</span>
                     <span>Required for {parseRoles(m.requiredRoles).map((r) => ROLE_SHORT[r].toLowerCase()).join(", ")}</span>
-                    {m.mandatoryBeforeFirstShift && <span className="font-semibold text-green-text">Mandatory before first shift</span>}
+                    {m.mandatoryBeforeFirstShift && <span className="font-semibold text-teal">Mandatory before first shift</span>}
                   </p>
                 </div>
                 <div className="w-full sm:w-64">
                   <p className="mb-1 flex justify-between text-xs font-semibold text-muted-foreground"><span>{required} volunteers</span><span className="tabular">{required ? Math.round(((complete + dueSoon) / required) * 100) : 100}% current</span></p>
                   <div className="flex h-2.5 overflow-hidden rounded-full bg-muted" role="img" aria-label={`${complete} complete, ${dueSoon} due soon, ${overdue} overdue, ${notStarted} not started`}>
-                    {[["bg-status-good", complete], ["bg-status-warn", dueSoon], ["bg-status-bad", overdue]].map(([c, n]) => (n as number) > 0 && <span key={c as string} className={cn(c as string, "border-r-2 border-card last:border-r-0")} style={{ width: `${((n as number) / required) * 100}%` }} />)}
+                    {[["bg-green", complete], ["bg-orange", dueSoon], ["bg-status-bad", overdue]].map(([c, n]) => (n as number) > 0 && <span key={c as string} className={cn(c as string, "border-r-2 border-card last:border-r-0")} style={{ width: `${((n as number) / required) * 100}%` }} />)}
                   </div>
                   <p className="mt-1 flex flex-wrap gap-x-3 text-xs font-semibold tabular">
                     {([["COMPLETE", complete, "complete", "text-status-good"], ["DUE_SOON", dueSoon, "due soon", "text-status-warn"], ["OVERDUE", overdue, "overdue", "text-status-bad"], ["NOT_STARTED", notStarted, "not started", "text-muted-foreground"]] as const).map(([st, n, label, color]) =>
@@ -204,7 +204,7 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
               <ol className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
                 {REMINDER_RULES.map((r, i) => (
                   <li key={r.id} className="flex gap-4 px-4 py-3">
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-green-tint font-display font-bold text-green-deep">{i + 1}</span>
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-teal-tint font-display font-bold text-teal-deep">{i + 1}</span>
                     <div className="min-w-0">
                       <p className="font-bold text-ink">{r.when}</p>
                       <p className="text-sm text-ink-soft">Sends <span className="font-semibold">{r.template}</span> to {r.audience.toLowerCase()}.</p>
@@ -218,14 +218,14 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
             <section className="lg:col-span-2">
               <div className="mb-3 flex items-baseline justify-between">
                 <h2 className="text-2xl text-ink">Recent reminders</h2>
-                <Link href="/admin/outbox" className="text-sm font-semibold text-green-text hover:underline">Open Outbox</Link>
+                <Link href="/admin/outbox" className="text-sm font-semibold text-teal hover:underline">Open Outbox</Link>
               </div>
               <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
                 {reminderEmails.map((e) => (
                   <li key={e.id}>
                     <Link href={`/admin/outbox/${e.id}`} className="flex items-start gap-3 px-3 py-2.5 hover:bg-muted">
                       {e.channel === "PUSH"
-                        ? <Smartphone className="mt-0.5 size-4 shrink-0 text-pink-text" aria-hidden />
+                        ? <Smartphone className="mt-0.5 size-4 shrink-0 text-orange-text" aria-hidden />
                         : <Mail className={cn("mt-0.5 size-4 shrink-0", e.kind === "TRAINING_OVERDUE" || e.kind === "GAP_ESCALATION" ? "text-status-bad" : "text-status-warn")} aria-hidden />}
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-bold text-ink">{e.subject}</span>
@@ -249,9 +249,9 @@ function SessionCard({ s }: { s: { id: string; startsAt: Date; endsAt: Date; loc
   const attended = going.filter((r) => r.attendedAt).length;
   const isPast = s.startsAt < new Date();
   return (
-    <Link href={`/admin/training/sessions/${s.id}`} className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-4 transition-colors hover:border-green">
+    <Link href={`/admin/training/sessions/${s.id}`} className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-4 transition-colors hover:border-teal/60">
       <p className="font-bold text-ink">{s.module.name}</p>
-      <p className="inline-flex items-center gap-1.5 text-sm text-ink-soft tabular"><Clock className="size-4 text-green-text" aria-hidden />{formatInstant(s.startsAt)} to {formatInstantTime(s.endsAt)}</p>
+      <p className="inline-flex items-center gap-1.5 text-sm text-ink-soft tabular"><Clock className="size-4 text-sky" aria-hidden />{formatInstant(s.startsAt)} to {formatInstantTime(s.endsAt)}</p>
       <p className="inline-flex items-center gap-1.5 text-sm text-muted-foreground"><MapPin className="size-4" aria-hidden />{s.location}</p>
       <p className="inline-flex items-center gap-1.5 text-sm text-muted-foreground tabular"><Users className="size-4" aria-hidden />{isPast ? `${attended} attended of ${going.length} booked` : `${going.length} of ${s.capacity} booked`}</p>
     </Link>

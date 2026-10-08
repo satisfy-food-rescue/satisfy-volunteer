@@ -12,9 +12,9 @@ export function WeekView({ monday, shifts, today }: { monday: string; shifts: Sh
         const items = shifts.filter((s) => s.iso === iso);
         const gaps = items.filter((s) => s.isGap).length;
         return (
-          <section key={iso} className={cn("flex flex-col gap-2 rounded-2xl border bg-card/50 p-3", iso === today ? "border-green" : "border-border")}>
+          <section key={iso} className={cn("flex flex-col gap-2 rounded-2xl border bg-card/50 p-3", iso === today ? "border-teal" : "border-border")}>
             <header className="flex items-baseline justify-between">
-              <h2 className={cn("text-lg text-ink", iso === today && "text-green-text")}>{WEEKDAY_SHORT[weekdayOf(iso)]} <span className="font-sans text-sm text-muted-foreground tabular">{formatDayShort(iso)}</span></h2>
+              <h2 className={cn("text-lg text-ink", iso === today && "text-teal")}>{WEEKDAY_SHORT[weekdayOf(iso)]} <span className="font-sans text-sm text-muted-foreground tabular">{formatDayShort(iso)}</span></h2>
               {gaps > 0 && <span className="rounded-full bg-status-bad-bg px-2 py-0.5 text-xs font-bold text-status-bad">{gaps} gap{gaps === 1 ? "" : "s"}</span>}
             </header>
             {items.length === 0 ? (
@@ -40,8 +40,8 @@ function CompactShift({ view }: { view: ShiftView }) {
         cancelled
           ? "border border-dashed border-border bg-card/60"
           : view.isGap
-            ? "bg-pink-tint/40 ring-1 ring-pink/30 hover:ring-pink/60"
-            : "bg-card ring-1 ring-border hover:ring-green",
+            ? "bg-orange-tint/40 ring-1 ring-orange/50 hover:ring-orange"
+            : "bg-card ring-1 ring-border hover:ring-teal/60",
       )}
     >
       <span className="flex items-start justify-between gap-2">
@@ -51,7 +51,7 @@ function CompactShift({ view }: { view: ShiftView }) {
         <span
           className={cn(
             "inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 font-display text-[0.7rem] font-bold leading-none tabular",
-            cancelled ? "bg-muted text-muted-foreground" : view.isGap ? "bg-pink-tint text-pink-text" : "bg-green-tint-soft text-green-text",
+            cancelled ? "bg-muted text-muted-foreground" : view.isGap ? "bg-orange-tint text-orange-text" : "bg-green-tint-soft text-green-text",
           )}
         >
           {cancelled ? (
@@ -77,7 +77,7 @@ function CompactShift({ view }: { view: ShiftView }) {
       </span>
       {/* Fill level of the shift, in place of a coloured edge. */}
       <span className="mt-0.5 block h-1 overflow-hidden rounded-full bg-muted" aria-hidden>
-        {!cancelled && <span className={cn("block h-full rounded-full", view.isGap ? "bg-pink" : "bg-green")} style={{ width: `${fill}%` }} />}
+        {!cancelled && <span className={cn("block h-full rounded-full", view.isGap ? "bg-orange" : "bg-green")} style={{ width: `${fill}%` }} />}
       </span>
     </Link>
   );
@@ -103,9 +103,9 @@ export function MonthView({ anchor, shifts, today }: { anchor: string; shifts: S
             const gaps = items.filter((s) => s.isGap);
             const filled = items.reduce((n, s) => n + s.confirmedCount, 0);
             return (
-              <div key={iso} className={cn("min-h-24 border-r border-border p-2 last:border-r-0", !inMonth && "bg-muted/30 text-muted-foreground", iso === today && "bg-green-tint-soft")}>
+              <div key={iso} className={cn("min-h-24 border-r border-border p-2 last:border-r-0", !inMonth && "bg-muted/30 text-muted-foreground", iso === today && "bg-teal-tint-soft")}>
                 <div className="flex items-center justify-between">
-                  <span className={cn("text-sm font-bold tabular", iso === today && "rounded-full bg-green-fill px-1.5 text-white")}>{Number(iso.slice(8))}</span>
+                  <span className={cn("text-sm font-bold tabular", iso === today && "rounded-full bg-teal px-1.5 text-white")}>{Number(iso.slice(8))}</span>
                   {gaps.length > 0 && <span className="rounded-full bg-status-bad-bg px-1.5 text-[0.65rem] font-bold text-status-bad">{gaps.length} gap{gaps.length === 1 ? "" : "s"}</span>}
                 </div>
                 {inMonth && items.length > 0 && (
@@ -114,7 +114,7 @@ export function MonthView({ anchor, shifts, today }: { anchor: string; shifts: S
                   </Link>
                 )}
                 {gaps.slice(0, 2).map((g) => (
-                  <Link key={g.shift.id} href={`/admin/roster/${g.shift.id}`} className="mt-1 block truncate rounded bg-pink-tint px-1.5 py-0.5 text-[0.7rem] font-semibold text-pink-text hover:underline">
+                  <Link key={g.shift.id} href={`/admin/roster/${g.shift.id}`} className="mt-1 block truncate rounded bg-orange-tint px-1.5 py-0.5 text-[0.7rem] font-semibold text-orange-text hover:underline">
                     {g.shift.template.name}
                   </Link>
                 ))}
@@ -141,7 +141,7 @@ export function RosterNav({ view, anchor, today }: { view: "week" | "month"; anc
       <Link href={`/admin/roster?view=${view}&date=${today}`} className="flex h-11 items-center rounded-xl border border-border bg-card px-3 text-sm font-semibold hover:bg-muted">Today</Link>
       <div className="ml-auto flex rounded-xl border border-border bg-card p-1" role="tablist" aria-label="Roster view">
         {(["week", "month"] as const).map((v) => (
-          <Link key={v} href={`/admin/roster?view=${v}&date=${anchor}`} role="tab" aria-selected={view === v} className={cn("flex h-9 items-center rounded-lg px-3 text-sm font-semibold capitalize", view === v ? "bg-green-tint text-green-deep" : "text-muted-foreground hover:text-ink")}>
+          <Link key={v} href={`/admin/roster?view=${v}&date=${anchor}`} role="tab" aria-selected={view === v} className={cn("flex h-9 items-center rounded-lg px-3 text-sm font-semibold capitalize", view === v ? "bg-teal-tint text-teal-deep" : "text-muted-foreground hover:text-ink")}>
             {v}
           </Link>
         ))}

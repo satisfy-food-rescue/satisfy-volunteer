@@ -5,6 +5,7 @@ import { gapsBetween } from "@/lib/roster";
 import { moduleStatuses, trainingSummary } from "@/lib/training";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
+import { BrandFooter, LogoIcon } from "@/components/brand/logo";
 
 export const dynamic = "force-dynamic";
 
@@ -23,11 +24,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <SidebarProvider>
       <AdminSidebar user={user} badges={{ applications, gaps: gaps.length, training: overdue }} />
       <SidebarInset className="min-w-0 bg-background">
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background/90 px-4 backdrop-blur md:hidden">
-          <SidebarTrigger className="tap" />
-          <span className="eyebrow">Coordinator</span>
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-2 bg-teal px-3 text-white md:hidden">
+          <SidebarTrigger className="tap rounded-full text-white hover:bg-white/10 hover:text-white" />
+          <LogoIcon tone="white" className="size-7" />
+          <span className="font-display text-xs font-bold uppercase tracking-[0.18em] text-white">Coordinator</span>
         </header>
         <div className="min-w-0 flex-1 px-5 py-8 md:px-10 md:py-10">{children}</div>
+        <BrandFooter className="pb-5" />
       </SidebarInset>
     </SidebarProvider>
   );

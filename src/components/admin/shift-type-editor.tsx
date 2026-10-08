@@ -47,7 +47,7 @@ export function ShiftTypeEditor({ shiftType }: { shiftType: ShiftTypeForm }) {
   const id = (k: string) => `st-${k}-${v.id}`;
   return (
     <form
-      className="mt-3 grid gap-x-4 gap-y-5 rounded-xl border border-green/40 bg-green-tint-soft p-4 sm:grid-cols-2 lg:grid-cols-4"
+      className="mt-3 grid gap-x-4 gap-y-5 rounded-xl border border-teal/25 bg-teal-tint-soft p-4 sm:grid-cols-2 lg:grid-cols-4"
       onSubmit={(e) => { e.preventDefault(); run(async () => { const r = await updateShiftType(v); if (r.ok) { toast.success(r.message); setOpen(false); router.refresh(); } else toast.error(r.error); }); }}
     >
       <div className="flex flex-col gap-1.5 sm:col-span-2">

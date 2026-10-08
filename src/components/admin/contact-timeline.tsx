@@ -107,7 +107,7 @@ export function ContactTimeline({
         })}
       </ol>
       {limit && entries.length > limit && (
-        <Link href={showAllHref} scroll={false} className="block border-t border-border px-4 py-2.5 text-sm font-semibold text-green-text hover:bg-muted">
+        <Link href={showAllHref} scroll={false} className="block border-t border-border px-4 py-2.5 text-sm font-semibold text-teal hover:bg-muted">
           Show all {entries.length}
         </Link>
       )}

@@ -59,11 +59,11 @@ export default async function ShiftsPage({ searchParams }: { searchParams: Promi
         return (
           <section key={iso} aria-labelledby={`day-${iso}`} className={cn(past && "opacity-60")}>
             <div className="mb-2 flex items-baseline gap-2">
-              <h2 id={`day-${iso}`} className={cn("text-lg text-ink", iso === today && "text-green-text")}>
+              <h2 id={`day-${iso}`} className={cn("text-lg text-ink", iso === today && "text-teal")}>
                 {WEEKDAY_LONG[weekdayOf(iso)]}
               </h2>
               <span className="text-sm text-muted-foreground tabular">{formatDayShort(iso)}</span>
-              {iso === today && <span className="rounded-full bg-green-tint px-2 py-0.5 text-xs font-bold text-green-deep">Today</span>}
+              {iso === today && <span className="rounded-full bg-teal px-2 py-0.5 text-xs font-bold text-white">Today</span>}
               {away && <span className="rounded-full bg-status-neutral-bg px-2 py-0.5 text-xs font-bold text-status-neutral">You&apos;re away</span>}
             </div>
             {dayShifts.length === 0 ? (

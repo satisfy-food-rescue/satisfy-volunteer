@@ -3,11 +3,9 @@ import { cn } from "@/lib/utils";
 
 const PALETTE = [
   "bg-green-tint text-green-deep",
-  "bg-blue-tint text-blue-text",
+  "bg-teal-tint text-teal-deep",
   "bg-orange-tint text-orange-text",
-  "bg-yellow-tint text-yellow-text",
-  "bg-pink-tint text-pink-text",
-  "bg-teal-tint text-teal-text",
+  "bg-sky-tint text-sky-text",
 ];
 
 function hash(s: string) {

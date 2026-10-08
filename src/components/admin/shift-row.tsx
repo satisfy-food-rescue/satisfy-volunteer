@@ -13,12 +13,12 @@ export function ShiftRow({ view, showDate }: { view: ShiftView; showDate?: strin
     <Link
       href={`/admin/roster/${view.shift.id}`}
       className={cn(
-        "flex items-center gap-3 rounded-xl border bg-card px-3 py-2.5 transition-colors hover:border-green",
-        view.isGap ? "border-pink/40" : "border-border",
+        "flex items-center gap-3 rounded-xl border bg-card px-3 py-2.5 transition-colors hover:border-teal/60",
+        view.isGap ? "border-orange/60" : "border-border",
         cancelled && "opacity-60",
       )}
     >
-      <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", view.kind === "WAREHOUSE" ? "bg-green-tint text-green-deep" : "bg-blue-tint text-blue-text")}>
+      <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", view.kind === "WAREHOUSE" ? "bg-green-tint text-green-deep" : "bg-sky-tint text-sky-text")}>
         <ShiftKindIcon kind={view.kind} className="size-5" />
       </span>
       <span className="min-w-0 flex-1">

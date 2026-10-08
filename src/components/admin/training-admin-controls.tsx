@@ -41,7 +41,7 @@ export function ModuleEditor({ module }: { module: ModuleForm }) {
   }
   return (
     <form
-      className="mt-3 grid gap-x-4 gap-y-5 rounded-xl border border-green/40 bg-green-tint-soft p-4 sm:grid-cols-2"
+      className="mt-3 grid gap-x-4 gap-y-5 rounded-xl border border-teal/25 bg-teal-tint-soft p-4 sm:grid-cols-2"
       onSubmit={(e) => { e.preventDefault(); run(async () => { const r = await updateModule(v); if (r.ok) { toast.success(r.message); setOpen(false); router.refresh(); } else toast.error(r.error); }); }}
     >
       <div className="flex flex-col gap-1.5 sm:col-span-2">
@@ -66,9 +66,9 @@ export function ModuleEditor({ module }: { module: ModuleForm }) {
           {VOLUNTEER_ROLES.map((r) => {
             const on = v.requiredRoles.includes(r);
             return (
-              <label key={r} className={cn("flex h-10 cursor-pointer items-center gap-1.5 rounded-full border px-3.5 font-display text-sm font-semibold transition-colors has-focus-visible:outline-3 has-focus-visible:outline-green", on ? "border-green bg-card text-green-deep" : "border-border bg-card/60 text-muted-foreground hover:text-ink")}>
+              <label key={r} className={cn("flex h-10 cursor-pointer items-center gap-1.5 rounded-full border px-3.5 font-display text-sm font-semibold transition-colors has-focus-visible:outline-3 has-focus-visible:outline-ring", on ? "border-teal bg-card text-teal-deep" : "border-border bg-card/60 text-muted-foreground hover:text-ink")}>
                 <input type="checkbox" className="sr-only" checked={on} onChange={() => setV({ ...v, requiredRoles: on ? v.requiredRoles.filter((x) => x !== r) : [...v.requiredRoles, r] })} />
-                {on && <Check className="size-4 text-green-text" aria-hidden />}
+                {on && <Check className="size-4 text-teal" aria-hidden />}
                 {ROLE_SHORT[r]}
               </label>
             );
@@ -97,7 +97,7 @@ export function NewSessionForm({ modules, today }: { modules: { id: string; name
   const router = useRouter();
   if (!open) return <Button size="lg" className="h-11" onClick={() => setOpen(true)}><CalendarPlus className="size-4" /> Schedule a session</Button>;
   return (
-    <form className="grid grid-cols-1 gap-4 rounded-2xl border border-green/40 bg-card p-4 sm:grid-cols-2 lg:grid-cols-3" onSubmit={(e) => { e.preventDefault(); run(async () => { const r = await createSession(v); if (r.ok) { toast.success(r.message); setOpen(false); router.refresh(); } else toast.error(r.error); }); }}>
+    <form className="grid grid-cols-1 gap-4 rounded-2xl border border-teal/30 bg-card p-4 sm:grid-cols-2 lg:grid-cols-3" onSubmit={(e) => { e.preventDefault(); run(async () => { const r = await createSession(v); if (r.ok) { toast.success(r.message); setOpen(false); router.refresh(); } else toast.error(r.error); }); }}>
       <div className="flex flex-col gap-1.5 lg:col-span-3">
         <Label htmlFor="s-mod">Module</Label>
         <OptionSelect id="s-mod" value={v.moduleId} onValueChange={(moduleId) => setV({ ...v, moduleId })} options={modules.map((m) => ({ value: m.id, label: m.name }))} />

@@ -29,7 +29,7 @@ export function OptionSelect<V extends string>({
       <SelectTrigger
         id={id}
         aria-label={ariaLabel}
-        className={cn("h-11! w-full bg-card pr-2.5 pl-2.5 text-base text-ink hover:border-green/60 data-popup-open:border-ring", className)}
+        className={cn("h-11! w-full bg-card pr-2.5 pl-2.5 text-base text-ink hover:border-teal/50 data-popup-open:border-ring", className)}
       >
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
