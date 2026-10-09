@@ -84,7 +84,7 @@ Once, before the first preview or production build:
 | `pnpm build:production` | Store builds for both platforms. The build number goes up automatically. |
 | `pnpm submit` | Sends the latest store builds to TestFlight and Google Play. The first run asks for the App Store Connect app and a Google Play service account key, and offers to save them. |
 | `pnpm release` | `build:production` and `submit` in one go: builds, then submits when each build finishes. |
-| `pnpm update:preview` | Publishes the current JavaScript to installed preview builds over the air, using the last commit message as the update message. |
+| `pnpm update:preview` | Publishes the current JavaScript to installed preview builds over the air, using the last commit message as the update message. It clears Metro's cache first: Metro caches `EXPO_PUBLIC_*` values, so a cache left by `pnpm start` would otherwise ship the development API URL. |
 | `pnpm update:production` | The same for the store apps. |
 | `pnpm devices` | Registers an iPhone for preview builds. |
 

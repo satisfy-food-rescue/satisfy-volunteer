@@ -17,6 +17,10 @@ export const metadata: Metadata = {
   title: { default: "Satisfy Volunteers", template: "%s · Satisfy Volunteers" },
   description:
     "Volunteer roster, training and absences for Satisfy Food Rescue, Rangiora.",
+  // The label under the icon when the site is added to a home screen, instead
+  // of the current page's title.
+  applicationName: "Satisfy",
+  appleWebApp: { title: "Satisfy" },
 };
 
 export const viewport: Viewport = {
