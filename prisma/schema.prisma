@@ -348,7 +348,7 @@ model Email {
   // TRAINING_DUE_SOON | TRAINING_OVERDUE | SHIFT_REMINDER | ABSENCE_CONFIRMED |
   // COVER_CONFIRMED | GAP_ALERT | APPLICATION_APPROVED | TRAINING_COMPLETED |
   // SESSION_CONFIRMED | HARVEST_CALLOUT | WELCOME | LAST_MINUTE_CALLOUT |
-  // GAP_ESCALATION | ROLES_CHANGED | ROLE_CHANGE_REQUEST
+  // GAP_ESCALATION | ROLES_CHANGED | ROLE_CHANGE_REQUEST | SHIFT_CANCELLED
   kind        String
   subject     String
   preview     String
@@ -373,7 +373,8 @@ model ContactLog {
   volunteer   Volunteer  @relation("ContactLogVolunteer", fields: [volunteerId], references: [id], onDelete: Cascade)
   authorId    String?
   author      Volunteer? @relation("ContactLogAuthor", fields: [authorId], references: [id], onDelete: SetNull)
-  // CALL | NOTE | PROFILE_UPDATED | ROLES_CHANGED | VISIT_BOOKED | ROLE_REQUEST
+  // CALL | NOTE | PROFILE_UPDATED | ROLES_CHANGED | VISIT_BOOKED | ROLE_REQUEST |
+  // SHIFT_CANCELLED
   kind        String
   summary     String
   createdAt   DateTime   @default(now())

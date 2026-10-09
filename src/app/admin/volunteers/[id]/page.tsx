@@ -49,7 +49,7 @@ export default async function VolunteerProfilePage({ params, searchParams }: { p
   const history = v.assignments.filter((a) => dateToISO(a.shift.date) < today);
   const attended = history.filter((a) => a.status === "ATTENDED").length;
   const noShows = history.filter((a) => a.status === "NO_SHOW").length;
-  const upcoming = v.assignments.filter((a) => dateToISO(a.shift.date) >= today && a.status === "CONFIRMED").sort((a, b) => a.shift.date.getTime() - b.shift.date.getTime()).slice(0, 4);
+  const upcoming = v.assignments.filter((a) => dateToISO(a.shift.date) >= today && a.status === "CONFIRMED" && a.shift.status === "SCHEDULED").sort((a, b) => a.shift.date.getTime() - b.shift.date.getTime()).slice(0, 4);
   const initialVisit = statuses.find((s) => s.module.code === INITIAL_VISIT_CODE && s.required);
   const visitBooked = v.sessionRsvps[0]?.session ?? null;
   const needsVisit = initialVisit && initialVisit.status === "NOT_STARTED";

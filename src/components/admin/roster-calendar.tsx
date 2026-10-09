@@ -36,7 +36,7 @@ function CompactShift({ view }: { view: ShiftView }) {
     <Link
       href={`/admin/roster/${view.shift.id}`}
       className={cn(
-        "flex flex-col gap-1.5 rounded-xl p-2.5 shadow-sm transition-colors",
+        "@container flex flex-col gap-1.5 rounded-xl p-2.5 shadow-sm transition-colors",
         cancelled
           ? "border border-dashed border-border bg-card/60"
           : view.isGap
@@ -44,8 +44,10 @@ function CompactShift({ view }: { view: ShiftView }) {
             : "bg-card ring-1 ring-border hover:ring-teal/60",
       )}
     >
-      <span className="flex items-start justify-between gap-2">
-        <span className={cn("text-sm font-bold leading-tight text-ink", cancelled && "text-muted-foreground line-through")}>
+      {/* Side by side when the card has room; in the narrow week columns the
+          badge drops under the name instead of overflowing the card. */}
+      <span className="flex flex-col items-start gap-1 @[9.5rem]:flex-row @[9.5rem]:justify-between @[9.5rem]:gap-2">
+        <span className={cn("min-w-0 text-sm font-bold leading-tight text-ink", cancelled && "text-muted-foreground line-through")}>
           {view.shift.template.name.replace("Volunteer driver: ", "Driver: ")}
         </span>
         <span

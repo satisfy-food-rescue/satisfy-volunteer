@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft, Clock, HandHelping, MapPin, Smartphone, Store, UserRound, Users, CheckCircle2, XCircle } from "lucide-react";
+import { ChevronLeft, Clock, HandHelping, Mail, MapPin, Smartphone, Store, UserRound, Users, CheckCircle2, XCircle } from "lucide-react";
 import { requireAdmin } from "@/lib/session";
 import { db } from "@/lib/db";
-import { formatDayLong, formatInstant, formatTimeRange, relativeDay, todayISO, dateToISO, formatDayRange } from "@/lib/dates";
+import { formatDay, formatDayLong, formatInstant, formatTimeRange, relativeDay, todayISO, dateToISO, formatDayRange } from "@/lib/dates";
 import { availableForShift, shiftById } from "@/lib/roster";
 import { ABSENCE_REASON_LABEL, fullName, type AbsenceReason } from "@/lib/domain";
 import { AvatarBadge } from "@/components/shared/avatar-badge";
@@ -21,12 +21,17 @@ export default async function AdminShiftPage({ params }: { params: Promise<{ id:
   if (!view) notFound();
   const today = todayISO();
   const isPast = view.iso < today;
-  const [candidates, donors, pushes] = await Promise.all([
+  const cancelled = view.shift.status === "CANCELLED";
+  const [candidates, donors, pushes, cancelNotices] = await Promise.all([
     view.shift.status === "SCHEDULED" && !isPast ? availableForShift(view) : Promise.resolve([]),
     view.shift.template.routeId ? db.donor.findMany({ where: { routeId: view.shift.template.routeId } }) : Promise.resolve([]),
     db.email.findMany({ where: { ref: { startsWith: `last-minute:${id}:` } }, include: { volunteer: { select: { firstName: true, lastName: true } } }, orderBy: { createdAt: "asc" } }),
+    cancelled
+      ? db.email.findMany({ where: { ref: { startsWith: `shift-cancelled:${id}:` }, channel: "EMAIL" }, include: { volunteer: { select: { firstName: true, lastName: true } } }, orderBy: { createdAt: "asc" } })
+      : Promise.resolve([]),
   ]);
   const pushedTo = pushes.flatMap((p) => (p.volunteer ? [fullName(p.volunteer)] : []));
+  const toldOfCancellation = cancelNotices.flatMap((e) => (e.volunteer ? [fullName(e.volunteer)] : []));
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-6">
@@ -51,14 +56,16 @@ export default async function AdminShiftPage({ params }: { params: Promise<{ id:
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {view.shift.status === "CANCELLED" ? (
+          {cancelled ? (
             <Chip tone="neutral">Cancelled</Chip>
           ) : view.isGap ? (
             <Chip tone="bad" icon={HandHelping}>Needs {view.shortBy} more</Chip>
           ) : (
             <Chip tone="good" icon={CheckCircle2}>Covered</Chip>
           )}
-          {!isPast && view.shift.status === "SCHEDULED" && <CancelShiftButton shiftId={view.shift.id} />}
+          {!isPast && view.shift.status === "SCHEDULED" && (
+            <CancelShiftButton shiftId={view.shift.id} label={`${view.shift.template.name} on ${formatDay(view.iso)}`} booked={view.shift.assignments.filter((a) => a.status === "CONFIRMED").length} />
+          )}
         </div>
       </header>
 
@@ -109,23 +116,30 @@ export default async function AdminShiftPage({ params }: { params: Promise<{ id:
         </section>
 
         <aside className="flex flex-col gap-3 lg:col-span-2" aria-labelledby="add-h">
-          <h2 id="add-h" className="text-2xl text-ink">{view.isGap ? "Find cover" : "Add a volunteer"}</h2>
-          {pushedTo.length > 0 && (
+          <h2 id="add-h" className="text-2xl text-ink">{cancelled ? "Cancellation" : view.isGap ? "Find cover" : "Add a volunteer"}</h2>
+          {pushedTo.length > 0 && !cancelled && (
             <p className="flex items-start gap-2 rounded-xl bg-orange-tint/60 px-3 py-2.5 text-sm text-ink">
               <Smartphone className="mt-0.5 size-4 shrink-0 text-orange-text" aria-hidden />
               <span>Last-minute notification sent {formatInstant(pushes[0].createdAt)} to {pushedTo.join(", ")}.</span>
             </p>
           )}
-          {isPast || view.shift.status !== "SCHEDULED" ? (
-            <p className="rounded-2xl border border-dashed border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">This shift is {isPast ? "in the past" : "cancelled"}.</p>
+          {cancelled && toldOfCancellation.length > 0 ? (
+            <p className="flex items-start gap-2 rounded-xl bg-muted px-3 py-2.5 text-sm text-ink">
+              <Mail className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
+              <span>Emailed and sent a push notification {formatInstant(cancelNotices[0].createdAt)}: {toldOfCancellation.join(", ")}.</span>
+            </p>
+          ) : isPast || cancelled ? (
+            <p className="rounded-2xl border border-dashed border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">This shift is {cancelled ? "cancelled" : "in the past"}.</p>
           ) : (
-            <AddVolunteerPanel
-              shiftId={view.shift.id}
-              isGap={view.isGap}
-              candidates={candidates.map((c) => ({ id: c.volunteer.id, firstName: c.volunteer.firstName, lastName: c.volunteer.lastName, phone: c.volunteer.phone, lastMinuteOk: c.volunteer.lastMinuteOk, coversBefore: c.coversBefore, roles: c.volunteer.roles }))}
-            />
+            <>
+              <AddVolunteerPanel
+                shiftId={view.shift.id}
+                isGap={view.isGap}
+                candidates={candidates.map((c) => ({ id: c.volunteer.id, firstName: c.volunteer.firstName, lastName: c.volunteer.lastName, phone: c.volunteer.phone, lastMinuteOk: c.volunteer.lastMinuteOk, coversBefore: c.coversBefore, roles: c.volunteer.roles }))}
+              />
+              <p className="text-xs text-muted-foreground">Only volunteers who hold the role, have current training, are not away and are not on another shift that day are listed.</p>
+            </>
           )}
-          <p className="text-xs text-muted-foreground">Only volunteers who hold the role, have current training, are not away and are not on another shift that day are listed.</p>
         </aside>
       </div>
     </div>

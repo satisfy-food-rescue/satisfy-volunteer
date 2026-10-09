@@ -96,7 +96,8 @@ export async function availableForShift(view: ShiftView) {
     }),
     db.trainingModule.findMany(),
     db.assignment.findMany({
-      where: { status: { in: ["CONFIRMED", "ATTENDED"] }, shift: { date: view.shift.date } },
+      // A cancelled shift leaves its crew free that day.
+      where: { status: { in: ["CONFIRMED", "ATTENDED"] }, shift: { date: view.shift.date, status: "SCHEDULED" } },
       select: { volunteerId: true },
     }),
   ]);
