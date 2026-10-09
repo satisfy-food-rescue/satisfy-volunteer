@@ -20,7 +20,7 @@ Press `i` for the iOS simulator or `a` for an Android emulator, or scan the QR c
 
 Sign in by picking a volunteer persona. The coordinator persona is web-only.
 
-Expo Go runs everything except push on Android, which Expo Go no longer supports; the Me tab says so. Push works in Expo Go on iOS and in development and release builds once the app is linked to an EAS project (below).
+Expo Go runs everything except push on Android, which Expo Go no longer supports; the Me tab says so. Push works on a real iPhone in Expo Go, and on both platforms in development and release builds.
 
 ## Checks
 
@@ -70,10 +70,22 @@ src/theme.ts             design tokens
 
 ## Releasing with EAS
 
-Nothing deployment-specific is committed. Once per project:
+The app is linked to the Expo project `@malinmw/satisfy-volunteers`; its id is in `app.config.ts`. Run the scripts below from `mobile/` with `pnpm`. They use the latest EAS CLI through `npx`, as Expo recommends; `eas.json` sets the minimum version.
 
-1. `npx eas-cli@latest login`, then `npx eas-cli@latest init` to create the Expo project.
-2. Set the project id and the API URL as EAS environment variables, for example `npx eas-cli@latest env:create --name EAS_PROJECT_ID --value <id> --environment production --visibility plaintext` and the same for `EXPO_PUBLIC_API_URL` (the deployed web app's URL). Repeat for `preview` and `development`. `app.config.ts` refuses to build a preview or production app without `EXPO_PUBLIC_API_URL`.
-3. `npx eas-cli@latest credentials` sets up signing and the APNs key for push.
+Once, before the first preview or production build:
 
-Then `npx eas-cli@latest build --profile preview` gives installable test builds, and `--profile production` plus `eas submit` goes to TestFlight and Google Play. The bundle id and package are `nz.org.satisfyfoodrescue.volunteers`; changing them after the first store upload is not possible.
+1. Set the API URL (the deployed web app) as an EAS environment variable for each environment you build, for example `npx eas-cli@latest env:create --name EXPO_PUBLIC_API_URL --value https://<host> --environment preview --visibility plaintext`. Builds and updates for `preview` or `production` refuse to run without it, because the app would otherwise talk to `localhost`.
+2. `npx eas-cli@latest credentials` sets up signing and the APNs key for push. It asks for your Apple account.
+3. For iPhone test builds, register each test phone with `pnpm devices` (it gives a link to open on the phone). Android test builds install on any phone.
+
+| Script | What it does |
+| --- | --- |
+| `pnpm build:preview` | Test builds for both platforms, installable straight from the link EAS gives (an `.apk` on Android). |
+| `pnpm build:production` | Store builds for both platforms. The build number goes up automatically. |
+| `pnpm submit` | Sends the latest store builds to TestFlight and Google Play. The first run asks for the App Store Connect app and a Google Play service account key, and offers to save them. |
+| `pnpm release` | `build:production` and `submit` in one go: builds, then submits when each build finishes. |
+| `pnpm update:preview` | Publishes the current JavaScript to installed preview builds over the air, using the last commit message as the update message. It clears Metro's cache first: Metro caches `EXPO_PUBLIC_*` values, so a cache left by `pnpm start` would otherwise ship the development API URL. |
+| `pnpm update:production` | The same for the store apps. |
+| `pnpm devices` | Registers an iPhone for preview builds. |
+
+Over-the-air updates only reach builds of the same app version (`version` in `app.config.ts`). Anything that changes native code (a new Expo package, a config plugin, the SDK) needs a new build, not an update. The bundle id and package are `nz.org.satisfyfoodrescue.volunteers`; they cannot change after the first store upload.
