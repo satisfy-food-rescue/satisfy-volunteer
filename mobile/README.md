@@ -20,7 +20,7 @@ Press `i` for the iOS simulator or `a` for an Android emulator, or scan the QR c
 
 Sign in by picking a volunteer persona. The coordinator persona is web-only.
 
-Expo Go runs everything except push on Android, which Expo Go no longer supports; the Me tab says so. Push works in Expo Go on iOS and in development and release builds once the app is linked to an EAS project (below).
+Expo Go runs everything except push on Android, which Expo Go no longer supports; the Me tab says so. Push works on a real iPhone in Expo Go, and on both platforms in development and release builds.
 
 ## Checks
 
@@ -70,10 +70,9 @@ src/theme.ts             design tokens
 
 ## Releasing with EAS
 
-Nothing deployment-specific is committed. Once per project:
+The app is linked to the Expo project `@malinmw/satisfy-volunteers`; its id is in `app.config.ts`. Run EAS commands from `mobile/`. Before the first preview or production build:
 
-1. `npx eas-cli@latest login`, then `npx eas-cli@latest init` to create the Expo project.
-2. Set the project id and the API URL as EAS environment variables, for example `npx eas-cli@latest env:create --name EAS_PROJECT_ID --value <id> --environment production --visibility plaintext` and the same for `EXPO_PUBLIC_API_URL` (the deployed web app's URL). Repeat for `preview` and `development`. `app.config.ts` refuses to build a preview or production app without `EXPO_PUBLIC_API_URL`.
-3. `npx eas-cli@latest credentials` sets up signing and the APNs key for push.
+1. Set the API URL (the deployed web app) as an EAS environment variable for each environment, for example `npx eas-cli@latest env:create --name EXPO_PUBLIC_API_URL --value https://<host> --environment preview --visibility plaintext`. `app.config.ts` refuses to build a preview or production app without it.
+2. `npx eas-cli@latest credentials` sets up signing and the APNs key for push.
 
 Then `npx eas-cli@latest build --profile preview` gives installable test builds, and `--profile production` plus `eas submit` goes to TestFlight and Google Play. The bundle id and package are `nz.org.satisfyfoodrescue.volunteers`; changing them after the first store upload is not possible.
