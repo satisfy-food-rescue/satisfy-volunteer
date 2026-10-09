@@ -4,8 +4,11 @@
 
 FROM node:24-bookworm-slim AS base
 ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH NEXT_TELEMETRY_DISABLED=1
+# Node 25+ no longer bundles Corepack, so install it explicitly. Corepack then
+# provides the pnpm version pinned in package.json's packageManager field.
 RUN apt-get update && apt-get install -y --no-install-recommends openssl \
-  && rm -rf /var/lib/apt/lists/* && corepack enable
+  && rm -rf /var/lib/apt/lists/* \
+  && npm install --global corepack@0.36.0 && corepack enable
 WORKDIR /app
 
 FROM base AS build
