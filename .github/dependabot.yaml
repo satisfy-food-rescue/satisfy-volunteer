@@ -31,12 +31,7 @@ updates:
     groups:
       actions:
         patterns: ["*"]
-  # Node majors are bumped by hand: only even (LTS) lines belong in production,
-  # and CI's node-version in .github/workflows/ci.yaml has to move with them.
   - package-ecosystem: docker
     directory: /
     schedule:
       interval: monthly
-    ignore:
-      - dependency-name: "node"
-        update-types: ["version-update:semver-major"]
