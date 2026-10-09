@@ -106,7 +106,8 @@ async function main() {
 const isStr = (v: unknown): v is string => typeof v === "string";
 const isNum = (v: unknown): v is number => typeof v === "number";
 const isArr = Array.isArray;
-const ACTIONS = ["PAST", "MINE", "BLOCKED", "FULL", "BOOK"];
+// Keyed by every action kind, so adding one to the API fails typecheck here.
+const ACTIONS: string[] = Object.keys({ PAST: true, CANCELLED: true, MINE: true, BLOCKED: true, FULL: true, BOOK: true } satisfies Record<Api.ShiftAction["kind"], true>);
 const shiftOk = (s: Api.ShiftSummary) => isStr(s.id) && isStr(s.iso) && isStr(s.name) && isArr(s.crew) && ACTIONS.includes(s.action?.kind);
 
 /** Every read endpoint as every volunteer persona, plus the auth edges.

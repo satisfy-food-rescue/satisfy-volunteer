@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarOff, CalendarPlus, Hand, Mail, MessageSquareText, PhoneCall, Smartphone, Tags, UserPen } from "lucide-react";
+import { CalendarOff, CalendarPlus, CalendarX, Hand, Mail, MessageSquareText, PhoneCall, Smartphone, Tags, UserPen } from "lucide-react";
 import { dateToISO, formatDayRange, formatInstant } from "@/lib/dates";
 import { ABSENCE_REASON_LABEL, CONTACT_LOG_LABEL, EMAIL_KIND_LABEL, type AbsenceReason, type ContactLogKind, type EmailKind } from "@/lib/domain";
 import { cn } from "@/lib/utils";
@@ -23,6 +23,7 @@ const LOG_ICON: Record<ContactLogKind, Entry["icon"]> = {
   ROLES_CHANGED: Tags,
   VISIT_BOOKED: CalendarPlus,
   ROLE_REQUEST: Hand,
+  SHIFT_CANCELLED: CalendarX,
 };
 
 export function ContactTimeline({

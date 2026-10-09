@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 export const metadata = { title: "Outbox" };
 
 const TONE: Partial<Record<EmailKind, "good" | "warn" | "bad" | "info" | "neutral">> = {
-  TRAINING_OVERDUE: "bad", TRAINING_DUE_SOON: "warn", GAP_ALERT: "bad", COVER_CONFIRMED: "good", TRAINING_COMPLETED: "good", APPLICATION_APPROVED: "good", WELCOME: "info", SESSION_CONFIRMED: "info", HARVEST_CALLOUT: "info", SHIFT_REMINDER: "neutral", ABSENCE_CONFIRMED: "neutral", LAST_MINUTE_CALLOUT: "bad", GAP_ESCALATION: "bad", ROLES_CHANGED: "info", ROLE_CHANGE_REQUEST: "info",
+  TRAINING_OVERDUE: "bad", TRAINING_DUE_SOON: "warn", GAP_ALERT: "bad", COVER_CONFIRMED: "good", TRAINING_COMPLETED: "good", APPLICATION_APPROVED: "good", WELCOME: "info", SESSION_CONFIRMED: "info", HARVEST_CALLOUT: "info", SHIFT_REMINDER: "neutral", ABSENCE_CONFIRMED: "neutral", LAST_MINUTE_CALLOUT: "bad", GAP_ESCALATION: "bad", ROLES_CHANGED: "info", ROLE_CHANGE_REQUEST: "info", SHIFT_CANCELLED: "warn",
 };
 
 export default async function OutboxPage({ searchParams }: { searchParams: Promise<{ kind?: string }> }) {

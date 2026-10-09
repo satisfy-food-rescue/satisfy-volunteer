@@ -22,6 +22,11 @@ function paragraphs(...parts: string[]): string {
   return parts.filter(Boolean).join("\n\n");
 }
 
+/** Free text typed by the coordinator, ended like a sentence. */
+export function sentence(text: string): string {
+  return /[.!?]["')]?$/.test(text) ? text : `${text}.`;
+}
+
 export function trainingDueSoon(p: {
   firstName: string;
   moduleName: string;
@@ -143,6 +148,58 @@ export function coverConfirmed(p: {
       SIGN_OFF,
     ),
     ctaLabel: "View shift",
+    ctaHref: `/app/shifts/${p.shiftId}`,
+  };
+}
+
+type ShiftCancelledParams = {
+  firstName: string;
+  shiftName: string;
+  dateISO: string;
+  start: string;
+  end: string;
+  shiftId: string;
+  /** Their regular weekly slot, so the email can say the slot carries on. */
+  regular: boolean;
+  /** The coordinator's first name. */
+  cancelledBy: string;
+  reason?: string;
+};
+
+/** Sent to everyone booked on a shift the coordinator cancels, alongside
+ *  shiftCancelledPush. The email reaches volunteers without the app and
+ *  carries the coordinator's reason. */
+export function shiftCancelled(p: ShiftCancelledParams): EmailDraft {
+  return {
+    kind: "SHIFT_CANCELLED",
+    subject: `${p.shiftName} on ${formatDay(p.dateISO)} is cancelled`,
+    preview: `Your ${formatTimeRange(p.start, p.end)} shift is not going ahead. Please do not come in.`,
+    body: paragraphs(
+      `Kia ora ${p.firstName},`,
+      `Sorry to say ${p.shiftName} on ${formatDayLong(p.dateISO)}, ${formatTimeRange(p.start, p.end)}, has been cancelled, so please do not come in.`,
+      p.reason ? `A note from ${p.cancelledBy}: ${sentence(p.reason)}` : "",
+      p.regular
+        ? `This only affects this one shift. Your regular weekly slot carries on as usual.`
+        : `If you would still like to help this week, there may be other shifts open in the app.`,
+      `Thanks for being ready to help, and sorry for the change of plans.`,
+      SIGN_OFF,
+    ),
+    ctaLabel: "See other shifts",
+    ctaHref: "/app/shifts",
+  };
+}
+
+export function shiftCancelledPush(p: ShiftCancelledParams): EmailDraft {
+  return {
+    kind: "SHIFT_CANCELLED",
+    channel: "PUSH",
+    subject: `Shift cancelled: ${formatDay(p.dateISO)}`,
+    preview: `${p.shiftName}, ${formatTimeRange(p.start, p.end)} is not going ahead. Please do not come in.`,
+    body: paragraphs(
+      `${p.shiftName} on ${formatDayLong(p.dateISO)}, ${formatTimeRange(p.start, p.end)} is not going ahead. Please do not come in.`,
+      p.reason ? `A note from ${p.cancelledBy}: ${sentence(p.reason)}` : "",
+    ),
+    ctaLabel: "Open the shift",
     ctaHref: `/app/shifts/${p.shiftId}`,
   };
 }

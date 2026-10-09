@@ -4,9 +4,9 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/session";
-import { addDays, addMonths, dateToISO, isoToDate, isWeekday, nzInstant, todayISO, weekdayOf, formatDay, formatInstant } from "@/lib/dates";
+import { addDays, addMonths, dateToISO, isoToDate, isWeekday, nzInstant, todayISO, weekdayOf, formatDay, formatInstant, formatTimeRange } from "@/lib/dates";
 import { ABSENCE_REASON_LABEL, INITIAL_VISIT_CODE, ROLE_LABEL, VOLUNTEER_ROLES, fullName, parseRoles, type AbsenceReason } from "@/lib/domain";
-import { decorateShift, shiftInclude } from "@/lib/roster";
+import { decorateShift, shiftById, shiftInclude } from "@/lib/roster";
 import { moduleStatuses } from "@/lib/training";
 import { runReminders } from "@/lib/reminders";
 import { afterShiftReleased, runCoverChecks } from "@/lib/cover";
@@ -112,11 +112,43 @@ export async function addToShift(shiftId: string, volunteerId: string): Promise<
   return { ok: true, message: `${volunteer.firstName} added${covering ? " and the gap is covered" : ""}.` };
 }
 
-export async function cancelShift(shiftId: string): Promise<ActionResult> {
-  await requireAdmin();
-  await db.shift.update({ where: { id: shiftId }, data: { status: "CANCELLED" } });
+const cancelSchema = z.object({
+  shiftId: z.string(),
+  reason: z.string().trim().max(200),
+});
+
+/** Everyone still booked on the shift gets an email (reaches volunteers
+ *  without the app and carries the reason) and a push to their phone, since
+ *  the shift may be hours away. Each is logged on their contact timeline. */
+export async function cancelShift(input: z.infer<typeof cancelSchema>): Promise<ActionResult> {
+  const admin = await requireAdmin();
+  const parsed = cancelSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Keep the reason under 200 characters." };
+  const { shiftId } = parsed.data;
+  const reason = parsed.data.reason || undefined;
+  const view = await shiftById(shiftId);
+  if (!view) return { ok: false, error: "Shift not found." };
+  if (view.iso < todayISO()) return { ok: false, error: "That shift has already happened." };
+  // Conditional so two coordinators cancelling at once notify volunteers once.
+  const { count } = await db.shift.updateMany({ where: { id: shiftId, status: "SCHEDULED" }, data: { status: "CANCELLED" } });
+  if (count === 0) return { ok: false, error: "That shift is already cancelled." };
+
+  const already = new Set(
+    (await db.email.findMany({ where: { ref: { startsWith: `shift-cancelled:${shiftId}:` } }, select: { ref: true } })).map((e) => e.ref),
+  );
+  const booked = view.shift.assignments.filter((a) => a.status === "CONFIRMED");
+  const when = `${formatDay(view.iso)}, ${formatTimeRange(view.shift.startTime, view.shift.endTime)}`;
+  for (const a of booked) {
+    const ref = `shift-cancelled:${shiftId}:${a.volunteerId}`;
+    if (already.has(ref)) continue;
+    const p = { firstName: a.volunteer.firstName, shiftName: view.shift.template.name, dateISO: view.iso, start: view.shift.startTime, end: view.shift.endTime, shiftId, regular: a.source === "REGULAR", cancelledBy: admin.firstName, reason };
+    await queueEmail(a.volunteer, T.shiftCancelled(p), ref);
+    await queueEmail(a.volunteer, T.shiftCancelledPush(p), ref);
+    await db.contactLog.create({ data: { volunteerId: a.volunteerId, authorId: admin.id, kind: "SHIFT_CANCELLED", summary: `${view.shift.template.name}, ${when}.${reason ? ` Reason: ${T.sentence(reason)}` : ""}` } });
+  }
   revalidateAll();
-  return { ok: true, message: "Shift cancelled." };
+  const n = booked.length;
+  return { ok: true, message: n === 0 ? "Shift cancelled. Nobody was booked on it." : `Shift cancelled. ${n} ${n === 1 ? "volunteer has" : "volunteers have"} been emailed and sent a push notification.` };
 }
 
 // --- Absences on behalf of a volunteer ---
@@ -137,7 +169,7 @@ export async function recordAbsence(input: z.infer<typeof absenceSchema>): Promi
   const volunteer = await db.volunteer.findUnique({ where: { id: volunteerId } });
   if (!volunteer) return { ok: false, error: "Volunteer not found." };
   const absence = await db.absence.create({ data: { volunteerId, startDate: isoToDate(startDate), endDate: isoToDate(endDate), reason, note: note || null } });
-  const affected = await db.assignment.findMany({ where: { volunteerId, status: "CONFIRMED", shift: { date: { gte: isoToDate(startDate), lte: isoToDate(endDate) } } }, select: { id: true, shiftId: true } });
+  const affected = await db.assignment.findMany({ where: { volunteerId, status: "CONFIRMED", shift: { date: { gte: isoToDate(startDate), lte: isoToDate(endDate) }, status: "SCHEDULED" } }, select: { id: true, shiftId: true } });
   await db.assignment.updateMany({ where: { id: { in: affected.map((a) => a.id) } }, data: { status: "RELEASED", absenceId: absence.id } });
   for (const a of affected) await afterShiftReleased(a.shiftId, null);
   await queueEmail(volunteer, T.absenceConfirmed({ firstName: volunteer.firstName, startISO: startDate, endISO: endDate, reasonLabel: ABSENCE_REASON_LABEL[reason as AbsenceReason], releasedCount: affected.length }));

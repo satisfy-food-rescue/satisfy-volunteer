@@ -35,7 +35,7 @@ export async function bookShift(me: Volunteer, shiftId: string): Promise<ActionR
   if (!elig.eligible) return { ok: false, error: elig.reason ?? "You are not eligible for this shift yet." };
   if (view.isFull) return { ok: false, error: "This shift is full." };
   const sameDay = await db.assignment.findFirst({
-    where: { volunteerId: me.id, status: "CONFIRMED", shift: { date: view.shift.date } },
+    where: { volunteerId: me.id, status: "CONFIRMED", shift: { date: view.shift.date, status: "SCHEDULED" } },
   });
   if (sameDay) return { ok: false, error: "You are already rostered on another shift that day." };
 
@@ -81,7 +81,7 @@ export async function markAway(me: Volunteer, input: z.infer<typeof awaySchema>)
     data: { volunteerId: me.id, startDate: isoToDate(startDate), endDate: isoToDate(endDate), reason, note: note || null },
   });
   const affected = await db.assignment.findMany({
-    where: { volunteerId: me.id, status: "CONFIRMED", shift: { date: { gte: isoToDate(startDate), lte: isoToDate(endDate) } } },
+    where: { volunteerId: me.id, status: "CONFIRMED", shift: { date: { gte: isoToDate(startDate), lte: isoToDate(endDate) }, status: "SCHEDULED" } },
     select: { id: true, shiftId: true },
   });
   await db.assignment.updateMany({

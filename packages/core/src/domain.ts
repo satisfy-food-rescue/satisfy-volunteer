@@ -81,7 +81,8 @@ export type EmailKind =
   | "LAST_MINUTE_CALLOUT"
   | "GAP_ESCALATION"
   | "ROLES_CHANGED"
-  | "ROLE_CHANGE_REQUEST";
+  | "ROLE_CHANGE_REQUEST"
+  | "SHIFT_CANCELLED";
 
 export const EMAIL_KIND_LABEL: Record<EmailKind, string> = {
   TRAINING_DUE_SOON: "Training due soon",
@@ -99,11 +100,12 @@ export const EMAIL_KIND_LABEL: Record<EmailKind, string> = {
   GAP_ESCALATION: "Uncovered shift alert",
   ROLES_CHANGED: "Roles changed",
   ROLE_CHANGE_REQUEST: "Role change request",
+  SHIFT_CANCELLED: "Shift cancelled",
 };
 
 export type Channel = "EMAIL" | "PUSH";
 
-export type ContactLogKind = "CALL" | "NOTE" | "PROFILE_UPDATED" | "ROLES_CHANGED" | "VISIT_BOOKED" | "ROLE_REQUEST";
+export type ContactLogKind = "CALL" | "NOTE" | "PROFILE_UPDATED" | "ROLES_CHANGED" | "VISIT_BOOKED" | "ROLE_REQUEST" | "SHIFT_CANCELLED";
 export const CONTACT_LOG_LABEL: Record<ContactLogKind, string> = {
   CALL: "Phone call",
   NOTE: "Note",
@@ -111,6 +113,7 @@ export const CONTACT_LOG_LABEL: Record<ContactLogKind, string> = {
   ROLES_CHANGED: "Roles changed",
   VISIT_BOOKED: "Initial visit booked",
   ROLE_REQUEST: "Asked to change roles",
+  SHIFT_CANCELLED: "Shift cancelled",
 };
 
 /** The first in-person training stage. New volunteers cannot book shifts until

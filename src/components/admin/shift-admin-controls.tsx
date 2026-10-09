@@ -1,12 +1,18 @@
 "use client";
 
-import { useState } from "react";
-import { Check, UserMinus, UserPlus, X, Ban, Phone, Zap } from "lucide-react";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { Check, UserMinus, UserPlus, X, Ban, Loader2, Phone, Zap } from "lucide-react";
 import { addToShift, cancelShift, removeFromShift, setAttendance } from "@/app/admin/actions";
 import { ActionButton } from "@/components/app/action-button";
 import { AvatarBadge } from "@/components/shared/avatar-badge";
 import { Chip } from "@/components/shared/status-chip";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { fullName } from "@/lib/domain";
 import { cn } from "@/lib/utils";
 
@@ -82,11 +88,53 @@ export function AddVolunteerPanel({ shiftId, candidates, isGap }: { shiftId: str
   );
 }
 
-export function CancelShiftButton({ shiftId }: { shiftId: string }) {
+export function CancelShiftButton({ shiftId, label, booked }: { shiftId: string; label: string; booked: number }) {
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState("");
+  const [pending, start] = useTransition();
+  const router = useRouter();
+  const submit = () =>
+    start(async () => {
+      const r = await cancelShift({ shiftId, reason });
+      if (r.ok) {
+        toast.success(r.message);
+        setOpen(false);
+        router.push("/admin/roster");
+        router.refresh();
+      } else toast.error(r.error);
+    });
   return (
-    <ActionButton variant="outline" size="sm" className="h-10 text-destructive" action={() => cancelShift(shiftId)} confirm="Cancel this shift for everyone?" redirectTo="/admin/roster">
-      <Ban className="size-4" /> Cancel shift
-    </ActionButton>
+    <>
+      <Button variant="outline" size="sm" className="h-10 text-destructive" onClick={() => { setReason(""); setOpen(true); }}>
+        <Ban className="size-4" /> Cancel shift
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl text-ink">Cancel this shift?</DialogTitle>
+            <DialogDescription>
+              <span className="font-semibold text-ink">{label}.</span>{" "}
+              {booked === 0
+                ? "Nobody is booked on it yet. It comes off the roster for everyone."
+                : `The ${booked === 1 ? "volunteer" : `${booked} volunteers`} booked on it will get an email and a push notification straight away, so nobody turns up for it.`}
+            </DialogDescription>
+          </DialogHeader>
+          {booked > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor={`cancel-reason-${shiftId}`}>Reason (optional)</Label>
+              <Textarea id={`cancel-reason-${shiftId}`} value={reason} onChange={(e) => setReason(e.target.value)} rows={2} maxLength={200} className="text-base" placeholder="For example, the truck is in for repairs" />
+              <p className="text-xs text-muted-foreground">Included in the email to volunteers.</p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" className="h-10" disabled={pending} onClick={() => setOpen(false)}>Keep shift</Button>
+            <Button variant="destructive" className="h-10" disabled={pending} onClick={submit}>
+              {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Ban className="size-4" />} Cancel shift
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
