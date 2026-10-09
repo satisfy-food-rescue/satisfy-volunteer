@@ -1,0 +1,8 @@
+# The native app is its own pnpm project, separate from the web workspace at
+# the repo root. Expo SDK 57 pins react 19.2.3 while the web app is on a newer
+# 19.2.x; one shared node_modules would load two copies of React.
+# Flat node_modules keeps React Native autolinking and Metro simple.
+nodeLinker: hoisted
+
+allowBuilds:
+  unrs-resolver: true

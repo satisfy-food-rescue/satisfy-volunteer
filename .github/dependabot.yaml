@@ -7,6 +7,23 @@ updates:
     groups:
       minor-and-patch:
         update-types: [minor, patch]
+  # The native app's Expo packages move together with the SDK (`expo install
+  # --fix` or an SDK upgrade), so only its plain JS dependencies are bumped here.
+  - package-ecosystem: npm
+    directory: /mobile
+    schedule:
+      interval: weekly
+    ignore:
+      - dependency-name: "expo"
+      - dependency-name: "expo-*"
+      - dependency-name: "@expo/*"
+      - dependency-name: "react"
+      - dependency-name: "react-native"
+      - dependency-name: "react-native-*"
+      - dependency-name: "@types/react"
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
   - package-ecosystem: github-actions
     directory: /
     schedule:
