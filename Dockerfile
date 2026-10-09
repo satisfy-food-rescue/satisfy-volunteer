@@ -13,6 +13,7 @@ FROM base AS build
 RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ \
   && rm -rf /var/lib/apt/lists/*
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/core/package.json ./packages/core/
 COPY prisma ./prisma
 COPY prisma.config.ts ./
 RUN pnpm install --frozen-lockfile

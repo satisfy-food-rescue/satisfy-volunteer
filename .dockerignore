@@ -6,3 +6,4 @@ prisma/dev.db*
 *.tsbuildinfo
 Dockerfile
 .dockerignore
+mobile
