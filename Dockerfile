@@ -2,7 +2,7 @@
 # The SQLite database lives on a volume at /data; the container creates and
 # seeds it on first boot and reseeds when the NZ date rolls over.
 
-FROM node:24-bookworm-slim AS base
+FROM node:25-bookworm-slim AS base
 ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH NEXT_TELEMETRY_DISABLED=1
 RUN apt-get update && apt-get install -y --no-install-recommends openssl \
   && rm -rf /var/lib/apt/lists/* && corepack enable
