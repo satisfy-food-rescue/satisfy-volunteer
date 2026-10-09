@@ -40,7 +40,9 @@ export default function TabStackLayout({ segment }: { segment: string }) {
         headerLargeTitleStyle: { fontFamily: font.bold, color: t.ink },
         headerShadowVisible: false,
         headerLargeTitleShadowVisible: false,
-        headerLargeStyle: { backgroundColor: t.background },
+        // Transparent, not the page colour: on iOS 26 an opaque large-title
+        // bar hides the large title itself, leaving an empty band.
+        headerLargeStyle: { backgroundColor: "transparent" },
         headerStyle: { backgroundColor: t.background },
         headerBackButtonDisplayMode: "minimal",
         contentStyle: { backgroundColor: t.background },

@@ -16,7 +16,9 @@ if (release && release !== "development" && !process.env.EXPO_PUBLIC_API_URL) {
 const TEAL = "#106379";
 
 const config: ExpoConfig = {
-  name: "Satisfy Volunteers",
+  // The label under the icon on the home screen. The store listings carry the
+  // full "Satisfy Volunteers" name; that is set in App Store Connect and Play.
+  name: "Satisfy",
   slug: "satisfy-volunteers",
   owner: "malinmw",
   scheme: "satisfy",
