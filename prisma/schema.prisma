@@ -58,6 +58,43 @@ model Volunteer {
   emails          Email[]
   contactLogs     ContactLog[]     @relation("ContactLogVolunteer")
   authoredLogs    ContactLog[]     @relation("ContactLogAuthor")
+  sessions        Session[]
+  pushTokens      PushToken[]
+}
+
+// A signed-in device. Mirrors the production Session table so the native
+// app's bearer tokens port straight over: only the SHA-256 of the token is
+// stored, so a leaked row cannot be replayed.
+model Session {
+  id          String    @id @default(cuid())
+  tokenHash   String    @unique
+  volunteerId String
+  volunteer   Volunteer @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+  // Refreshed at most daily.
+  lastSeenAt  DateTime  @default(now())
+  userAgent   String?
+
+  @@index([volunteerId])
+  @@index([expiresAt])
+}
+
+// An Expo push token for one of the volunteer's devices. A token belongs to
+// one device, so registering it again moves it to whoever signed in last.
+model PushToken {
+  id          String    @id @default(cuid())
+  token       String    @unique
+  volunteerId String
+  volunteer   Volunteer @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
+  // ios | android
+  platform    String
+  deviceName  String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  lastUsedAt  DateTime?
+
+  @@index([volunteerId])
 }
 
 // A collection route. Every route has a paid driver except the one that is

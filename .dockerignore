@@ -2,7 +2,7 @@ node_modules
 .next
 .git
 .env*
-prisma/dev.db*
+prisma/*.db*
 *.tsbuildinfo
 Dockerfile
 .dockerignore

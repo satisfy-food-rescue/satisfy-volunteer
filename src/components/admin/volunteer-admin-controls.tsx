@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { CalendarPlus, Check, ClipboardCheck, Loader2, MessageSquareText, Pencil, PhoneCall, Save, X } from "lucide-react";
 import { bookInitialVisit, logContact, recordCoordinatorCompletion, saveVolunteerNotes, setVolunteerRoles, updateVolunteerProfile } from "@/app/admin/actions";
-import type { ActionResult } from "@/app/app/actions";
+import type { ActionResult } from "@/lib/volunteer-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

@@ -10,6 +10,7 @@
     "start:prod": "tsx scripts/ensure-db.ts && next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "test:smoke": "tsx scripts/smoke.ts",
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
@@ -51,7 +52,8 @@
     "prisma": "7.10.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^5.0.3"
   },
   "packageManager": "pnpm@11.18.0"
 }

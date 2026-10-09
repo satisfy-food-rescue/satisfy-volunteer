@@ -41,8 +41,9 @@ export type DemoPersonas = { personas: DemoPersona[] };
 export type DemoSignInInput = { personaKey: string };
 export type SignInResult = { token: string; session: MobileSession };
 
-/** DELETE /api/mobile/auth/session signs this device out and forgets its
- *  push token. Returns MutationOk. */
+/** DELETE /api/mobile/auth/session with SignOutInput signs this device out
+ *  and forgets its push token. Returns MutationOk. */
+export type SignOutInput = { pushToken?: string };
 
 // Session -------------------------------------------------------------------
 
@@ -92,8 +93,12 @@ export type CrewMember = {
  *  app never re-implements the booking rules. */
 export type ShiftAction =
   | { kind: "PAST" }
+  /** The coordinator cancelled it; nobody should turn up. */
+  | { kind: "CANCELLED" }
   | { kind: "MINE"; assignmentId: string; source: AssignmentSource }
-  | { kind: "BLOCKED"; reason: string; moduleCode: string | null }
+  /** `fix` says what unblocks it: current training, or a role the
+   *  volunteer does not hold yet (only a coordinator can add one). */
+  | { kind: "BLOCKED"; reason: string; fix: "training" | "role"; moduleCode: string | null }
   | { kind: "FULL" }
   | { kind: "BOOK"; cover: boolean };
 

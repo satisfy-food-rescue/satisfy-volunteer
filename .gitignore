@@ -39,7 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-prisma/dev.db*
+prisma/*.db*
 
 # prisma client (generated on install)
 /src/generated

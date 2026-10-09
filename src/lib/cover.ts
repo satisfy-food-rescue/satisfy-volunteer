@@ -24,7 +24,10 @@ const lastMinuteRef = (shiftId: string, volunteerId: string) => `last-minute:${s
  *  this shift. Returns how many were notified. */
 export async function notifyLastMinute(view: ShiftView, now = new Date()): Promise<number> {
   if (!view.isGap || !within(view, view.shift.template.lastMinuteHours, now)) return 0;
-  const candidates = (await availableForShift(view)).filter((c) => c.volunteer.lastMinuteOk);
+  // Not whoever just cancelled or was taken off this shift: they are free
+  // that day now, but asking them to cover it makes no sense.
+  const droppedOut = new Set(view.shift.assignments.map((a) => a.volunteerId));
+  const candidates = (await availableForShift(view)).filter((c) => c.volunteer.lastMinuteOk && !droppedOut.has(c.volunteer.id));
   const already = new Set(
     (await db.email.findMany({ where: { ref: { startsWith: `last-minute:${view.shift.id}:` } }, select: { ref: true } })).map((e) => e.ref),
   );

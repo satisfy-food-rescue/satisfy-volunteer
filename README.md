@@ -17,15 +17,16 @@ Open http://localhost:3000. The first `pnpm dev` creates a SQLite database and s
 pnpm db:reset
 ```
 
-Other scripts: `pnpm lint`, `pnpm typecheck`, `pnpm build`.
+Other scripts: `pnpm lint`, `pnpm typecheck`, `pnpm test` (unit tests, Vitest), `pnpm build`.
 
 ## CI
 
 `.github/workflows/ci.yaml` runs on every pull request and on pushes to `main`:
 
-- **Lint, types and schema**: `pnpm lint --max-warnings 0`, `pnpm typecheck`, `prisma validate` and `prisma format --check`.
-- **Build and smoke test**: builds, boots `pnpm start:prod` on a fresh database (the same create-and-seed path a deploy takes), then `pnpm test:smoke` renders every page as every persona and fails on anything but a 200. Pages are found from `src/app`, so new pages are covered automatically; a new dynamic segment needs a resolver in `scripts/smoke.ts`.
+- **Lint, types and schema**: `pnpm lint --max-warnings 0`, `pnpm typecheck`, `prisma validate`, `prisma format --check` and the unit tests (`pnpm test`, `tests/unit`).
+- **Build and smoke test**: builds, boots `pnpm start:prod` on a fresh database (the same create-and-seed path a deploy takes), then `pnpm test:smoke` renders every page as every persona and fails on anything but a 200. Pages are found from `src/app`, so new pages are covered automatically; a new dynamic segment needs a resolver in `scripts/smoke.ts`. It then signs in to the native app API as every volunteer persona, reads every endpoint, saves the profile unchanged and signs out; a new read endpoint needs a line in `mobileApiChecks`.
 - **Docker image**: builds the production image and boots it on an empty volume.
+- **Native app**: in `mobile/`, lint, types (with Expo's typed routes generated first, so every link is checked against a real screen), unit tests, `expo install --check` (every package matches the Expo SDK) and an `expo export` that bundles the app for iOS and Android.
 
 To run the smoke test locally, start a production server and point it there:
 
@@ -58,7 +59,7 @@ Contrast was checked numerically. White on blue/teal is 6.8:1, so it carries but
 ## What is mocked
 
 - **Auth**: persona cookie, see above. Production uses email sign-in with passkeys, the same as the Fair Food portal.
-- **Email and push**: nothing is sent. Every email and push notification the system would send is written to the `Email` table (`channel` is `EMAIL` or `PUSH`) and shown in Admin > Outbox with a branded preview. Templates are pure functions in `src/lib/email-templates.ts`, shared by the seed and the server actions.
+- **Email and push**: no email is sent. Every email and push notification the system would send is written to the `Email` table (`channel` is `EMAIL` or `PUSH`) and shown in Admin > Outbox with a branded preview. Templates are pure functions in `src/lib/email-templates.ts`, shared by the seed and the server actions. Pushes are also delivered for real to any phone signed in to the native app (see below).
 - **Reminders and cover checks**: the rules are real code in `src/lib/reminders.ts` and `src/lib/cover.ts` and can be run on demand from Admin > Training > Reminders. In production training reminders run nightly and cover checks hourly.
 - **Infoodle**: sync status, record ids and the application feed are sample data. The settings page describes what would sync in each direction once API access is confirmed.
 - **Database**: SQLite via Prisma 7 for zero setup. The schema avoids SQLite-only features (enums are strings with TypeScript unions in `src/lib/domain.ts`) so production is a datasource swap to Postgres.
@@ -68,19 +69,36 @@ Contrast was checked numerically. White on blue/teal is 6.8:1, so it carries but
 Next.js 16 App Router, React 19, TypeScript, Tailwind CSS v4, shadcn/ui on Base UI, Prisma 7, Zod, lucide-react, sonner. Conventions mirror the Fair Food volunteer portal so this can grow into the real build.
 
 ```
+packages/core               shared with the native app: dates, domain labels, the API contract
 prisma/schema.prisma        data model (Postgres-compatible)
 prisma/seed.ts              relative-to-today demo data
 scripts/ensure-db.ts        first-run push and seed, daily reseed
+scripts/smoke.ts            every page and API endpoint as every persona
 src/app/sign-in             persona picker
 src/app/app/*               volunteer app (bottom tab bar, max width 30rem)
 src/app/admin/*             coordinator admin (sidebar)
+src/app/api/mobile/*        native app API (route handlers)
 src/app/*/actions.ts        server actions, Zod-validated
+src/lib/volunteer-actions.ts  what a volunteer can change, shared by web and API
+src/lib/mobile-api/*        builds the API's contract types from roster and training views
 src/lib/training.ts         module status and the booking gate
 src/lib/roster.ts           shift views, gap detection, available volunteers
 src/lib/cover.ts            last-minute push notifications and coordinator alerts
 src/lib/email-templates.ts  every email, as pure builders
 src/components/ui           shadcn primitives (owned source)
+tests/unit                  Vitest unit tests for pure logic
+mobile/                     Expo app, see mobile/README.md
 ```
+
+## Native app API
+
+The Expo app in `mobile/` talks to `/api/mobile/*`. Volunteer features only: coordinator tools stay on the web.
+
+- **The contract** is `packages/core/src/api.ts`: every path, request body and response type, imported by both sides as `@satisfy/core/api`, so a mismatch fails `pnpm typecheck`. Reads return the payload type; mutations return `{ message }`. Failures are `{ error }`, written for the volunteer: 400 for a malformed request, 401 for a missing or expired token (the app signs out), 403 when sign-in is refused, 404 for an unknown id, 422 when the rule says no (shift full, training overdue), 500 for anything unexpected.
+- **Auth**: `Authorization: Bearer <token>`. In the demo, `POST /api/mobile/auth/demo` signs in as a volunteer persona (the coordinator gets a 403 pointing to the web). Tokens are 32 random bytes; only their SHA-256 is stored, in the `Session` table, which has the same shape as the production build's. A session lasts 180 days from last use. The daily reseed keeps persona sessions and push tokens, so a demo phone stays signed in. `src/lib/mobile-auth.ts`.
+- **Rules live once**: route handlers call the same functions as the web server actions (`src/lib/volunteer-actions.ts`), and what each shift's button does (`ShiftAction`), the home alert and the tab badges are worked out on the server with the same code the web uses.
+- **Push**: the app registers its Expo push token (`POST /api/mobile/push-tokens`). Whenever a `PUSH` row is written to the Outbox for a volunteer with a registered device, it is also sent through Expo's push service after the response (`src/lib/push.ts`); tokens Expo reports as `DeviceNotRegistered` are removed. Set `EXPO_ACCESS_TOKEN` (optional) if the Expo project has enhanced push security turned on.
+- **Adding an endpoint**: add the types and path to `api.ts`, put any new rule in `src/lib` (a mutation in `volunteer-actions.ts` with its Zod schema), then add `src/app/api/mobile/<path>/route.ts` wrapping the handler in `mobileHandler` and returning `json<YourType>(...)` or `mutation(result)`. Add the read to `scripts/smoke.ts`.
 
 ## Domain rules worth knowing
 

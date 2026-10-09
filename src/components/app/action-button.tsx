@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { ActionResult } from "@/app/app/actions";
+import type { ActionResult } from "@/lib/volunteer-actions";
 import { cn } from "@/lib/utils";
 
 /** Generic mutation button: runs a server action, toasts the result, refreshes. */

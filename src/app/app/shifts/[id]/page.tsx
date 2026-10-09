@@ -98,7 +98,7 @@ export default async function ShiftDetailPage({ params }: { params: Promise<{ id
       )}
 
       <ShiftActions
-        state={{ shiftId: view.shift.id, mine: mine ? { id: mine.id, source: mine.source } : null, isPast: view.iso < today, isFull: view.isFull, isGap: view.isGap, eligible: elig.eligible, reason: elig.reason, blockerModuleCode: blocker }}
+        state={{ shiftId: view.shift.id, mine: mine ? { id: mine.id, source: mine.source } : null, isPast: view.iso < today, isCancelled: view.shift.status === "CANCELLED", isFull: view.isFull, isGap: view.isGap, eligible: elig.eligible, reason: elig.reason, blockerModuleCode: blocker, missingRole: !elig.hasRole }}
       />
 
       <section aria-labelledby="crew">

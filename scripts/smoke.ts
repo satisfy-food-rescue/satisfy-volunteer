@@ -1,11 +1,14 @@
 // Renders every page against a running server as every persona and fails on
 // anything but a 200. Pages are discovered from src/app, so a new page is
 // covered without touching this file; a new dynamic segment needs a resolver
-// below. Run after `pnpm build && pnpm start:prod`:
+// below. Then signs in to the native app API as every volunteer persona and
+// reads every endpoint. Run after `pnpm build && pnpm start:prod`:
 //   BASE_URL=http://localhost:3000 pnpm test:smoke
 import { globSync } from "node:fs";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import type { Volunteer } from "../src/generated/prisma/client";
+import type * as Api from "@satisfy/core/api";
 import { addDays, isoToDate, todayISO } from "../src/lib/dates";
 import { PERSONA_COOKIE } from "../src/lib/session";
 
@@ -87,12 +90,81 @@ async function main() {
     }),
   );
 
+  const apiChecks = await mobileApiChecks(admins, volunteers, values, failures);
+  const total = checks.length + apiChecks;
+
   if (failures.length) {
-    console.error(`${failures.length} of ${checks.length} smoke checks failed:\n  ${failures.join("\n  ")}`);
+    console.error(`${failures.length} of ${total} smoke checks failed:\n  ${failures.join("\n  ")}`);
     process.exitCode = 1;
   } else {
-    console.log(`All ${checks.length} smoke checks passed against ${base}.`);
+    console.log(`All ${total} smoke checks passed against ${base} (${checks.length} pages, ${apiChecks} native app API calls).`);
   }
+}
+
+// Native app API ---------------------------------------------------------------
+
+const isStr = (v: unknown): v is string => typeof v === "string";
+const isNum = (v: unknown): v is number => typeof v === "number";
+const isArr = Array.isArray;
+const ACTIONS = ["PAST", "MINE", "BLOCKED", "FULL", "BOOK"];
+const shiftOk = (s: Api.ShiftSummary) => isStr(s.id) && isStr(s.iso) && isStr(s.name) && isArr(s.crew) && ACTIONS.includes(s.action?.kind);
+
+/** Every read endpoint as every volunteer persona, plus the auth edges.
+ *  Returns how many calls were made; problems go into `failures`. */
+async function mobileApiChecks(admins: Volunteer[], volunteers: Volunteer[], values: Record<string, string[]>, failures: string[]) {
+  let calls = 0;
+  async function call<T>(who: string, method: string, path: string, opts: { token?: string; body?: unknown; expect?: number; check?: (body: T) => boolean } = {}) {
+    calls++;
+    const res = await fetch(`${base}/api/mobile${path}`, {
+      method,
+      headers: { ...(opts.token ? { authorization: `Bearer ${opts.token}` } : {}), ...(opts.body ? { "content-type": "application/json" } : {}) },
+      body: opts.body ? JSON.stringify(opts.body) : undefined,
+    });
+    const expect = opts.expect ?? 200;
+    const body = (await res.json().catch(() => null)) as T | null;
+    const label = `API ${method} ${path} as ${who}`;
+    if (res.status !== expect) failures.push(`${label}: expected ${expect}, got ${res.status} ${JSON.stringify(body)}`);
+    else if (expect >= 400 && !isStr((body as Api.ApiFailure | null)?.error)) failures.push(`${label}: no { error } in the ${expect} response`);
+    else if (body === null || (opts.check && !opts.check(body))) failures.push(`${label}: unexpected shape ${JSON.stringify(body).slice(0, 300)}`);
+    return body;
+  }
+
+  await call("signed out", "GET", "/session", { expect: 401 });
+  await call("signed out", "GET", "/session", { token: "not-a-real-token", expect: 401 });
+  await call("signed out", "GET", "/no-such-endpoint", { expect: 404 });
+  await call<Api.DemoPersonas>("signed out", "GET", "/auth/personas", {
+    check: (b) => volunteers.every((v) => b.personas.some((p) => p.key === v.personaKey)) && !b.personas.some((p) => admins.some((a) => a.personaKey === p.key)),
+  });
+  for (const a of admins) await call(a.personaKey!, "POST", "/auth/demo", { body: { personaKey: a.personaKey }, expect: 403 });
+
+  const shiftIds = values["/app/shifts/[id]"];
+  const moduleCodes = values["/app/training/[code]"];
+  await Promise.all(
+    volunteers.map(async (v) => {
+      const who = v.personaKey!;
+      const signIn = await call<Api.SignInResult>(who, "POST", "/auth/demo", { body: { personaKey: who }, check: (b) => isStr(b.token) && b.session.me.id === v.id });
+      const token = signIn?.token;
+      if (!token) return;
+      const today = todayISO();
+      const get = <T>(path: string, check: (b: T) => boolean) => call<T>(who, "GET", path, { token, check });
+      await get<Api.MobileSession>("/session", (b) => b.me.id === v.id && b.today === today && isNum(b.badges.cover) && isNum(b.badges.training));
+      await get<Api.Home>("/home", (b) => b.today === today && isStr(b.empty.cta) && isNum(b.impact.meals) && (b.next === null || shiftOk(b.next)));
+      for (const week of ["", `?week=${addDays(today, 7)}`]) {
+        await get<Api.ShiftsWeek>(`/shifts${week}`, (b) => b.days.length === 5 && b.days.every((d) => isArr(d.shifts) && d.shifts.every(shiftOk)));
+      }
+      for (const id of shiftIds) await get<Api.ShiftDetail>(`/shifts/${id}`, (b) => b.id === id && shiftOk(b) && isArr(b.stops));
+      await get<Api.CoverList>("/cover", (b) => b.shifts.every((s) => shiftOk(s) && s.isGap));
+      await get<Api.TrainingOverview>("/training", (b) => b.required.length > 0 && isNum(b.summary.current) && isArr(b.sessions));
+      for (const code of moduleCodes) await get<Api.TrainingModuleDetail>(`/training/modules/${code}`, (b) => b.module.code === code && isArr(b.paragraphs));
+      await get<Api.SlotOverview>("/slot", (b) => isArr(b.slots) && isArr(b.absences) && isArr(b.upcoming));
+      await get<Api.HarvestOverview>("/harvest", (b) => isArr(b.callouts) && isNum(b.poolCount));
+      const profile: Api.ProfileInput = { phone: v.phone ?? "", suburb: v.suburb ?? "", emergencyName: v.emergencyName ?? "", emergencyPhone: v.emergencyPhone ?? "", availabilityNote: v.availabilityNote ?? "", lastMinuteOk: v.lastMinuteOk };
+      await call<Api.MutationOk>(who, "PATCH", "/profile", { token, body: profile, check: (b) => isStr(b.message) });
+      await call<Api.MutationOk>(who, "DELETE", "/auth/session", { token, body: {}, check: (b) => isStr(b.message) });
+      await call(who, "GET", "/session", { token, expect: 401 });
+    }),
+  );
+  return calls;
 }
 
 main()
