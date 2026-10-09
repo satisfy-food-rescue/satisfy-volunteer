@@ -1,3 +1,8 @@
+# The web app is the root package. packages/core is shared with the native
+# app, which lives in mobile/ as its own pnpm project (see mobile/README.md).
+packages:
+  - packages/*
+
 # Mirrors the Fair Food layout: flat node_modules so Prisma's generated client
 # and Next.js tracing behave like npm.
 nodeLinker: hoisted

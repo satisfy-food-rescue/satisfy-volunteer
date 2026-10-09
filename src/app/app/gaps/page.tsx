@@ -1,8 +1,7 @@
 import { HandHelping, Lock, Sparkles } from "lucide-react";
 import { requireVolunteer } from "@/lib/session";
-import { addDays, formatDay, formatTimeRange, relativeDay, todayISO } from "@/lib/dates";
-import { gapsBetween } from "@/lib/roster";
-import { trainingContext } from "@/lib/volunteer-data";
+import { formatDay, formatTimeRange, relativeDay, todayISO } from "@/lib/dates";
+import { coverableGaps, trainingContext } from "@/lib/volunteer-data";
 import { eligibilityFor } from "@/lib/training";
 import { ShiftActions } from "@/components/app/shift-actions";
 import { ShiftKindIcon } from "@/components/app/shift-card";
@@ -15,8 +14,7 @@ export const metadata = { title: "Open gaps" };
 export default async function GapsPage() {
   const me = await requireVolunteer();
   const today = todayISO();
-  const [gaps, training] = await Promise.all([gapsBetween(today, addDays(today, 28)), trainingContext(me, today)]);
-  const list = gaps.filter((g) => !g.released.some((r) => r.volunteerId === me.id));
+  const [list, training] = await Promise.all([coverableGaps(me.id, today), trainingContext(me, today)]);
   const byDate = new Map<string, typeof list>();
   for (const g of list) byDate.set(g.iso, [...(byDate.get(g.iso) ?? []), g]);
 
@@ -61,7 +59,7 @@ export default async function GapsPage() {
                     <div className="mt-3">
                       <ShiftActions
                         compact
-                        state={{ shiftId: view.shift.id, mine: mine ? { id: mine.id, source: mine.source } : null, isPast: false, isFull: view.isFull, isGap: true, eligible: elig.eligible, reason: elig.reason, blockerModuleCode: elig.blockers[0]?.module.code ?? null }}
+                        state={{ shiftId: view.shift.id, mine: mine ? { id: mine.id, source: mine.source } : null, isPast: false, isCancelled: false, isFull: view.isFull, isGap: true, eligible: elig.eligible, reason: elig.reason, blockerModuleCode: elig.blockers[0]?.module.code ?? null, missingRole: !elig.hasRole }}
                       />
                     </div>
                   </article>

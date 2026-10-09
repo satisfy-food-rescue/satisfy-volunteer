@@ -1,47 +1,24 @@
 import type { Metadata } from "next";
-import { AlertTriangle, ClipboardList, ShieldCheck, Sprout, Truck, Warehouse } from "lucide-react";
+import { AlertTriangle, ClipboardList, ShieldCheck, Sprout, Truck, Warehouse, type LucideIcon } from "lucide-react";
 import { BrandFooter, FoodIcon, Logo } from "@/components/brand/logo";
 import { db } from "@/lib/db";
 import { todayISO, formatDayLong } from "@/lib/dates";
 import { fullName } from "@/lib/domain";
 import { moduleStatuses, trainingSummary } from "@/lib/training";
 import { IMPACT, compactCount, formatCount } from "@/lib/brand";
+import { PERSONAS, type PersonaKey } from "@/lib/personas";
 import { signInAs } from "./actions";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Sign in" };
 export const dynamic = "force-dynamic";
 
-const PERSONAS = [
-  {
-    key: "phillipa",
-    label: "Coordinator",
-    icon: ShieldCheck,
-    blurb: "Admin view: roster, gaps, training compliance, applications and the Outbox.",
-    surface: "Admin (desktop)",
-  },
-  {
-    key: "margaret",
-    label: "Regular warehouse volunteer",
-    icon: Warehouse,
-    blurb: "Tuesdays and Thursdays on the sorting floor. Training current, one refresher due soon.",
-    surface: "Volunteer app",
-  },
-  {
-    key: "tony",
-    label: "Driver help, refresher overdue",
-    icon: Truck,
-    blurb: "Wednesday Rangiora / Kaiapoi route. Manual Handling lapsed, so route shifts are blocked until it is done.",
-    surface: "Volunteer app",
-  },
-  {
-    key: "jess",
-    label: "New volunteer, no training yet",
-    icon: Sprout,
-    blurb: "Approved from the Infoodle form two days ago. Needs an initial visit before booking anything.",
-    surface: "Volunteer app",
-  },
-] as const;
+const PERSONA_ICON: Record<PersonaKey, LucideIcon> = {
+  phillipa: ShieldCheck,
+  margaret: Warehouse,
+  tony: Truck,
+  jess: Sprout,
+};
 
 export default async function SignInPage() {
   const today = todayISO();
@@ -98,7 +75,7 @@ export default async function SignInPage() {
             if (!person) return null;
             const summary = trainingSummary(moduleStatuses(person, modules, person.trainingRecords, today));
             const slot = person.regularSlots[0];
-            const Icon = p.icon;
+            const Icon = PERSONA_ICON[p.key];
             return (
               <form key={p.key} action={signInAs}>
                 <input type="hidden" name="persona" value={p.key} />

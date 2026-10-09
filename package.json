@@ -10,6 +10,7 @@
     "start:prod": "tsx scripts/ensure-db.ts && next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "test:smoke": "tsx scripts/smoke.ts",
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
@@ -21,6 +22,7 @@
     "@base-ui/react": "^1.8.0",
     "@prisma/adapter-better-sqlite3": "^7.10.0",
     "@prisma/client": "^7.10.0",
+    "@satisfy/core": "workspace:*",
     "better-sqlite3": "^13.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -50,7 +52,8 @@
     "prisma": "7.10.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
-    "typescript": "^6"
+    "typescript": "^6",
+    "vitest": "^5.0.3"
   },
   "packageManager": "pnpm@11.18.0"
 }

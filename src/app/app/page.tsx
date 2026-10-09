@@ -1,18 +1,14 @@
 import Link from "next/link";
 import { AlertTriangle, ArrowRight, CalendarDays, CalendarOff, GraduationCap, HandHelping, MapPin } from "lucide-react";
 import { requireVolunteer } from "@/lib/session";
-import { addDays, formatDay, formatInstant, formatTimeRange, relativeDays, todayISO, formatDayLong } from "@/lib/dates";
-import { INITIAL_VISIT_CODE } from "@/lib/domain";
-import { gapsBetween } from "@/lib/roster";
-import { myUpcomingShifts, trainingContext } from "@/lib/volunteer-data";
+import { formatDay, formatTimeRange, relativeDays, todayISO, formatDayLong } from "@/lib/dates";
+import { loadHome } from "@/lib/home";
 import { IMPACT, compactCount, formatCount } from "@/lib/brand";
 import { AvatarBadge } from "@/components/shared/avatar-badge";
 import { FoodIcon } from "@/components/brand/logo";
 import { ShiftKindIcon } from "@/components/app/shift-card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { db } from "@/lib/db";
-import { isoToDate } from "@/lib/dates";
 
 export const metadata = { title: "Home" };
 
@@ -24,32 +20,9 @@ function greeting() {
 export default async function HomePage() {
   const me = await requireVolunteer();
   const today = todayISO();
-  const [upcoming, training, gaps, callouts, visit] = await Promise.all([
-    myUpcomingShifts(me.id, today),
-    trainingContext(me, today),
-    gapsBetween(today, addDays(today, 28)),
-    me.inHarvestPool
-      ? db.harvestCallout.findMany({ where: { date: { gte: isoToDate(today) } }, include: { rsvps: { where: { volunteerId: me.id } } }, orderBy: { date: "asc" }, take: 1 })
-      : Promise.resolve([]),
-    db.sessionRsvp.findFirst({ where: { volunteerId: me.id, status: "GOING", session: { startsAt: { gte: new Date() }, module: { code: INITIAL_VISIT_CODE } } }, include: { session: true } }),
-  ]);
-  const next = upcoming[0];
+  const { next, coverable, callout, alert, empty } = await loadHome(me, today);
   const others = next ? next.confirmed.filter((a) => a.volunteerId !== me.id) : [];
-  const s = training.summary;
-  const needsVisit = training.statuses.some((m) => m.module.code === INITIAL_VISIT_CODE && m.status === "NOT_STARTED");
-  const coverable = gaps.filter((g) => !g.released.some((r) => r.volunteerId === me.id));
-  const alert =
-    s.overdue > 0
-      ? { tone: "bad" as const, title: `${s.overdue} training ${s.overdue === 1 ? "refresher is" : "refreshers are"} overdue`, text: "Route shifts are blocked until it is done. Most refreshers take ten minutes online.", icon: AlertTriangle }
-      : needsVisit && visit
-        ? { tone: "info" as const, title: `Your initial visit: ${formatInstant(visit.session.startsAt)}`, text: `At ${visit.session.location}. Shifts open up once your in-person training is done.`, icon: GraduationCap }
-      : needsVisit
-        ? { tone: "info" as const, title: "Your initial visit comes first", text: "Our coordinator will call to arrange your first visit to the warehouse, or you can book an open time. Shifts open up once your in-person training is done.", icon: GraduationCap }
-      : s.notStarted > 0
-        ? { tone: "info" as const, title: "Finish your training to start booking shifts", text: "Tick off the remaining modules. The online ones take about ten minutes each.", icon: GraduationCap }
-        : s.dueSoon > 0
-          ? { tone: "warn" as const, title: `${s.dueSoon} refresher${s.dueSoon === 1 ? "" : "s"} due soon`, text: "Get ahead of it now and nothing will get blocked.", icon: AlertTriangle }
-          : null;
+  const AlertIcon = alert?.tone === "info" ? GraduationCap : AlertTriangle;
 
   return (
     <div className="flex flex-col pb-2">
@@ -108,10 +81,10 @@ export default async function HomePage() {
               <p id="next-shift" className="eyebrow">Next shift</p>
               <p className="mt-1.5 text-xl font-bold text-ink">No shifts booked yet</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                {s.notStarted > 0 ? "Once your in-person training is done, you can pick a regular weekly slot or book one-off shifts." : "Browse the week and book a morning that suits."}
+                {empty.text}
               </p>
-              <Button className="mt-4 h-12 w-full text-base" render={<Link href={s.notStarted > 0 ? "/app/training" : "/app/shifts"} />}>
-                {needsVisit && !visit ? "Book my initial visit" : s.notStarted > 0 ? "Go to my training" : "Find a shift"}
+              <Button className="mt-4 h-12 w-full text-base" render={<Link href={empty.target === "training" ? "/app/training" : "/app/shifts"} />}>
+                {empty.cta}
               </Button>
             </div>
           )}
@@ -127,7 +100,7 @@ export default async function HomePage() {
               alert.tone === "info" && "bg-status-info-bg text-status-info ring-status-info/20 hover:ring-status-info/40",
             )}
           >
-            <alert.icon className="mt-0.5 size-6 shrink-0" aria-hidden />
+            <AlertIcon className="mt-0.5 size-6 shrink-0" aria-hidden />
             <span className="min-w-0 flex-1">
               <span className="block font-bold">{alert.title}</span>
               <span className="mt-0.5 block text-sm leading-snug opacity-90">{alert.text}</span>
@@ -172,14 +145,14 @@ export default async function HomePage() {
           </Link>
         )}
 
-        {callouts[0] && (
+        {callout && (
           <Link href="/app/harvest" className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-teal/60">
             <FoodIcon kind="apple" className="size-11" />
             <span className="min-w-0 flex-1">
-              <span className="block font-bold text-ink">Harvest callout: {callouts[0].title}</span>
+              <span className="block font-bold text-ink">Harvest callout: {callout.title}</span>
               <span className="block text-sm text-muted-foreground">
-                {formatDay(callouts[0].date.toISOString().slice(0, 10))}
-                {callouts[0].rsvps[0]?.status === "GOING" ? " · You're going" : " · Tap to respond"}
+                {formatDay(callout.date.toISOString().slice(0, 10))}
+                {callout.rsvps[0]?.status === "GOING" ? " · You're going" : " · Tap to respond"}
               </span>
             </span>
             <ArrowRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />

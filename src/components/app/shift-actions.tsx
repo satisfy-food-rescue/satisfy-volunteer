@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { CheckCircle2, HandHelping, Lock } from "lucide-react";
+import { Ban, CheckCircle2, HandHelping, Lock } from "lucide-react";
 import { bookShift, cancelBooking } from "@/app/app/actions";
 import { ActionButton } from "./action-button";
 import { Button } from "@/components/ui/button";
@@ -10,15 +10,25 @@ export type ShiftActionState = {
   shiftId: string;
   mine: { id: string; source: string } | null;
   isPast: boolean;
+  isCancelled: boolean;
   isFull: boolean;
   isGap: boolean;
   eligible: boolean;
   reason: string | null;
   blockerModuleCode: string | null;
+  /** Blocked because the volunteer lacks the role, which training cannot fix. */
+  missingRole: boolean;
 };
 
 export function ShiftActions({ state, compact = false }: { state: ShiftActionState; compact?: boolean }) {
   if (state.isPast) return null;
+  if (state.isCancelled) {
+    return (
+      <p className="inline-flex items-center gap-2 font-semibold text-status-neutral">
+        <Ban className="size-5" aria-hidden /> This shift has been cancelled.
+      </p>
+    );
+  }
   if (state.mine) {
     return (
       <div className="flex flex-col gap-3">
@@ -50,9 +60,9 @@ export function ShiftActions({ state, compact = false }: { state: ShiftActionSta
           variant="outline"
           size="lg"
           className="mt-3 h-12 w-full border-status-warn/40 bg-white text-base text-status-warn hover:bg-white"
-          render={<Link href={state.blockerModuleCode ? `/app/training/${state.blockerModuleCode}` : "/app/training"} />}
+          render={<Link href={state.missingRole ? "/app/profile" : state.blockerModuleCode ? `/app/training/${state.blockerModuleCode}` : "/app/training"} />}
         >
-          Go to training
+          {state.missingRole ? "Ask to change my roles" : "Go to training"}
         </Button>
       </div>
     );

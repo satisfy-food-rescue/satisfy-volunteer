@@ -12,7 +12,7 @@ import { runReminders } from "@/lib/reminders";
 import { afterShiftReleased, runCoverChecks } from "@/lib/cover";
 import { queueEmail } from "@/lib/emails";
 import * as T from "@/lib/email-templates";
-import type { ActionResult } from "@/app/app/actions";
+import type { ActionResult } from "@/lib/volunteer-actions";
 
 function revalidateAll() {
   revalidatePath("/app", "layout");

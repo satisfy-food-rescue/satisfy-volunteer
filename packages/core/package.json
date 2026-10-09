@@ -1,0 +1,12 @@
+{
+  "name": "@satisfy/core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pure TypeScript shared by the web app and the native app: dates, domain labels and the mobile API contract. No runtime dependencies.",
+  "type": "module",
+  "exports": {
+    "./dates": "./src/dates.ts",
+    "./domain": "./src/domain.ts",
+    "./api": "./src/api.ts"
+  }
+}

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronRight, CheckCircle2, HandHelping, Lock, Users } from "lucide-react";
+import { Ban, CheckCircle2, ChevronRight, HandHelping, Lock, Users } from "lucide-react";
 import type { ShiftView } from "@/lib/roster";
 import { formatTimeRange } from "@/lib/dates";
 import { Chip } from "@/components/shared/status-chip";
@@ -34,6 +34,7 @@ export function ShiftCard({
   reason: string | null;
 }) {
   const mine = view.confirmed.find((a) => a.volunteerId === meId);
+  const cancelled = view.shift.status === "CANCELLED";
   const others = view.confirmed.filter((a) => a.volunteerId !== meId);
   return (
     <Link
@@ -61,14 +62,16 @@ export function ShiftCard({
           <ChevronRight className="mt-1 size-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" aria-hidden />
         </span>
         <span className="flex flex-wrap items-center gap-2">
-          {mine ? (
+          {cancelled ? (
+            <Chip tone="neutral" icon={Ban} size="sm">Cancelled</Chip>
+          ) : mine ? (
             <Chip tone="good" icon={CheckCircle2} size="sm">{mine.source === "REGULAR" ? "Your regular slot" : "You're on"}</Chip>
           ) : view.isGap ? (
             <Chip tone="bad" icon={HandHelping} size="sm">Needs cover</Chip>
           ) : view.isFull ? (
             <Chip tone="neutral" size="sm">Full</Chip>
           ) : null}
-          {!mine && !eligible && <Chip tone="warn" icon={Lock} size="sm">Training needed</Chip>}
+          {!cancelled && !mine && !eligible && <Chip tone="warn" icon={Lock} size="sm">Training needed</Chip>}
           <span className="ml-auto inline-flex items-center gap-1.5 text-sm text-muted-foreground tabular">
             <Users className="size-4" aria-hidden />
             {view.confirmedCount}/{view.shift.capacity}
@@ -87,7 +90,7 @@ export function ShiftCard({
             </span>
           </span>
         )}
-        {!mine && !eligible && reason && (
+        {!cancelled && !mine && !eligible && reason && (
           <span className="text-sm leading-snug text-status-warn">{reason}</span>
         )}
       </span>
