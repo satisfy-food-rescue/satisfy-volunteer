@@ -70,9 +70,22 @@ src/theme.ts             design tokens
 
 ## Releasing with EAS
 
-The app is linked to the Expo project `@malinmw/satisfy-volunteers`; its id is in `app.config.ts`. Run EAS commands from `mobile/`. Before the first preview or production build:
+The app is linked to the Expo project `@malinmw/satisfy-volunteers`; its id is in `app.config.ts`. Run the scripts below from `mobile/` with `pnpm`. They use the latest EAS CLI through `npx`, as Expo recommends; `eas.json` sets the minimum version.
 
-1. Set the API URL (the deployed web app) as an EAS environment variable for each environment, for example `npx eas-cli@latest env:create --name EXPO_PUBLIC_API_URL --value https://<host> --environment preview --visibility plaintext`. `app.config.ts` refuses to build a preview or production app without it.
-2. `npx eas-cli@latest credentials` sets up signing and the APNs key for push.
+Once, before the first preview or production build:
 
-Then `npx eas-cli@latest build --profile preview` gives installable test builds, and `--profile production` plus `eas submit` goes to TestFlight and Google Play. The bundle id and package are `nz.org.satisfyfoodrescue.volunteers`; changing them after the first store upload is not possible.
+1. Set the API URL (the deployed web app) as an EAS environment variable for each environment you build, for example `npx eas-cli@latest env:create --name EXPO_PUBLIC_API_URL --value https://<host> --environment preview --visibility plaintext`. Builds and updates for `preview` or `production` refuse to run without it, because the app would otherwise talk to `localhost`.
+2. `npx eas-cli@latest credentials` sets up signing and the APNs key for push. It asks for your Apple account.
+3. For iPhone test builds, register each test phone with `pnpm devices` (it gives a link to open on the phone). Android test builds install on any phone.
+
+| Script | What it does |
+| --- | --- |
+| `pnpm build:preview` | Test builds for both platforms, installable straight from the link EAS gives (an `.apk` on Android). |
+| `pnpm build:production` | Store builds for both platforms. The build number goes up automatically. |
+| `pnpm submit` | Sends the latest store builds to TestFlight and Google Play. The first run asks for the App Store Connect app and a Google Play service account key, and offers to save them. |
+| `pnpm release` | `build:production` and `submit` in one go: builds, then submits when each build finishes. |
+| `pnpm update:preview` | Publishes the current JavaScript to installed preview builds over the air, using the last commit message as the update message. |
+| `pnpm update:production` | The same for the store apps. |
+| `pnpm devices` | Registers an iPhone for preview builds. |
+
+Over-the-air updates only reach builds of the same app version (`version` in `app.config.ts`). Anything that changes native code (a new Expo package, a config plugin, the SDK) needs a new build, not an update. The bundle id and package are `nz.org.satisfyfoodrescue.volunteers`; they cannot change after the first store upload.

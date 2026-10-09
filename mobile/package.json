@@ -13,7 +13,14 @@
     "test:watch": "vitest",
     "check:deps": "expo install --check",
     "doctor": "expo-doctor",
-    "typegen": "node scripts/generate-route-types.mjs"
+    "typegen": "node scripts/generate-route-types.mjs",
+    "build:preview": "npx --yes eas-cli@latest build --profile preview --platform all",
+    "build:production": "npx --yes eas-cli@latest build --profile production --platform all",
+    "release": "npx --yes eas-cli@latest build --profile production --platform all --auto-submit",
+    "submit": "npx --yes eas-cli@latest submit --profile production --platform all --latest",
+    "update:preview": "RELEASE_CHANNEL=preview npx --yes eas-cli@latest update --channel preview --environment preview --auto",
+    "update:production": "RELEASE_CHANNEL=production npx --yes eas-cli@latest update --channel production --environment production --auto",
+    "devices": "npx --yes eas-cli@latest device:create"
   },
   "dependencies": {
     "@expo-google-fonts/montserrat": "^0.4.2",
