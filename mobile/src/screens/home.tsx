@@ -7,9 +7,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { Home, HomeAlert, ShiftSummary } from "@satisfy/core/api";
 import { formatDay, formatDayLong, formatTimeRange, relativeDays } from "@satisfy/core/dates";
 import { BrandWaves, FoodIcon, Logo, type FoodKind } from "@/components/brand/logo";
+import { Photo, shiftPhoto } from "@/components/photo";
 import { usePullToRefresh } from "@/components/screen";
 import { CrewLine } from "@/components/shift/crew-line";
-import { KindTile } from "@/components/shift/kind-tile";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -103,19 +103,17 @@ function NextShift({ shift, today }: { shift: ShiftSummary; today: string }) {
     <Pressable onPress={() => router.push({ pathname: "/shift/[id]", params: { id: shift.id } })} accessibilityRole="button" accessibilityLabel={`Next shift ${formatDay(shift.iso)}, ${shift.name}`}>
         {({ pressed }) => (
           <Card raised padded={false} border={pressed ? "tealText" : "border"}>
-            <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, padding: 20 }}>
-              <View style={{ flex: 1 }}>
-                <Text variant="eyebrow" tone="tealText">
-                  Next shift · {relativeDays(shift.iso, today)}
-                </Text>
-                <Text variant="display" style={{ marginTop: 6 }}>
-                  {formatDay(shift.iso)}
-                </Text>
-                <Text variant="heading" tone="inkSoft" tabular style={{ fontFamily: "Montserrat_500Medium" }}>
-                  {formatTimeRange(shift.startTime, shift.endTime)}
-                </Text>
-              </View>
-              <KindTile kind={shift.kind} size={48} />
+            <Photo photo={shiftPhoto(shift.kind)} decorative style={{ height: 144 }} />
+            <View style={{ padding: 20 }}>
+              <Text variant="eyebrow" tone="tealText">
+                Next shift · {relativeDays(shift.iso, today)}
+              </Text>
+              <Text variant="display" style={{ marginTop: 6 }}>
+                {formatDay(shift.iso)}
+              </Text>
+              <Text variant="heading" tone="inkSoft" tabular style={{ fontFamily: "Montserrat_500Medium" }}>
+                {formatTimeRange(shift.startTime, shift.endTime)}
+              </Text>
             </View>
             <View style={{ backgroundColor: t.tealTintSoft, borderTopWidth: 1, borderTopColor: t.border, paddingHorizontal: 20, paddingVertical: 16, gap: 12 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>

@@ -6,7 +6,7 @@ import { loadHome } from "@/lib/home";
 import { IMPACT, compactCount, formatCount } from "@/lib/brand";
 import { AvatarBadge } from "@/components/shared/avatar-badge";
 import { FoodIcon } from "@/components/brand/logo";
-import { ShiftKindIcon } from "@/components/app/shift-card";
+import { APP_COLUMN_SIZES, Photo, shiftPhoto } from "@/components/shared/photo";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -40,15 +40,11 @@ export default async function HomePage() {
               href={`/app/shifts/${next.shift.id}`}
               className="group block overflow-hidden rounded-2xl bg-card shadow-[0_12px_32px_-16px_rgb(16_48_58/0.45)] ring-1 ring-border transition-shadow hover:ring-teal/50"
             >
-              <span className="flex items-start justify-between gap-3 p-5">
-                <span className="min-w-0">
-                  <span id="next-shift" className="eyebrow block">Next shift · {relativeDays(next.iso, today)}</span>
-                  <span className="mt-1.5 block font-display text-3xl font-bold text-ink">{formatDay(next.iso)}</span>
-                  <span className="mt-0.5 block text-lg text-ink-soft tabular">{formatTimeRange(next.shift.startTime, next.shift.endTime)}</span>
-                </span>
-                <span className={cn("flex size-12 shrink-0 items-center justify-center rounded-2xl", next.kind === "WAREHOUSE" ? "bg-green-tint text-green-deep" : "bg-sky-tint text-sky-text")}>
-                  <ShiftKindIcon kind={next.kind} className="size-6" />
-                </span>
+              <Photo photo={shiftPhoto(next.kind)} sizes={APP_COLUMN_SIZES} decorative preload className="h-36" />
+              <span className="block p-5">
+                <span id="next-shift" className="eyebrow block">Next shift · {relativeDays(next.iso, today)}</span>
+                <span className="mt-1.5 block font-display text-3xl font-bold text-ink">{formatDay(next.iso)}</span>
+                <span className="mt-0.5 block text-lg text-ink-soft tabular">{formatTimeRange(next.shift.startTime, next.shift.endTime)}</span>
               </span>
               <span className="block border-t border-border bg-teal-tint-soft px-5 py-4">
                 <span className="flex items-center justify-between gap-3">

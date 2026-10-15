@@ -5,6 +5,7 @@ import { dateToISO, formatDayLong, formatTimeRange, isoToDate, todayISO } from "
 import { HarvestPoolToggle, HarvestRsvp } from "@/components/app/harvest-controls";
 import { AvatarBadge } from "@/components/shared/avatar-badge";
 import { FoodIcon } from "@/components/brand/logo";
+import { APP_COLUMN_SIZES, Photo } from "@/components/shared/photo";
 import { cn } from "@/lib/utils";
 
 export const metadata = { title: "Harvest pool" };
@@ -24,18 +25,21 @@ export default async function HarvestPage() {
         <h1 className="mt-1 text-3xl text-ink">Harvest pool</h1>
       </div>
 
-      <section className={cn("rounded-2xl p-5", me.inHarvestPool ? "bg-green-tint-soft ring-1 ring-green/40" : "bg-card ring-1 ring-border")}>
-        <div className="flex items-start gap-3">
-          <FoodIcon kind="broccoli" className="size-12" />
-          <div>
-            <p className="font-bold text-ink">{me.inHarvestPool ? "You're in the pool" : "Join the harvest pool"}</p>
-            <p className="mt-1 text-sm text-ink-soft">
-              In summer and autumn we pick fruit from orchards and backyard trees with Food Secure North Canterbury. Pool members get a callout with the details and reply in the app. {poolCount} volunteers are in the pool.
-            </p>
+      <section className={cn("overflow-hidden rounded-2xl", me.inHarvestPool ? "bg-green-tint-soft ring-1 ring-green/40" : "bg-card ring-1 ring-border")}>
+        <Photo photo="harvest" sizes={APP_COLUMN_SIZES} preload className="aspect-[16/9]" />
+        <div className="p-5">
+          <div className="flex items-start gap-3">
+            <FoodIcon kind="broccoli" className="size-12" />
+            <div>
+              <p className="font-bold text-ink">{me.inHarvestPool ? "You're in the pool" : "Join the harvest pool"}</p>
+              <p className="mt-1 text-sm text-ink-soft">
+                In summer and autumn we pick fruit from orchards and backyard trees with Food Secure North Canterbury. Pool members get a callout with the details and reply in the app. {poolCount} volunteers are in the pool.
+              </p>
+            </div>
           </div>
-        </div>
-        <div className="mt-4">
-          <HarvestPoolToggle inPool={me.inHarvestPool} />
+          <div className="mt-4">
+            <HarvestPoolToggle inPool={me.inHarvestPool} />
+          </div>
         </div>
       </section>
 

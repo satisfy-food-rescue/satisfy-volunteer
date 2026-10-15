@@ -3,8 +3,8 @@ import { View } from "react-native";
 import type { ShiftDetail } from "@satisfy/core/api";
 import { formatDayLong, formatTimeRange, relativeDay } from "@satisfy/core/dates";
 import { fullName } from "@satisfy/core/domain";
+import { Photo, shiftPhoto } from "@/components/photo";
 import { QueryScreen } from "@/components/screen";
-import { KindTile } from "@/components/shift/kind-tile";
 import { ShiftActions } from "@/components/shift/shift-actions";
 import { Avatar } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
@@ -38,9 +38,9 @@ function Detail({ shift, today }: { shift: ShiftDetail; today: string }) {
   const t = useTheme();
   return (
     <>
-      <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 16 }}>
-        <KindTile kind={shift.kind} size={56} />
-        <View style={{ flex: 1, gap: 4 }}>
+      <View style={{ gap: 16 }}>
+        <Photo photo={shiftPhoto(shift.kind)} style={{ aspectRatio: 16 / 9, borderRadius: radius.card, borderCurve: "continuous" }} />
+        <View style={{ gap: 4 }}>
           <Text variant="eyebrow" tone="tealText">
             {relativeDay(shift.iso, today)}
           </Text>
