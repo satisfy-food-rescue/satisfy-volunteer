@@ -99,10 +99,12 @@ function HomeContent({ home }: { home: Home }) {
 
 function NextShift({ shift, today }: { shift: ShiftSummary; today: string }) {
   const t = useTheme();
+  // No hairline border: it would outline the photo against the teal band, so
+  // the shadow defines the card and a press dims it.
   return (
     <Pressable onPress={() => router.push({ pathname: "/shift/[id]", params: { id: shift.id } })} accessibilityRole="button" accessibilityLabel={`Next shift ${formatDay(shift.iso)}, ${shift.name}`}>
         {({ pressed }) => (
-          <Card raised padded={false} border={pressed ? "tealText" : "border"}>
+          <Card raised padded={false} style={{ borderWidth: 0, opacity: pressed ? 0.85 : 1 }}>
             <Photo photo={shiftPhoto(shift.kind)} decorative style={{ height: 144 }} />
             <View style={{ padding: 20 }}>
               <Text variant="eyebrow" tone="tealText">

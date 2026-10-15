@@ -38,7 +38,7 @@ export default async function HomePage() {
           {next ? (
             <Link
               href={`/app/shifts/${next.shift.id}`}
-              className="group block overflow-hidden rounded-2xl bg-card shadow-[0_12px_32px_-16px_rgb(16_48_58/0.45)] ring-1 ring-border transition-shadow hover:ring-teal/50"
+              className="group block overflow-hidden rounded-2xl bg-card shadow-[0_12px_32px_-16px_rgb(16_48_58/0.45)] transition-shadow hover:ring-2 hover:ring-teal/50"
             >
               <Photo photo={shiftPhoto(next.kind)} sizes={APP_COLUMN_SIZES} decorative preload className="h-36" />
               <span className="block p-5">
