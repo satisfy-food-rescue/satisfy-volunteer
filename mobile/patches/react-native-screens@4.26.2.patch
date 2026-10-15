@@ -1,0 +1,93 @@
+diff --git a/ios/tabs/RNSTabBarAppearanceCoordinator.mm b/ios/tabs/RNSTabBarAppearanceCoordinator.mm
+index fee81a8fa60e462050bc6019ffb2fa376c10b4b6..ad19f8341bb8d716d68bf31159227cdeb4a4a5ef 100644
+--- a/ios/tabs/RNSTabBarAppearanceCoordinator.mm
++++ b/ios/tabs/RNSTabBarAppearanceCoordinator.mm
+@@ -8,6 +8,17 @@
+ #import "RNSTabsHostComponentView.h"
+ #import "RNSTabsScreenViewController.h"
+ 
++// Assigning an equal value to a tab bar item is not free on iOS 26: UIKit re-measures and
++// repositions the item (-[UITabBarItem _updateViewAndPositionItems:]) and caches the label size.
++// Every item is reconfigured whenever any tab changes (a badge, say). If that lands after the tab
++// buttons exist but before the tab bar's first layout, the labels are measured inside zero-sized
++// buttons and stay clipped and low until each tab is selected. So only real changes are assigned.
++// UIKit copies appearances, so values are compared with isEqual: rather than by identity.
++static BOOL RNSTabBarItemValuesEqual(id _Nullable a, id _Nullable b)
++{
++  return a == b || [a isEqual:b];
++}
++
+ @implementation RNSTabBarAppearanceCoordinator
+ 
+ - (void)updateAppearanceOfTabBar:(nullable UITabBar *)tabBar
+@@ -46,13 +57,16 @@
+                                       imageLoader:(nullable RCTImageLoader *)imageLoader
+ {
+   UITabBarItem *tabBarItem = tabScreenCtrl.tabBarItem;
++  RNSTabsScreenComponentView *screenView = tabScreenCtrl.tabScreenComponentView;
+ 
+-  tabBarItem.standardAppearance = tabScreenCtrl.tabScreenComponentView.standardAppearance;
+-  tabBarItem.scrollEdgeAppearance = tabScreenCtrl.tabScreenComponentView.scrollEdgeAppearance;
++  if (!RNSTabBarItemValuesEqual(tabBarItem.standardAppearance, screenView.standardAppearance)) {
++    tabBarItem.standardAppearance = screenView.standardAppearance;
++  }
++  if (!RNSTabBarItemValuesEqual(tabBarItem.scrollEdgeAppearance, screenView.scrollEdgeAppearance)) {
++    tabBarItem.scrollEdgeAppearance = screenView.scrollEdgeAppearance;
++  }
+ 
+-  [self setIconsForTabBarItem:tabBarItem
+-               fromScreenView:tabScreenCtrl.tabScreenComponentView
+-              withImageLoader:imageLoader];
++  [self setIconsForTabBarItem:tabBarItem fromScreenView:screenView withImageLoader:imageLoader];
+ }
+ 
+ - (void)setIconsForTabBarItem:(UITabBarItem *)tabBarItem
+@@ -60,34 +74,38 @@
+               withImageLoader:(RCTImageLoader *_Nullable)imageLoader
+ {
+   if (screenView.iconType == RNSTabsIconTypeSfSymbol || screenView.iconType == RNSTabsIconTypeXcasset) {
++    UIImage *image = nil;
+     if (screenView.iconResourceName != nil) {
+       if (screenView.iconType == RNSTabsIconTypeSfSymbol) {
+-        tabBarItem.image = [UIImage systemImageNamed:screenView.iconResourceName];
++        image = [UIImage systemImageNamed:screenView.iconResourceName];
+       } else {
+-        tabBarItem.image = [UIImage imageNamed:screenView.iconResourceName];
++        image = [UIImage imageNamed:screenView.iconResourceName];
+       }
+     } else if (screenView.systemItem != RNSTabsScreenSystemItemNone) {
+       // Restore default system item icon
+       UITabBarSystemItem systemItem =
+           rnscreens::conversion::RNSTabsScreenSystemItemToUITabBarSystemItem(screenView.systemItem);
+-      tabBarItem.image = [[UITabBarItem alloc] initWithTabBarSystemItem:systemItem tag:0].image;
+-    } else {
+-      tabBarItem.image = nil;
++      image = [[UITabBarItem alloc] initWithTabBarSystemItem:systemItem tag:0].image;
++    }
++    if (!RNSTabBarItemValuesEqual(tabBarItem.image, image)) {
++      tabBarItem.image = image;
+     }
+ 
++    UIImage *selectedImage = nil;
+     if (screenView.selectedIconResourceName != nil) {
+       if (screenView.iconType == RNSTabsIconTypeSfSymbol) {
+-        tabBarItem.selectedImage = [UIImage systemImageNamed:screenView.selectedIconResourceName];
++        selectedImage = [UIImage systemImageNamed:screenView.selectedIconResourceName];
+       } else {
+-        tabBarItem.selectedImage = [UIImage imageNamed:screenView.selectedIconResourceName];
++        selectedImage = [UIImage imageNamed:screenView.selectedIconResourceName];
+       }
+     } else if (screenView.systemItem != RNSTabsScreenSystemItemNone) {
+       // Restore default system item icon
+       UITabBarSystemItem systemItem =
+           rnscreens::conversion::RNSTabsScreenSystemItemToUITabBarSystemItem(screenView.systemItem);
+-      tabBarItem.selectedImage = [[UITabBarItem alloc] initWithTabBarSystemItem:systemItem tag:0].selectedImage;
+-    } else {
+-      tabBarItem.selectedImage = nil;
++      selectedImage = [[UITabBarItem alloc] initWithTabBarSystemItem:systemItem tag:0].selectedImage;
++    }
++    if (!RNSTabBarItemValuesEqual(tabBarItem.selectedImage, selectedImage)) {
++      tabBarItem.selectedImage = selectedImage;
+     }
+   } else if (imageLoader != nil) {
+     bool isTemplate = screenView.iconType == RNSTabsIconTypeTemplate;

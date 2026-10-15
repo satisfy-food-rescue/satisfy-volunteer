@@ -20,3 +20,14 @@ minimumReleaseAgeExclude:
   - expo-linking@57.0.13
   - expo-notifications@57.0.23
   - expo-router@57.0.27
+
+# react-native-screens reassigns every tab's appearance and icons whenever any
+# tab changes, and iOS 26 re-measures the tab labels on each assignment, even of
+# an equal value. On a cold start the session's badge counts arrive after the
+# tab buttons exist but before the tab bar's first layout, so the labels were
+# measured in zero-sized buttons and stayed clipped ("Trai...") and low until
+# each tab was visited. The patch only assigns values that changed. Recheck it
+# on every react-native-screens upgrade and drop it once upstream does the same
+# (ios/tabs/RNSTabBarAppearanceCoordinator.mm).
+patchedDependencies:
+  react-native-screens@4.26.2: patches/react-native-screens@4.26.2.patch
