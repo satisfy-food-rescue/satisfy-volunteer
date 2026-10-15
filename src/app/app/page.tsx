@@ -66,7 +66,7 @@ export default async function HomePage() {
                     </span>
                     <span className="text-sm text-ink-soft">
                       with {others.slice(0, 2).map((a) => a.volunteer.firstName).join(", ")}
-                      {others.length > 2 ? ` and ${others.length - 2} more` : ""}
+                      {others.length > 2 ? ` and\u00a0${others.length - 2}\u00a0more` : ""}
                     </span>
                   </span>
                 )}

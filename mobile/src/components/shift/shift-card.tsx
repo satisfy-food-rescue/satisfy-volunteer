@@ -56,7 +56,7 @@ export function ShiftCard({ shift }: { shift: ShiftSummary }) {
             ) : shift.isFull ? (
               <Chip tone="neutral" small label="Full" />
             ) : null}
-            {blocked && <Chip tone="warn" icon="lock" small label="Training needed" />}
+            {blocked && <Chip tone="warn" icon="lock" small label={a.fix === "role" ? "Role needed" : "Training needed"} />}
             <View style={{ marginLeft: "auto", flexDirection: "row", alignItems: "center", gap: 4 }}>
               <Icon name="people" size={14} color={t.mutedText} />
               <Text variant="small" tone="mutedText" tabular accessibilityLabel={`${shift.confirmedCount} of ${shift.capacity} places filled`}>
