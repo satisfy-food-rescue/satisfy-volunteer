@@ -3,6 +3,7 @@ import { View } from "react-native";
 import type { HarvestOverview } from "@satisfy/core/api";
 import { formatDayLong, formatTimeRange } from "@satisfy/core/dates";
 import { FoodIcon } from "@/components/brand/logo";
+import { Photo } from "@/components/photo";
 import { QueryScreen } from "@/components/screen";
 import { AvatarStack } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -40,23 +41,26 @@ export function HarvestScreen() {
 function Pool({ harvest }: { harvest: HarvestOverview }) {
   const toggle = useAction(actions.setHarvestPool);
   return (
-    <Card border={harvest.inPool ? "green50" : "border"} background={harvest.inPool ? "greenTintSoft" : "card"} style={{ padding: 20, gap: 16 }}>
-      <View style={{ flexDirection: "row", gap: 12 }}>
-        <FoodIcon kind="broccoli" size={48} />
-        <View style={{ flex: 1, gap: 4 }}>
-          <Text variant="bodyBold">{harvest.inPool ? "You're in the pool" : "Join the harvest pool"}</Text>
-          <Text variant="small" tone="inkSoft">
-            In summer and autumn we pick fruit from orchards and backyard trees with Food Secure North Canterbury. Pool members get a callout with the details and reply in the app. {harvest.poolCount} volunteers are in the pool.
-          </Text>
+    <Card border={harvest.inPool ? "green50" : "border"} background={harvest.inPool ? "greenTintSoft" : "card"} padded={false}>
+      <Photo photo="harvest" style={{ aspectRatio: 16 / 9 }} />
+      <View style={{ padding: 20, gap: 16 }}>
+        <View style={{ flexDirection: "row", gap: 12 }}>
+          <FoodIcon kind="broccoli" size={48} />
+          <View style={{ flex: 1, gap: 4 }}>
+            <Text variant="bodyBold">{harvest.inPool ? "You're in the pool" : "Join the harvest pool"}</Text>
+            <Text variant="small" tone="inkSoft">
+              In summer and autumn we pick fruit from orchards and backyard trees with Food Secure North Canterbury. Pool members get a callout with the details and reply in the app. {harvest.poolCount} volunteers are in the pool.
+            </Text>
+          </View>
         </View>
+        <Button
+          label={harvest.inPool ? "Leave the harvest pool" : "Count me in for harvests"}
+          variant={harvest.inPool ? "outline" : "primary"}
+          block
+          loading={toggle.isPending}
+          onPress={() => toggle.mutate(!harvest.inPool)}
+        />
       </View>
-      <Button
-        label={harvest.inPool ? "Leave the harvest pool" : "Count me in for harvests"}
-        variant={harvest.inPool ? "outline" : "primary"}
-        block
-        loading={toggle.isPending}
-        onPress={() => toggle.mutate(!harvest.inPool)}
-      />
     </Card>
   );
 }

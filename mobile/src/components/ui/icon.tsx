@@ -13,7 +13,7 @@ const ICONS = {
   person: ["person.fill", "person"],
   people: ["person.2.fill", "group"],
   clock: ["clock.fill", "schedule"],
-  pin: ["mappin.and.ellipse", "location_on"],
+  pin: ["mappin.circle.fill", "location_on"],
   store: ["storefront.fill", "storefront"],
   check: ["checkmark", "check"],
   checkCircle: ["checkmark.circle.fill", "check_circle"],

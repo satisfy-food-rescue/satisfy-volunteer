@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { AlertTriangle, ClipboardList, ShieldCheck, Sprout, Truck, Warehouse, type LucideIcon } from "lucide-react";
 import { BrandFooter, FoodIcon, Logo } from "@/components/brand/logo";
+import { Photo } from "@/components/shared/photo";
 import { db } from "@/lib/db";
 import { todayISO, formatDayLong } from "@/lib/dates";
 import { fullName } from "@/lib/domain";
@@ -34,7 +35,7 @@ export default async function SignInPage() {
   return (
     <main className="flex flex-1 flex-col">
       <div className="bg-teal text-white">
-        <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-5 py-10 md:flex-row md:items-end md:justify-between md:px-10 md:py-14">
+        <div className="mx-auto grid w-full max-w-5xl gap-8 px-5 py-10 md:grid-cols-[1fr_19rem] md:items-center md:gap-12 md:px-10 md:py-14">
           <div>
             <Logo tone="white" className="h-28 md:h-32" />
             <h1 className="mt-8 max-w-xl text-4xl text-white md:text-5xl">
@@ -43,22 +44,28 @@ export default async function SignInPage() {
             <p className="mt-3 max-w-xl text-lg text-white/85">
               Demo build for Satisfy Food Rescue. Pick a persona to explore. Nothing here sends real email or touches Infoodle.
             </p>
+            <dl className="mt-8 grid max-w-xl grid-cols-3 gap-3">
+              {(
+                [
+                  ["broccoli", compactCount(IMPACT.kgRescued), "kg of kai rescued"],
+                  ["carrot", compactCount(IMPACT.meals), "meals shared"],
+                  ["apple", `${formatCount(IMPACT.co2Tonnes)} t`, `CO2e avoided ${IMPACT.co2Period}`],
+                ] as const
+              ).map(([icon, n, l]) => (
+                <div key={l} className="flex flex-col rounded-2xl bg-white/10 px-3 py-3.5 ring-1 ring-white/15">
+                  <FoodIcon kind={icon} className="size-8 rounded-full ring-2 ring-white/80" />
+                  <dd className="mt-3 whitespace-nowrap font-display text-xl font-bold text-white tabular sm:text-2xl">{n}</dd>
+                  <dt className="mt-0.5 text-xs font-semibold leading-snug text-white/80">{l}</dt>
+                </div>
+              ))}
+            </dl>
           </div>
-          <dl className="grid grid-cols-3 gap-3 md:w-[25rem] md:shrink-0">
-            {(
-              [
-                ["broccoli", compactCount(IMPACT.kgRescued), "kg of kai rescued"],
-                ["carrot", compactCount(IMPACT.meals), "meals shared"],
-                ["apple", `${formatCount(IMPACT.co2Tonnes)} t`, `CO2e avoided ${IMPACT.co2Period}`],
-              ] as const
-            ).map(([icon, n, l]) => (
-              <div key={l} className="flex flex-col rounded-2xl bg-white/10 px-3 py-3.5 ring-1 ring-white/15">
-                <FoodIcon kind={icon} className="size-8 rounded-full ring-2 ring-white/80" />
-                <dd className="mt-3 whitespace-nowrap font-display text-xl font-bold text-white tabular sm:text-2xl">{n}</dd>
-                <dt className="mt-0.5 text-xs font-semibold leading-snug text-white/80">{l}</dt>
-              </div>
-            ))}
-          </dl>
+          <Photo
+            photo="team"
+            sizes="(min-width: 48rem) 19rem, calc(100vw - 2.5rem)"
+            preload
+            className="aspect-[2/1] rounded-3xl ring-1 ring-white/15 md:aspect-[3/4]"
+          />
         </div>
       </div>
 

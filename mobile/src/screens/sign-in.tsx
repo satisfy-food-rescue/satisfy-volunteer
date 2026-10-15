@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import type { DemoPersona, DemoPersonas } from "@satisfy/core/api";
 import { BrandWaves, FoodIcon, Logo } from "@/components/brand/logo";
+import { Photo } from "@/components/photo";
 import { useToast } from "@/components/toast";
 import { Button } from "@/components/ui/button";
 import { Icon, type IconName } from "@/components/ui/icon";
@@ -36,6 +37,7 @@ export function SignInScreen() {
             Demo build for Satisfy Food Rescue. Pick a volunteer to explore. Nothing here sends real email or touches Infoodle.
           </Text>
         </View>
+        <Photo photo="team" style={{ aspectRatio: 2, borderRadius: radius.card, borderCurve: "continuous" }} />
         <View style={{ gap: 12 }}>
           {personas.data ? (
             personas.data.personas.map((p) => <PersonaCard key={p.key} persona={p} />)
