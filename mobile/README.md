@@ -70,7 +70,7 @@ src/theme.ts             design tokens
 
 ## Releasing with EAS
 
-The app is linked to the Expo project `@malinmw/satisfy-volunteers`; its id is in `app.config.ts`. Run the scripts below from `mobile/` with `pnpm`. They use the latest EAS CLI through `npx`, as Expo recommends; `eas.json` sets the minimum version.
+The app is linked to the Expo project `@malinmw/satisfy-volunteers`; its id is in `app.config.ts`. Run the scripts below from `mobile/` with `pnpm`. They use the latest EAS CLI through `npx`, as Expo recommends; `eas.json` sets the minimum version. EAS uploads only `mobile/` and `packages/`, as set by the `.easignore` at the repo root; if the app starts using another folder of the repo, add it there.
 
 Once, before the first preview or production build:
 
