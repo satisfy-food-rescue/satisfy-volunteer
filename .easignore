@@ -1,0 +1,43 @@
+# EAS uploads the whole Git repository for a build of mobile/. When this file
+# exists EAS uses it instead of every .gitignore, so the rules below must cover
+# everything those files ignore under the folders we keep. node_modules is
+# always skipped by EAS. Write folders without a trailing slash: EAS also
+# copies the working tree through the `ignore` package, which checks folder
+# paths without one, so `!/mobile/` would drop the whole app.
+# See https://expo.fyi/eas-build-archive
+
+# The native app only needs itself and packages/core (linked through pnpm and
+# watched by Metro). Leave out the web app, its build output, and anything
+# local such as .claude/worktrees, which .git/info/exclude hides from Git but
+# not from EAS.
+/*
+!/.git
+!/.easignore
+!/mobile
+!/packages
+
+# Mirrors mobile/.gitignore, plus the root .gitignore rules that reach mobile/
+.expo
+dist
+web-build
+expo-env.d.ts
+/mobile/ios
+/mobile/android
+/mobile/example
+.kotlin
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+.metro-health-check*
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+.pnpm-debug.log*
+.DS_Store
+*.pem
+.env*
+*.tsbuildinfo
+coverage
