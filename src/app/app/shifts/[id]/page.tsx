@@ -10,7 +10,7 @@ import { db } from "@/lib/db";
 import { AvatarBadge } from "@/components/shared/avatar-badge";
 import { Chip } from "@/components/shared/status-chip";
 import { ShiftActions } from "@/components/app/shift-actions";
-import { ShiftKindIcon } from "@/components/app/shift-card";
+import { APP_COLUMN_SIZES, Photo, shiftPhoto } from "@/components/shared/photo";
 import { fullName } from "@/lib/domain";
 import { HandHelping } from "lucide-react";
 
@@ -36,10 +36,8 @@ export default async function ShiftDetailPage({ params }: { params: Promise<{ id
         <ChevronLeft className="size-5" aria-hidden /> Shifts
       </Link>
 
-      <header className="flex items-start gap-4">
-        <span className={view.kind === "WAREHOUSE" ? "flex size-14 shrink-0 items-center justify-center rounded-2xl bg-green-tint text-green-deep" : "flex size-14 shrink-0 items-center justify-center rounded-2xl bg-sky-tint text-sky-text"}>
-          <ShiftKindIcon kind={view.kind} className="size-7" />
-        </span>
+      <header className="flex flex-col gap-4">
+        <Photo photo={shiftPhoto(view.kind)} sizes={APP_COLUMN_SIZES} preload className="aspect-[16/9] rounded-2xl" />
         <div className="min-w-0">
           <p className="eyebrow">{relativeDay(view.iso, today)}</p>
           <h1 className="mt-1 text-[1.75rem] leading-tight text-ink">{view.shift.template.name}</h1>
