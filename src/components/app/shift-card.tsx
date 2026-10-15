@@ -26,11 +26,14 @@ export function ShiftCard({
   view,
   meId,
   eligible,
+  needsRole,
   reason,
 }: {
   view: ShiftView;
   meId: string;
   eligible: boolean;
+  /** Blocked by a missing role rather than lapsed training. */
+  needsRole: boolean;
   reason: string | null;
 }) {
   const mine = view.confirmed.find((a) => a.volunteerId === meId);
@@ -71,7 +74,7 @@ export function ShiftCard({
           ) : view.isFull ? (
             <Chip tone="neutral" size="sm">Full</Chip>
           ) : null}
-          {!cancelled && !mine && !eligible && <Chip tone="warn" icon={Lock} size="sm">Training needed</Chip>}
+          {!cancelled && !mine && !eligible && <Chip tone="warn" icon={Lock} size="sm">{needsRole ? "Role needed" : "Training needed"}</Chip>}
           <span className="ml-auto inline-flex items-center gap-1.5 text-sm text-muted-foreground tabular">
             <Users className="size-4" aria-hidden />
             {view.confirmedCount}/{view.shift.capacity}
@@ -80,13 +83,13 @@ export function ShiftCard({
         {others.length > 0 && (
           <span className="flex items-center gap-1.5 pt-0.5">
             <span className="flex -space-x-1">
-              {others.slice(0, 4).map((a) => (
+              {others.slice(0, 3).map((a) => (
                 <AvatarBadge key={a.id} person={a.volunteer} size="sm" className="ring-2 ring-card" />
               ))}
             </span>
             <span className="text-xs text-muted-foreground">
               {others.slice(0, 2).map((a) => a.volunteer.firstName).join(", ")}
-              {others.length > 2 ? ` and ${others.length - 2} more` : ""}
+              {others.length > 2 ? ` and\u00a0${others.length - 2}\u00a0more` : ""}
             </span>
           </span>
         )}

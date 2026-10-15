@@ -72,7 +72,7 @@ export default async function ShiftsPage({ searchParams }: { searchParams: Promi
               <div className="flex flex-col gap-2.5">
                 {dayShifts.map((view) => {
                   const e = eligibilityByKind.get(view.kind)!;
-                  return <ShiftCard key={view.shift.id} view={view} meId={me.id} eligible={e.eligible} reason={e.reason} />;
+                  return <ShiftCard key={view.shift.id} view={view} meId={me.id} eligible={e.eligible} needsRole={!e.hasRole} reason={e.reason} />;
                 })}
               </div>
             )}

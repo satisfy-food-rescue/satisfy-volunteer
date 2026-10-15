@@ -84,16 +84,21 @@ function Summary({ training }: { training: TrainingOverview }) {
   );
 }
 
+/** A date that never breaks across lines, so "18 August 2027" stays whole. */
+function date(iso: string): string {
+  return formatDate(iso).replace(/ /g, "\u00a0");
+}
+
 function statusLine(m: ModuleSummary, today: string): string {
   switch (m.status) {
     case "NOT_STARTED":
       return m.mandatoryBeforeFirstShift ? "Required before your first shift." : "Not yet completed.";
     case "COMPLETE":
-      return m.expiresISO ? `Completed ${formatDate(m.completedISO!)} · expires ${formatDate(m.expiresISO)}` : `Completed ${formatDate(m.completedISO!)} · does not expire`;
+      return m.expiresISO ? `Completed ${date(m.completedISO!)} · expires ${date(m.expiresISO)}` : `Completed ${date(m.completedISO!)} · does not expire`;
     case "DUE_SOON":
-      return `Expires ${formatDate(m.expiresISO!)} (${relativeDays(m.expiresISO!, today)})`;
+      return `Expires ${date(m.expiresISO!)} (${relativeDays(m.expiresISO!, today)})`;
     case "OVERDUE":
-      return `Expired ${formatDate(m.expiresISO!)} (${relativeDays(m.expiresISO!, today)})`;
+      return `Expired ${date(m.expiresISO!)} (${relativeDays(m.expiresISO!, today)})`;
     default:
       return "";
   }
