@@ -24,7 +24,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <SidebarProvider>
       <AdminSidebar user={user} demo={isDemo()} badges={{ applications, gaps: gaps.length, training: overdue }} />
-      <SidebarInset className="min-w-0 bg-background">
+      <SidebarInset id="main" className="min-w-0 bg-background">
         <header className="sticky top-0 z-30 flex h-14 items-center gap-2 bg-teal px-3 text-white md:hidden">
           <SidebarTrigger className="tap rounded-full text-white hover:bg-white/10 hover:text-white" />
           <LogoIcon tone="white" className="size-7" />

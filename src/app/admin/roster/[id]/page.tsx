@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft, Clock, HandHelping, Mail, MapPin, Megaphone, MessageSquareText, Pencil, PencilLine, Smartphone, Store, UserRound, Users, CheckCircle2, XCircle } from "lucide-react";
+import { Ban, ChevronLeft, Clock, HandHelping, Mail, MapPin, Megaphone, MessageSquareText, Pencil, PencilLine, Smartphone, Store, UserRound, Users, CheckCircle2, XCircle } from "lucide-react";
 import { requireAdmin } from "@/lib/session";
 import { db } from "@/lib/db";
 import { formatDay, formatDayLong, formatInstant, formatTimeRange, relativeDay, todayISO, dateToISO, formatDayRange } from "@/lib/dates";
@@ -61,7 +61,7 @@ export default async function AdminShiftPage({ params }: { params: Promise<{ id:
           </span>
           <div>
             <p className="eyebrow">{relativeDay(view.iso, today)}</p>
-            <h1 className="mt-1 text-3xl text-ink">{view.name}</h1>
+            <h1 className="mt-1 text-3xl text-ink @4xl/admin:text-4xl">{view.name}</h1>
             <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-ink-soft">
               <span className="inline-flex items-center gap-1.5"><Clock className="size-4 text-sky" aria-hidden />{formatDayLong(view.iso)}, <span className="tabular">{formatTimeRange(view.shift.startTime, view.shift.endTime)}</span></span>
               <span className="inline-flex items-center gap-1.5"><MapPin className="size-4 text-sky" aria-hidden />{view.location}</span>
@@ -72,11 +72,11 @@ export default async function AdminShiftPage({ params }: { params: Promise<{ id:
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {cancelled ? (
-            <Chip tone="neutral">Cancelled</Chip>
+            <Chip tone="neutral" icon={Ban}>Cancelled</Chip>
           ) : draft ? (
             <Chip tone="info" icon={PencilLine}>Draft</Chip>
           ) : view.isGap ? (
-            <Chip tone="bad" icon={HandHelping}>Needs {view.shortBy} more</Chip>
+            <Chip tone="warn" icon={HandHelping}>Needs {view.shortBy} more</Chip>
           ) : adHoc && view.shortBy > 0 ? (
             <Chip tone="warn" icon={Users}>{view.shortBy} to fill</Chip>
           ) : (
@@ -85,7 +85,7 @@ export default async function AdminShiftPage({ params }: { params: Promise<{ id:
           {draft && !isPast && <PublishShiftButton shiftId={view.shift.id} label={`${view.name} on ${formatDay(view.iso)}`} holders={holders} roleLabel={ROLE_LABEL[view.kind]} harvest={harvest} />}
           {!isPast && !cancelled && (
             <Button variant="outline" size="sm" className="h-10" render={<Link href={`/admin/roster/${view.shift.id}/edit`} />}>
-              <Pencil className="size-4" /> Edit
+              <Pencil className="size-4" /> Edit shift
             </Button>
           )}
           {!draft && !cancelled && view.confirmedCount > 0 && (
@@ -153,7 +153,7 @@ export default async function AdminShiftPage({ params }: { params: Promise<{ id:
               <ul className="mt-2 flex flex-col gap-1.5">
                 {view.released.map((r) => (
                   <li key={r.id} className="flex items-center gap-2 text-sm text-ink">
-                    <AvatarBadge person={r.volunteer} size="sm" className="size-7 text-[0.6rem]" />
+                    <AvatarBadge person={r.volunteer} size="sm" className="size-7 text-[0.6875rem]" />
                     <span className="font-semibold">{fullName(r.volunteer)}</span>
                     <span className="text-muted-foreground">
                       away {r.absence ? `(${ABSENCE_REASON_LABEL[r.absence.reason].toLowerCase()}, ${formatDayRange(dateToISO(r.absence.startDate), dateToISO(r.absence.endDate))})` : ""}

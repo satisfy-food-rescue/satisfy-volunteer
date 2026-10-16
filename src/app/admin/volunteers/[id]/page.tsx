@@ -1,17 +1,18 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CalendarCheck, CalendarClock, CheckCircle2, ChevronLeft, Mail, MapPin, Phone, PhoneCall, Power, RefreshCw, Sprout, XCircle, Zap } from "lucide-react";
+import { CalendarCheck, CalendarClock, CalendarOff, CheckCircle2, ChevronLeft, CircleDashed, Mail, MapPin, Phone, PhoneCall, Power, RefreshCw, Sprout, XCircle, Zap } from "lucide-react";
 import { requireAdmin } from "@/lib/session";
 import { shiftName } from "@/lib/roster";
 import { db } from "@/lib/db";
-import { addDays, dateToISO, formatDate, isWeekday, formatDay, formatDayRange, formatInstant, formatInstantTime, formatTimeRange, todayISO, WEEKDAY_LONG } from "@/lib/dates";
-import { ABSENCE_REASON_LABEL, DELIVERY_LABEL, INITIAL_VISIT_CODE, fullName, inHarvestPool } from "@/lib/domain";
+import { addDays, dateToISO, formatDate, isWeekday, formatDay, formatDayRange, formatInstant, formatInstantRange, formatTimeRange, todayISO, WEEKDAY_LONG } from "@/lib/dates";
+import { DELIVERY_LABEL, INITIAL_VISIT_CODE, fullName, inHarvestPool } from "@/lib/domain";
 import { moduleStatuses, trainingSummary } from "@/lib/training";
 import { AvatarBadge } from "@/components/shared/avatar-badge";
 import { Chip, TrainingChip } from "@/components/shared/status-chip";
 import { AccountControls, BookInitialVisitButton, ContactLogForm, NotesEditor, ProfileEditor, RecordCompletionButton, RolesEditor } from "@/components/admin/volunteer-admin-controls";
 import { ContactTimeline } from "@/components/admin/contact-timeline";
 import { RecordAbsenceForm } from "@/components/admin/record-absence-form";
+import { AbsenceReasonChip } from "@/components/admin/absence-reason-chip";
 import { cn } from "@/lib/utils";
 
 export const metadata = { title: "Volunteer" };
@@ -58,7 +59,7 @@ export default async function VolunteerProfilePage({ params, searchParams }: { p
   const needsVisit = initialVisit && initialVisit.status === "NOT_STARTED";
   const openSlots = visitSlots
     .filter((s) => s.id !== visitBooked?.id && s.rsvps.length < s.capacity)
-    .map((s) => ({ value: s.id, label: `${formatInstant(s.startsAt)} to ${formatInstantTime(s.endsAt)} · ${s.capacity - s.rsvps.length} of ${s.capacity} ${s.capacity === 1 ? "place" : "places"} free` }));
+    .map((s) => ({ value: s.id, label: `${formatInstantRange(s.startsAt, s.endsAt)} · ${s.capacity - s.rsvps.length} of ${s.capacity} ${s.capacity === 1 ? "place" : "places"} free` }));
   const visitButton = needsVisit ? <BookInitialVisitButton volunteer={{ id: v.id, firstName: v.firstName }} openSlots={openSlots} today={today} defaultDate={nextWorkingDay(today)} rebook={!!visitBooked} /> : null;
   const signInMethods = [
     v.passwordHash && "Password",
@@ -74,9 +75,9 @@ export default async function VolunteerProfilePage({ params, searchParams }: { p
       <header className="flex flex-wrap items-start gap-5 rounded-2xl border border-border bg-card p-5">
         <AvatarBadge person={v} size="lg" />
         <div className="min-w-0 flex-1">
-          <h1 className="text-3xl text-ink">{fullName(v)}</h1>
+          <h1 className="text-3xl text-ink @4xl/admin:text-4xl">{fullName(v)}</h1>
           <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink-soft">
-            {v.suburb && <span className="inline-flex items-center gap-1"><MapPin className="size-4 text-sky" aria-hidden />{v.suburb}{v.birthYear ? `, ${new Date().getFullYear() - v.birthYear}` : ""}</span>}
+            {v.suburb && <span className="inline-flex items-center gap-1"><MapPin className="size-4 text-sky" aria-hidden />{v.suburb}{v.birthYear ? `, aged ${new Date().getFullYear() - v.birthYear}` : ""}</span>}
             {v.phone && <span className="inline-flex items-center gap-1 tabular"><Phone className="size-4 text-sky" aria-hidden />{v.phone}</span>}
             <span className="inline-flex items-center gap-1"><Mail className="size-4 text-sky" aria-hidden />{v.email}</span>
           </p>
@@ -91,7 +92,7 @@ export default async function VolunteerProfilePage({ params, searchParams }: { p
         </div>
         <dl className="grid grid-cols-3 gap-4 text-center">
           {[["Shifts", attended], ["Hours", Math.round(hours)], ["No-shows", noShows]].map(([l, n]) => (
-            <div key={l}><dd className="font-display font-bold text-2xl text-ink tabular">{n}</dd><dt className="text-xs font-semibold text-muted-foreground">{l}</dt></div>
+            <div key={l} className="flex flex-col-reverse"><dt className="text-xs font-semibold text-muted-foreground">{l}</dt><dd className="font-display font-bold text-2xl text-ink tabular">{n}</dd></div>
           ))}
         </dl>
       </header>
@@ -165,8 +166,8 @@ export default async function VolunteerProfilePage({ params, searchParams }: { p
                     <Link href={`/admin/roster/${a.shiftId}`} className="min-w-0 flex-1 truncate font-semibold text-ink hover:underline">{shiftName(a.shift)}</Link>
                     {a.status === "ATTENDED" && <Chip tone="good" size="sm" icon={CheckCircle2}>Attended</Chip>}
                     {a.status === "NO_SHOW" && <Chip tone="bad" size="sm" icon={XCircle}>No-show</Chip>}
-                    {a.status === "RELEASED" && <Chip tone="neutral" size="sm">Away</Chip>}
-                    {a.status === "CONFIRMED" && <Chip tone="neutral" size="sm">Not marked</Chip>}
+                    {a.status === "RELEASED" && <Chip tone="neutral" size="sm" icon={CalendarOff}>Away</Chip>}
+                    {a.status === "CONFIRMED" && <Chip tone="muted" size="sm" icon={CircleDashed}>Not marked</Chip>}
                   </li>
                 ))}
                 {history.length > 12 && <li className="px-4 py-2 text-xs text-muted-foreground">Showing the last 12 of {history.length}.</li>}
@@ -224,7 +225,7 @@ export default async function VolunteerProfilePage({ params, searchParams }: { p
             <h2 id="abs-h" className="text-xl text-ink">Absences</h2>
             {v.absences.length === 0 ? <p className="mt-2 text-sm text-muted-foreground">None recorded.</p> : (
               <ul className="mt-2 flex flex-col gap-1 text-sm">
-                {v.absences.slice(0, 6).map((a) => <li key={a.id} className="flex items-center justify-between gap-2"><span className="tabular">{formatDayRange(dateToISO(a.startDate), dateToISO(a.endDate))}</span><Chip tone="neutral" size="sm">{ABSENCE_REASON_LABEL[a.reason]}</Chip></li>)}
+                {v.absences.slice(0, 6).map((a) => <li key={a.id} className="flex items-center justify-between gap-2"><span className="tabular">{formatDayRange(dateToISO(a.startDate), dateToISO(a.endDate))}</span><AbsenceReasonChip reason={a.reason} /></li>)}
               </ul>
             )}
             <details className="mt-3">

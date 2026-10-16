@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Mail, Smartphone } from "lucide-react";
+import { AlertTriangle, ArrowRight, Check, Mail, Smartphone } from "lucide-react";
 import type { Prisma } from "@/generated/prisma/client";
 import { requireAdmin } from "@/lib/session";
 import { db } from "@/lib/db";
@@ -31,32 +31,37 @@ export default async function OutboxPage({ searchParams }: { searchParams: Promi
     demo ? 0 : db.email.count({ where: { status: "FAILED" } }),
   ]);
   const pill = (active: boolean) =>
-    cn("flex h-10 items-center rounded-full border px-3 text-sm font-semibold", active ? "border-teal bg-teal-tint text-teal-deep" : "border-border bg-card text-muted-foreground hover:text-ink");
+    cn("flex h-10 items-center gap-1.5 rounded-full border px-3 text-sm font-semibold", active ? "border-teal bg-teal-tint text-teal-deep ring-1 ring-teal" : "border-border bg-card text-muted-foreground hover:text-ink");
+  // The selected filter is marked with a tick and aria-current, not by colour alone.
+  const current = (active: boolean) => (active ? { "aria-current": "page" as const } : {});
+  const tick = (active: boolean) => active && <Check className="size-4" aria-hidden />;
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-6">
+    <div className="mx-auto flex max-w-6xl flex-col gap-8">
       {demo ? (
         <PageHeader eyebrow="Outbox" title="Every email and notification the system would send" description="Nothing leaves this demo. Each entry is exactly what the volunteer or coordinator would receive, rendered from the same templates production uses. Push notifications go to the volunteer app on their phone." />
       ) : (
         <PageHeader eyebrow="Outbox" title="Every email and notification the system has sent" description="Reminders, confirmations and alerts, newest first. Push notifications go to the volunteer app; anyone not signed in to it on a phone gets an email instead. Anything that could not be delivered is retried automatically for two days." />
       )}
-      <div className="flex flex-wrap gap-1.5">
-        <Link href="/admin/outbox" className={pill(!kind && !showFailed)}>All ({kinds.reduce((n, k) => n + k._count._all, 0)})</Link>
+      <nav className="flex flex-wrap gap-1.5" aria-label="Filter messages">
+        <Link href="/admin/outbox" className={pill(!kind && !showFailed)} {...current(!kind && !showFailed)}>{tick(!kind && !showFailed)}All ({kinds.reduce((n, k) => n + k._count._all, 0)})</Link>
         {failed > 0 && (
-          <Link href={`/admin/outbox?kind=${FAILED}`} className={cn(pill(showFailed), !showFailed && "text-status-bad")}>Not delivered ({failed})</Link>
+          <Link href={`/admin/outbox?kind=${FAILED}`} className={cn(pill(showFailed), !showFailed && "text-status-bad")} {...current(showFailed)}>
+            {showFailed ? tick(true) : <AlertTriangle className="size-4" aria-hidden />}Not delivered ({failed})
+          </Link>
         )}
         {kinds.sort((a, b) => b._count._all - a._count._all).map((k) => (
-          <Link key={k.kind} href={`/admin/outbox?kind=${k.kind}`} className={pill(kind === k.kind)}>
-            {EMAIL_KIND_LABEL[k.kind]} ({k._count._all})
+          <Link key={k.kind} href={`/admin/outbox?kind=${k.kind}`} className={pill(kind === k.kind)} {...current(kind === k.kind)}>
+            {tick(kind === k.kind)}{EMAIL_KIND_LABEL[k.kind]} ({k._count._all})
           </Link>
         ))}
-      </div>
+      </nav>
       <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
         {emails.length === 0 && <li className="px-4 py-10 text-center text-muted-foreground">Nothing here yet.</li>}
         {emails.map((e) => (
           <li key={e.id}>
             <Link href={`/admin/outbox/${e.id}`} className="flex items-start gap-3 px-4 py-3 hover:bg-muted">
               <span className={cn("mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg", e.channel === "PUSH" ? "bg-orange-tint text-orange-text" : "bg-muted text-muted-foreground")}>
-                {e.channel === "PUSH" ? <Smartphone className="size-4" aria-label="Push notification" /> : <Mail className="size-4" aria-label="Email" />}
+                {e.channel === "PUSH" ? <Smartphone className="size-4" role="img" aria-label="Push notification" /> : <Mail className="size-4" role="img" aria-label="Email" />}
               </span>
               <span className="min-w-0 flex-1">
                 <span className="flex flex-wrap items-center gap-2">

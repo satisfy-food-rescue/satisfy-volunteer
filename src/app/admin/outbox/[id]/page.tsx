@@ -22,11 +22,11 @@ export default async function EmailPreviewPage({ params }: { params: Promise<{ i
   const demo = isDemo();
   const signInLink = e.kind === "ACCOUNT_INVITE" || e.kind === "PASSWORD_RESET";
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6">
+    <div className="mx-auto flex max-w-6xl flex-col gap-6">
       <Link href="/admin/outbox" className="-ml-1 inline-flex min-h-11 items-center gap-1 self-start pr-2 text-sm font-semibold text-muted-foreground hover:text-ink"><ChevronLeft className="size-5" aria-hidden /> Outbox</Link>
       <div>
         <p className="eyebrow">{push ? "Push notification" : "Email preview"} · {EMAIL_KIND_LABEL[e.kind]}</p>
-        <h1 className="mt-1 text-2xl text-ink">{e.subject}</h1>
+        <h1 className="mt-1 text-3xl text-ink @4xl/admin:text-4xl">{e.subject}</h1>
       </div>
       <dl className="grid grid-cols-[5rem_1fr] gap-x-3 gap-y-1 rounded-2xl border border-border bg-card px-4 py-3 text-sm">
         <dt className="font-semibold text-muted-foreground">From</dt><dd className="text-ink">{push ? "Satisfy volunteer app" : env().EMAIL_FROM}</dd>
@@ -47,7 +47,7 @@ export default async function EmailPreviewPage({ params }: { params: Promise<{ i
 
       {push ? (
         // Rendered like a lock-screen notification. Tapping opens the shift in the app.
-        <div className="rounded-2xl bg-teal-deep p-6 sm:p-10">
+        <div className="rounded-2xl bg-teal-deep p-6 @xl/admin:p-10">
           <div className="mx-auto max-w-[24rem]">
             <p className="text-center font-display text-5xl font-bold text-white tabular">{formatInstantTime(e.createdAt)}</p>
             <div className="mt-6 rounded-2xl bg-white/90 p-3.5 shadow-lg backdrop-blur">
@@ -68,7 +68,7 @@ export default async function EmailPreviewPage({ params }: { params: Promise<{ i
         </div>
       ) : (
       /* Rendered like the real email: brand header, one call to action, quiet footer. */
-      <div className="rounded-2xl border border-border bg-app-backdrop p-4 sm:p-8">
+      <div className="rounded-2xl border border-border bg-app-backdrop p-4 @xl/admin:p-8">
         <div className="mx-auto max-w-[36rem] overflow-hidden rounded-xl bg-white shadow-sm">
           <div className="flex justify-center bg-teal px-6 py-6">
             <Logo tone="white" className="h-16" />

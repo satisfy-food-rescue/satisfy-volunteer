@@ -6,7 +6,7 @@ import type { Home, HomeAlert } from "@satisfy/core/api";
 import { db } from "./db";
 import { formatInstant } from "./dates";
 import { INITIAL_VISIT_CODE, inHarvestPool } from "./domain";
-import { coverableGaps, myUpcomingShifts, trainingContext, upcomingHarvests } from "./volunteer-data";
+import { coverableGaps, myUpcomingShifts, myYear, trainingContext, upcomingHarvests } from "./volunteer-data";
 
 type Summary = { overdue: number; notStarted: number; dueSoon: number };
 /** The volunteer's booked initial visit, if any. */
@@ -32,17 +32,21 @@ export function homeEmpty(s: Summary, needsVisit: boolean, visit: Visit): Home["
 }
 
 export async function loadHome(me: Volunteer, today: string) {
-  const [upcoming, training, coverable, harvests, visitRsvp] = await Promise.all([
+  const [upcoming, training, coverable, harvests, visitRsvp, year] = await Promise.all([
     myUpcomingShifts(me.id, today),
     trainingContext(me, today),
     coverableGaps(me.id, today),
     inHarvestPool(me) ? upcomingHarvests(today) : Promise.resolve([]),
     db.sessionRsvp.findFirst({ where: { volunteerId: me.id, status: "GOING", session: { startsAt: { gte: new Date() }, module: { code: INITIAL_VISIT_CODE } } }, include: { session: true } }),
+    myYear(me.id, today),
   ]);
   const visit = visitRsvp?.session ?? null;
   const needsVisit = training.statuses.some((m) => m.module.code === INITIAL_VISIT_CODE && m.status === "NOT_STARTED");
   return {
     next: upcoming[0] ?? null,
+    /** Booked shifts after the next one, for the home agenda. */
+    later: upcoming.slice(1, 5),
+    year,
     training,
     coverable,
     /** The next harvest, for pool members: their own if booked, else the

@@ -41,7 +41,10 @@ export function AnnouncementForm({ shifts, initialShiftId, from }: { shifts: Shi
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [push, setPush] = useState(true);
-  const [reach, setReach] = useState<{ count: number; names: string[]; label: string } | { error: string } | null>(null);
+  // The preview is stored with the audience it was counted for, so a result
+  // for an earlier audience never shows (or reaches the confirm dialog) after
+  // the audience changes.
+  const [preview, setPreview] = useState<{ key: string; result: { count: number; names: string[]; label: string } | { error: string } } | null>(null);
   // What the confirm dialog shows, fixed when it opens so clearing the form
   // after sending does not blank the dialog while it animates closed.
   const [confirming, setConfirming] = useState<{ subject: string; count: number; push: boolean } | null>(null);
@@ -57,14 +60,15 @@ export function AnnouncementForm({ shifts, initialShiftId, from }: { shifts: Shi
     const t: AudienceInput | null = JSON.parse(targetKey);
     if (!t) return;
     previewAudience(t).then((r) => {
-      if (live) setReach(r.ok ? r : { error: r.error });
+      if (live) setPreview({ key: targetKey, result: r.ok ? r : { error: r.error } });
     });
     return () => {
       live = false;
     };
   }, [targetKey]);
 
-  const count = target && reach && "count" in reach ? reach.count : 0;
+  const reach = target && preview?.key === targetKey ? preview.result : null;
+  const count = reach && "count" in reach ? reach.count : 0;
   const paragraphs = body.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
 
   const send = () =>
@@ -81,19 +85,20 @@ export function AnnouncementForm({ shifts, initialShiftId, from }: { shifts: Shi
     });
 
   return (
-    <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
+    <div className="grid grid-cols-1 gap-6 @4xl/admin:grid-cols-5">
       <form
-        className="flex min-w-0 flex-col gap-5 rounded-2xl border border-border bg-card p-5 xl:col-span-3"
+        className="@container flex min-w-0 flex-col gap-5 rounded-2xl border border-border bg-card p-5 @4xl/admin:col-span-3"
         onSubmit={(e) => {
           e.preventDefault();
           if (!target) return toast.error(audience === "ROLES" ? "Pick at least one role." : "Pick a shift.");
+          if (!reach) return;
           if (count === 0) return toast.error("Nobody matches that audience yet.");
           setConfirming({ subject, count, push });
         }}
       >
         <fieldset className="flex flex-col gap-2">
           <legend className="mb-2 text-sm font-medium">Who it goes to</legend>
-          <div className="grid gap-2 sm:grid-cols-3">
+          <div className="grid gap-2 @lg:grid-cols-3">
             {AUDIENCES.filter((a) => a.value !== "SHIFT" || shifts.length > 0).map((a) => (
               <label key={a.value} className={cn("flex cursor-pointer flex-col rounded-xl border p-3 transition-colors has-focus-visible:outline-3 has-focus-visible:outline-ring", audience === a.value ? "border-teal bg-teal-tint-soft" : "border-border hover:border-teal/50")}>
                 <input type="radio" name="audience" className="sr-only" checked={audience === a.value} onChange={() => setAudience(a.value)} />
@@ -158,12 +163,12 @@ export function AnnouncementForm({ shifts, initialShiftId, from }: { shifts: Shi
             <span className="text-xs text-muted-foreground">Lands on the phones of volunteers using the app. Best for anything time-sensitive.</span>
           </span>
         </label>
-        <Button type="submit" size="lg" className="h-11 self-start" disabled={pending || !target || count === 0}>
+        <Button type="submit" size="lg" className="self-start" disabled={pending || !reach || count === 0}>
           <Send className="size-4" /> Review and send
         </Button>
       </form>
 
-      <aside className="flex flex-col gap-2 xl:col-span-2" aria-labelledby="an-preview-h">
+      <aside className="flex flex-col gap-2 @4xl/admin:col-span-2" aria-labelledby="an-preview-h">
         <h2 id="an-preview-h" className="font-display text-xs font-bold uppercase tracking-wide text-muted-foreground">Email preview</h2>
         <div className="overflow-hidden rounded-2xl border border-border bg-card">
           <div className="border-b border-border bg-muted/50 px-4 py-3">
@@ -187,8 +192,8 @@ export function AnnouncementForm({ shifts, initialShiftId, from }: { shifts: Shi
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="ghost" className="h-10" disabled={pending} onClick={() => setConfirming(null)}>Keep editing</Button>
-            <Button className="h-10" disabled={pending} onClick={send}>
+            <Button variant="ghost" disabled={pending} onClick={() => setConfirming(null)}>Keep editing</Button>
+            <Button disabled={pending} onClick={send}>
               {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Send className="size-4" />} Send now
             </Button>
           </DialogFooter>

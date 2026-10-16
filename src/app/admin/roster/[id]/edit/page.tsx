@@ -18,7 +18,7 @@ export default async function EditShiftPage({ params }: { params: Promise<{ id: 
   const s = view.shift;
   const editable = s.status !== "CANCELLED" && view.iso >= today;
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-6">
+    <div className="mx-auto flex max-w-6xl flex-col gap-8">
       <Link href={`/admin/roster/${id}`} className="-ml-1 inline-flex min-h-11 items-center gap-1 self-start pr-2 text-sm font-semibold text-muted-foreground hover:text-ink">
         <ChevronLeft className="size-5" aria-hidden /> {view.name}
       </Link>

@@ -20,7 +20,7 @@ export function SessionRsvp({ sessionId, status, full }: { sessionId: string; st
   return (
     <div className="flex gap-2">
       <ActionButton className="h-11 flex-1 text-base" action={() => rsvpSession(sessionId, true)} disabled={full}>
-        <Check className="size-5" aria-hidden /> {full ? "Session full" : "I'll be there"}
+        {full ? "Session full" : <><Check className="size-5" aria-hidden /> I&apos;ll be there</>}
       </ActionButton>
       {status !== "DECLINED" && (
         <ActionButton variant="outline" className="h-11 px-3 text-base" action={() => rsvpSession(sessionId, false)}>

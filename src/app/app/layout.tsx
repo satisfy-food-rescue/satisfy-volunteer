@@ -14,9 +14,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const attention = training.summary.overdue + training.summary.notStarted;
   return (
     <div className="flex flex-1 justify-center bg-app-backdrop">
-      <div className="relative flex min-h-dvh w-full max-w-[30rem] flex-col bg-background pb-24 md:border-x md:border-border">
+      <div className="relative flex min-h-dvh w-full max-w-[30rem] flex-col bg-background pb-[calc(6rem+env(safe-area-inset-bottom))] md:border-x md:border-border">
         <AppHeader person={me} />
-        <main className="flex flex-1 flex-col">{children}</main>
+        <main id="main" className="flex flex-1 flex-col">{children}</main>
         <BrandFooter className="mt-4 pb-4" />
         <BottomNav badges={{ "/app/gaps": coverable.length || undefined, "/app/training": attention || undefined }} />
       </div>

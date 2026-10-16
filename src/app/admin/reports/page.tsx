@@ -61,7 +61,7 @@ export default async function ReportsPage() {
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-8">
       <PageHeader eyebrow="Reports" title="How the volunteer programme is tracking" description={`Six months to ${formatMonth(today)}. Hours come from marked attendance, so they are only as good as the roster.`} />
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 @xl/admin:grid-cols-2 @5xl/admin:grid-cols-4">
         <StatTile label="Volunteer hours, last 30 days" value={Math.round(hours30)} hint={`${last30.filter((a) => a.status === "ATTENDED").length} attended shifts`} icon={Clock} tone="good" />
         <StatTile label="No-show rate" value={`${totalShifts ? ((totalNoShow / totalShifts) * 100).toFixed(1) : "0.0"}%`} hint={`${totalNoShow} of ${totalShifts} rostered shifts, 6 months`} icon={UserX} tone={totalNoShow / Math.max(totalShifts, 1) > 0.05 ? "warn" : "neutral"} />
         <StatTile label="Training compliance" value={`${active.length ? Math.round((compliant / active.length) * 100) : 100}%`} hint={`${compliant} of ${active.length} active volunteers fully current`} icon={ShieldCheck} tone={compliant / Math.max(active.length, 1) >= 0.9 ? "good" : "warn"} />
@@ -72,22 +72,22 @@ export default async function ReportsPage() {
         <section className="rounded-2xl border border-border bg-card p-5">
           <h2 className="text-xl text-ink">Volunteer hours per month</h2>
           <p className="mb-4 text-sm text-muted-foreground">Attended shift hours. The current month is partial.</p>
-          <BarChart title="Volunteer hours per month" data={byMonth.map((b) => ({ label: formatMonthShort(b.m), sublabel: formatMonth(b.m), value: Math.round(b.hours), muted: b.isCurrent }))} unit=" h" />
+          <BarChart title="Volunteer hours per month" labelHeader="Month" valueHeader="Hours" data={byMonth.map((b) => ({ label: formatMonthShort(b.m), sublabel: formatMonth(b.m), value: Math.round(b.hours), muted: b.isCurrent }))} unit=" h" />
         </section>
         <section className="rounded-2xl border border-border bg-card p-5">
           <h2 className="text-xl text-ink">Active volunteers per month</h2>
           <p className="mb-4 text-sm text-muted-foreground">Distinct people who attended at least one shift.</p>
-          <BarChart title="Active volunteers per month" data={byMonth.map((b) => ({ label: formatMonthShort(b.m), sublabel: formatMonth(b.m), value: b.active.size, muted: b.isCurrent }))} />
+          <BarChart title="Active volunteers per month" labelHeader="Month" valueHeader="Volunteers" data={byMonth.map((b) => ({ label: formatMonthShort(b.m), sublabel: formatMonth(b.m), value: b.active.size, muted: b.isCurrent }))} />
         </section>
         <section className="rounded-2xl border border-border bg-card p-5">
           <h2 className="text-xl text-ink">No-shows per month</h2>
           <p className="mb-4 text-sm text-muted-foreground">Rostered volunteers marked as not attending. Sickness reported in advance is an absence, not a no-show.</p>
-          <BarChart title="No-shows per month" tone="orange" data={byMonth.map((b) => ({ label: formatMonthShort(b.m), sublabel: formatMonth(b.m), value: b.noShows, muted: b.isCurrent }))} />
+          <BarChart title="No-shows per month" labelHeader="Month" valueHeader="No-shows" tone="orange" data={byMonth.map((b) => ({ label: formatMonthShort(b.m), sublabel: formatMonth(b.m), value: b.noShows, muted: b.isCurrent }))} />
         </section>
         <section className="rounded-2xl border border-border bg-card p-5">
           <h2 className="text-xl text-ink">Training compliance by module</h2>
           <p className="mb-4 text-sm text-muted-foreground">Share of volunteers who need the module and are current on it.</p>
-          <BarChart title="Training compliance by module" tone="green" data={moduleCompliance} unit="%" max={100} />
+          <BarChart title="Training compliance by module" labelHeader="Module" valueHeader="Current" tone="green" data={moduleCompliance} unit="%" max={100} />
         </section>
       </div>
     </div>

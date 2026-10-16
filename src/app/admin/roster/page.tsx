@@ -21,15 +21,15 @@ export default async function RosterPage({ searchParams }: { searchParams: Promi
   const gaps = shifts.filter((s) => s.isGap && s.iso >= today);
 
   return (
-    <div className="mx-auto flex max-w-7xl flex-col gap-6">
+    <div className="mx-auto flex max-w-7xl flex-col gap-8">
       <PageHeader
         eyebrow="Roster"
         title={view === "week" ? "This week's shifts" : "Month at a glance"}
         description={gaps.length ? `${gaps.length} shift${gaps.length === 1 ? " in view still needs" : "s in view still need"} cover.` : "Every shift in view has its minimum crew."}
         actions={
           <>
-            <Button variant="outline" size="lg" className="h-11 bg-card" render={<Link href="/admin/roster/new" />}><Plus className="size-4" /> New shift</Button>
-            <Button size="lg" className="h-11" render={<Link href="/admin/roster/bulk" />}><CalendarPlus className="size-4" /> Bulk schedule</Button>
+            <Button variant="outline" size="lg" className="bg-card" render={<Link href="/admin/roster/new" />}><Plus className="size-4" /> New shift</Button>
+            <Button size="lg" render={<Link href="/admin/roster/bulk" />}><CalendarPlus className="size-4" /> Bulk schedule</Button>
           </>
         }
       />

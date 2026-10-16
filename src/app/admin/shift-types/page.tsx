@@ -19,7 +19,7 @@ export default async function ShiftTypesPage() {
   await requireAdmin();
   const templates = await db.shiftTemplate.findMany({ where: { active: true }, include: { route: true }, orderBy: { order: "asc" } });
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-6">
+    <div className="mx-auto flex max-w-6xl flex-col gap-8">
       <PageHeader eyebrow="Roster" title="Shift types" description="Names, times, crew sizes and who volunteers work with. Last-minute thresholds are set per shift type, so route shifts can call for cover earlier than the warehouse." />
       <div className="flex flex-col gap-3">
         {templates.map((t) => {
@@ -42,7 +42,7 @@ export default async function ShiftTypesPage() {
                   </dl>
                 </div>
                 {!adHoc && (
-                  <dl className="grid w-full grid-cols-2 gap-2 sm:w-auto">
+                  <dl className="grid w-full grid-cols-2 gap-2 @xl/admin:w-auto">
                     <div className="rounded-xl bg-orange-tint px-3 py-2">
                       <dt className="flex items-center gap-1.5 text-xs font-semibold text-orange-text"><Smartphone className="size-3.5" aria-hidden /> Push to last-minute</dt>
                       <dd className="font-display text-base font-bold text-ink tabular">{hoursLabel(t.lastMinuteHours)}</dd>

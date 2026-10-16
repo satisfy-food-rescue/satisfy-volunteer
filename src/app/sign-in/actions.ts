@@ -13,7 +13,9 @@ import { LIMITS, clientIp, take } from "@/lib/rate-limit";
 import { checkPassword } from "@/lib/sign-in";
 import { personaEmail } from "@/lib/personas";
 
-export type SignInState = { error?: string; email?: string };
+/** `invalid` marks the fields as wrong (a mismatch or a malformed entry), as
+ *  opposed to a refusal such as too many attempts, where the fields are fine. */
+export type SignInState = { error?: string; email?: string; invalid?: boolean };
 
 const signInSchema = z.object({
   email: z.email(),
@@ -28,21 +30,22 @@ export async function signInWithPassword(_prev: SignInState, formData: FormData)
     next: formData.get("next") || undefined,
   });
   const typed = String(formData.get("email") ?? "");
-  if (!parsed.success) return { error: "Enter your email and password.", email: typed };
+  if (!parsed.success) return { error: "Enter your email and password.", email: typed, invalid: true };
   const result = await checkPassword(parsed.data.email, parsed.data.password, await clientIp());
-  if (!result.ok) return { error: result.error, email: typed };
+  if (!result.ok) return { error: result.error, email: typed, invalid: result.mismatch === true };
   const { volunteer } = result;
   await createSession(volunteer.id);
   redirect(postSignInPath(volunteer.role, parsed.data.next));
 }
 
-export type LinkState = { error?: string; sent?: boolean; email?: string };
+/** `invalid` marks the email field as wrong, as opposed to a rate limit. */
+export type LinkState = { error?: string; sent?: boolean; email?: string; invalid?: boolean };
 
 /** "Forgot your password?" and "First time here?". The reply is the same
  *  whether or not the address has an account. */
 export async function requestSignInLink(_prev: LinkState, formData: FormData): Promise<LinkState> {
   const parsed = z.email().safeParse(String(formData.get("email") ?? "").trim());
-  if (!parsed.success) return { error: "Enter the email address you volunteer with." };
+  if (!parsed.success) return { error: "Enter the email address you volunteer with.", invalid: true };
   const email = normaliseEmail(parsed.data);
   const ip = await clientIp();
   if (!take(`link:email:${email}`, LIMITS.linkPerEmail) || !take(`link:ip:${ip}`, LIMITS.linkPerIp)) {

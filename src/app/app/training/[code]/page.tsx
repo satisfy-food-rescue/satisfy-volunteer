@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft, ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import { moduleParagraphs } from "@satisfy/core/training";
 import { requireVolunteer } from "@/lib/session";
 import { db } from "@/lib/db";
@@ -8,6 +8,7 @@ import { todayISO, formatDate } from "@/lib/dates";
 import { trainingContext } from "@/lib/volunteer-data";
 import { TrainingChip } from "@/components/shared/status-chip";
 import { OnlineModule } from "@/components/app/online-module";
+import { AppPageHeader } from "@/components/app/app-page-header";
 import { Button } from "@/components/ui/button";
 
 export const metadata = { title: "Training module" };
@@ -23,22 +24,20 @@ export default async function ModulePage({ params }: { params: Promise<{ code: s
 
   return (
     <div className="flex flex-col gap-6 px-5 pb-6 pt-3">
-      <Link href="/app/training" className="-ml-2 inline-flex min-h-11 items-center gap-1 self-start pr-2 text-sm font-semibold text-muted-foreground hover:text-ink">
-        <ChevronLeft className="size-5" aria-hidden /> Training
-      </Link>
-      <header>
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="eyebrow">{mod.delivery === "ONLINE_CONFIRM" ? (mod.links.length ? "Online: read, watch and confirm" : "Online: read and confirm") : "In-person session"}</p>
-          <TrainingChip status={st.status} size="sm" />
-        </div>
-        <h1 className="mt-1 text-[1.9rem] leading-tight text-ink">{mod.name}</h1>
-        <p className="mt-2 text-ink-soft">{mod.description}</p>
+      <div className="flex flex-col gap-3">
+        <AppPageHeader
+          back={{ href: "/app/training", label: "Training" }}
+          eyebrow={mod.delivery === "ONLINE_CONFIRM" ? (mod.links.length ? "Online: read, watch and confirm" : "Online: read and confirm") : "In-person session"}
+          title={mod.name}
+          description={mod.description}
+        />
+        <TrainingChip status={st.status} size="sm" className="self-start" />
         {st.expiresISO && (
-          <p className="mt-2 text-sm text-muted-foreground tabular">
+          <p className="text-sm text-muted-foreground tabular">
             {st.status === "OVERDUE" ? "Expired" : "Expires"} {formatDate(st.expiresISO)}. Confirming today records a fresh {mod.validityMonths}-month completion.
           </p>
         )}
-      </header>
+      </div>
 
       {mod.delivery === "ONLINE_CONFIRM" ? (
         <>

@@ -3,11 +3,12 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Check, UserMinus, UserPlus, X, Ban, Loader2, Phone, Zap, Send, Trash2, Megaphone } from "lucide-react";
+import { Check, UserMinus, UserPlus, X, Ban, HandHelping, Loader2, Phone, Zap, Send, Trash2, Megaphone } from "lucide-react";
 import { addToShift, cancelShift, deleteDraftShift, publishShift, removeFromShift, setAttendance } from "@/app/admin/actions";
 import { Checkbox } from "@/components/ui/checkbox";
 import { calloutAudience } from "@/components/admin/shift-form";
 import { ActionButton } from "@/components/app/action-button";
+import { ToggleActionButton } from "@/components/admin/toggle-action-button";
 import { AvatarBadge } from "@/components/shared/avatar-badge";
 import { Chip } from "@/components/shared/status-chip";
 import { Button } from "@/components/ui/button";
@@ -23,15 +24,15 @@ export function AttendanceControls({ assignmentId, status, isPast }: { assignmen
     <div className="flex items-center gap-1.5">
       {isPast ? (
         <>
-          <ActionButton size="sm" variant={status === "ATTENDED" ? "default" : "outline"} className="h-9 px-2.5" action={() => setAttendance(assignmentId, status === "ATTENDED" ? "CONFIRMED" : "ATTENDED")}>
+          <ToggleActionButton pressed={status === "ATTENDED"} className="h-9 px-2.5" action={() => setAttendance(assignmentId, status === "ATTENDED" ? "CONFIRMED" : "ATTENDED")}>
             <Check className="size-4" /> Attended
-          </ActionButton>
-          <ActionButton size="sm" variant={status === "NO_SHOW" ? "destructive" : "outline"} className="h-9 px-2.5" action={() => setAttendance(assignmentId, status === "NO_SHOW" ? "CONFIRMED" : "NO_SHOW")}>
+          </ToggleActionButton>
+          <ToggleActionButton pressed={status === "NO_SHOW"} pressedVariant="destructive" className="h-9 px-2.5" action={() => setAttendance(assignmentId, status === "NO_SHOW" ? "CONFIRMED" : "NO_SHOW")}>
             <X className="size-4" /> No-show
-          </ActionButton>
+          </ToggleActionButton>
         </>
       ) : (
-        <ActionButton size="sm" variant="ghost" className="h-9 px-2.5 text-muted-foreground hover:text-destructive" action={() => removeFromShift(assignmentId)} confirm="Remove this volunteer from the shift?">
+        <ActionButton size="sm" variant="ghost" className="h-9 px-2.5 text-muted-foreground hover:text-destructive" action={() => removeFromShift(assignmentId)} confirm={{ title: "Remove this volunteer from the shift?", confirmLabel: "Remove volunteer", cancelLabel: "Keep volunteer" }}>
           <UserMinus className="size-4" /> Remove
         </ActionButton>
       )}
@@ -49,19 +50,19 @@ export type Candidate = {
   roles: readonly VolunteerRole[];
 };
 
-export function AddVolunteerPanel({ shiftId, candidates, isGap }: { shiftId: string; candidates: Candidate[]; isGap: boolean }) {
-  const [q, setQ] = useState("");
-  const filtered = candidates.filter((c) => fullName(c).toLowerCase().includes(q.toLowerCase()));
-  const lastMinute = filtered.filter((c) => c.lastMinuteOk);
-  const others = filtered.filter((c) => !c.lastMinuteOk);
-  const Row = ({ c }: { c: Candidate }) => (
+function coveredBefore(n: number) {
+  return n === 1 ? "Covered once before" : `Covered ${n} times before`;
+}
+
+function CandidateRow({ c, shiftId, isGap }: { c: Candidate; shiftId: string; isGap: boolean }) {
+  return (
     <li className="flex items-center gap-3 px-3 py-2">
       <AvatarBadge person={c} size="sm" />
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-bold text-ink">{fullName(c)}</span>
         <span className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
           {c.phone && <span className="inline-flex items-center gap-1 tabular"><Phone className="size-3" aria-hidden />{c.phone}</span>}
-          {c.coversBefore > 0 && <span>Covered {c.coversBefore}x before</span>}
+          {c.coversBefore > 0 && <span>{coveredBefore(c.coversBefore)}</span>}
         </span>
       </span>
       <ActionButton size="sm" className={cn("h-9 px-3", isGap && "bg-orange text-ink hover:bg-orange-hover")} action={() => addToShift(shiftId, c.id)}>
@@ -69,23 +70,37 @@ export function AddVolunteerPanel({ shiftId, candidates, isGap }: { shiftId: str
       </ActionButton>
     </li>
   );
+}
+
+export function AddVolunteerPanel({ shiftId, candidates, isGap }: { shiftId: string; candidates: Candidate[]; isGap: boolean }) {
+  const [q, setQ] = useState("");
+  const query = q.trim();
+  const filtered = candidates.filter((c) => fullName(c).toLowerCase().includes(query.toLowerCase()));
+  const lastMinute = filtered.filter((c) => c.lastMinuteOk);
+  const others = filtered.filter((c) => !c.lastMinuteOk);
   return (
     <div className="flex flex-col gap-3">
       <Input placeholder="Search eligible volunteers" value={q} onChange={(e) => setQ(e.target.value)} className="h-11 text-base" aria-label="Search eligible volunteers" />
-      {lastMinute.length > 0 && (
-        <div>
-          <p className="font-display mb-1.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-orange-text"><Zap className="size-3.5" aria-hidden /> Last-minute available</p>
-          <ul className="divide-y divide-border overflow-hidden rounded-xl border border-orange/50 bg-card">{lastMinute.map((c) => <Row key={c.id} c={c} />)}</ul>
-        </div>
+      {query && filtered.length === 0 ? (
+        <p className="rounded-xl border border-dashed border-border px-3 py-4 text-center text-sm text-muted-foreground" aria-live="polite">No one matches &ldquo;{query}&rdquo;.</p>
+      ) : (
+        <>
+          {lastMinute.length > 0 && (
+            <div>
+              <p className="font-display mb-1.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-orange-text"><Zap className="size-3.5" aria-hidden /> Last-minute available</p>
+              <ul className="divide-y divide-border overflow-hidden rounded-xl border border-orange/50 bg-card">{lastMinute.map((c) => <CandidateRow key={c.id} c={c} shiftId={shiftId} isGap={isGap} />)}</ul>
+            </div>
+          )}
+          <div>
+            <p className="font-display mb-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">Eligible and free ({others.length})</p>
+            {others.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-border px-3 py-4 text-center text-sm text-muted-foreground">{query ? <>No one else matches &ldquo;{query}&rdquo;.</> : "No other eligible volunteers are free that day."}</p>
+            ) : (
+              <ul className="max-h-80 divide-y divide-border overflow-y-auto rounded-xl border border-border bg-card">{others.map((c) => <CandidateRow key={c.id} c={c} shiftId={shiftId} isGap={isGap} />)}</ul>
+            )}
+          </div>
+        </>
       )}
-      <div>
-        <p className="font-display mb-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">Eligible and free ({others.length})</p>
-        {others.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-border px-3 py-4 text-center text-sm text-muted-foreground">No other eligible volunteers are free that day.</p>
-        ) : (
-          <ul className="max-h-80 divide-y divide-border overflow-y-auto rounded-xl border border-border bg-card">{others.map((c) => <Row key={c.id} c={c} />)}</ul>
-        )}
-      </div>
     </div>
   );
 }
@@ -129,8 +144,8 @@ export function CancelShiftButton({ shiftId, label, booked }: { shiftId: string;
             </div>
           )}
           <DialogFooter>
-            <Button variant="ghost" className="h-10" disabled={pending} onClick={() => setOpen(false)}>Keep shift</Button>
-            <Button variant="destructive" className="h-10" disabled={pending} onClick={submit}>
+            <Button variant="ghost" disabled={pending} onClick={() => setOpen(false)}>Keep shift</Button>
+            <Button variant="destructive" disabled={pending} onClick={submit}>
               {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Ban className="size-4" />} Cancel shift
             </Button>
           </DialogFooter>
@@ -176,8 +191,8 @@ export function PublishShiftButton({ shiftId, label, holders, roleLabel, harvest
             </span>
           </label>
           <DialogFooter>
-            <Button variant="ghost" className="h-10" disabled={pending} onClick={() => setOpen(false)}>Not yet</Button>
-            <Button className="h-10" disabled={pending} onClick={submit}>
+            <Button variant="ghost" disabled={pending} onClick={() => setOpen(false)}>Not yet</Button>
+            <Button disabled={pending} onClick={submit}>
               {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Send className="size-4" />} Publish
             </Button>
           </DialogFooter>
@@ -193,7 +208,7 @@ export function DeleteDraftButton({ shiftId, back }: { shiftId: string; back: st
       variant="outline"
       size="sm"
       className="h-10 text-destructive"
-      confirm="Delete this draft? Nobody has seen it, so nobody is told."
+      confirm={{ title: "Delete this draft?", description: "Nobody has seen it, so nobody is told.", confirmLabel: "Delete draft", cancelLabel: "Keep draft" }}
       action={() => deleteDraftShift(shiftId)}
       redirectTo={back}
     >
@@ -203,7 +218,7 @@ export function DeleteDraftButton({ shiftId, back }: { shiftId: string; back: st
 }
 
 export function SourceChip({ source }: { source: string }) {
-  if (source === "COVER") return <Chip tone="info" size="sm">Covering</Chip>;
+  if (source === "COVER") return <Chip tone="info" size="sm" icon={HandHelping}>Covering</Chip>;
   if (source === "REGULAR") return <span className="text-xs text-muted-foreground">Regular</span>;
   if (source === "ADMIN") return <span className="text-xs text-muted-foreground">Added by coordinator</span>;
   return <span className="text-xs text-muted-foreground">Booked</span>;

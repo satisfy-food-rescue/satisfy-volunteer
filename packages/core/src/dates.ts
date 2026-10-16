@@ -176,32 +176,27 @@ export function relativeDays(iso: string, today: string): string {
   return `${-diff} days ago`;
 }
 
-/** Instant formatting in NZ time: "Tue 6 Oct, 10:30am" */
-export function formatInstant(d: Date): string {
-  const parts = new Intl.DateTimeFormat("en-NZ", {
-    timeZone: NZ_TZ,
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  }).formatToParts(d);
-  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
-  const time = `${get("hour")}:${get("minute")}${get("dayPeriod").toLowerCase().replace(/\./g, "")}`;
-  return `${get("weekday")} ${get("day")} ${get("month")}, ${time}`;
+/** Wall-clock time of an instant in NZ, as "HH:MM" for formatTime. */
+function nzClock(d: Date): string {
+  const parts = new Intl.DateTimeFormat("en-NZ", { timeZone: NZ_TZ, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(d);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "00";
+  return `${get("hour")}:${get("minute")}`;
 }
 
-/** Time only in NZ time: "10:30am" */
+/** Instant formatting in NZ time: "Tue 6 Oct, 10:30am", or "Tue 6 Oct, 10am"
+ *  on the hour, matching shift times. */
+export function formatInstant(d: Date): string {
+  return `${formatDay(instantToISO(d))}, ${formatInstantTime(d)}`;
+}
+
+/** Time only in NZ time: "10:30am", or "10am" on the hour. */
 export function formatInstantTime(d: Date): string {
-  const parts = new Intl.DateTimeFormat("en-NZ", {
-    timeZone: NZ_TZ,
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  }).formatToParts(d);
-  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
-  return `${get("hour")}:${get("minute")}${get("dayPeriod").toLowerCase().replace(/\./g, "")}`;
+  return formatTime(nzClock(d));
+}
+
+/** "Wed 21 Oct, 10am - 11:30am", for sessions with a start and an end. */
+export function formatInstantRange(start: Date, end: Date): string {
+  return `${formatDay(instantToISO(start))}, ${formatTimeRange(nzClock(start), nzClock(end))}`;
 }
 
 /** Calendar date (NZ) of an instant. */

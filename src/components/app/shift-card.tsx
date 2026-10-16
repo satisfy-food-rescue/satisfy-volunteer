@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Ban, CheckCircle2, ChevronRight, HandHelping, Lock, MapPin, Sprout, Users } from "lucide-react";
+import { Ban, CheckCircle2, ChevronRight, HandHelping, History, Lock, MapPin, Sprout, Users } from "lucide-react";
 import type { ShiftView } from "@/lib/roster";
 import { formatDay, formatTimeRange } from "@/lib/dates";
 import { isAdHocKind } from "@/lib/domain";
@@ -37,6 +37,8 @@ export function ShiftCard({
   needsRole,
   reason,
   showDate = false,
+  past = false,
+  showReason = true,
 }: {
   view: ShiftView;
   meId: string;
@@ -46,17 +48,23 @@ export function ShiftCard({
   reason: string | null;
   /** For lists that span days rather than sitting under a day heading. */
   showDate?: boolean;
+  /** A shift on a day gone by: no calls to action, just what happened. */
+  past?: boolean;
+  /** Off where the page explains the lock once for every card. */
+  showReason?: boolean;
 }) {
   const mine = view.confirmed.find((a) => a.volunteerId === meId);
   const cancelled = view.shift.status === "CANCELLED";
   const others = view.confirmed.filter((a) => a.volunteerId !== meId);
+  const locked = !cancelled && !mine && !eligible && !past;
   return (
     <Link
       href={`/app/shifts/${view.shift.id}`}
       className={cn(
-        "group flex items-stretch gap-3 rounded-2xl border bg-card p-4 shadow-sm transition-colors hover:border-teal/60",
-        mine ? "border-green/60" : "border-border",
-        view.isGap && !mine && "border-orange/60",
+        "group flex items-stretch gap-3 rounded-2xl border p-4 transition-colors hover:border-teal/60",
+        past ? "bg-card/60" : "bg-card shadow-sm",
+        mine && !past ? "border-green/60" : "border-border",
+        view.isGap && !mine && !past && "border-orange/60",
       )}
     >
       <span className={cn("flex w-11 shrink-0 items-center justify-center rounded-xl", kindTileClass(view.kind))}>
@@ -82,16 +90,18 @@ export function ShiftCard({
         <span className="flex flex-wrap items-center gap-2">
           {cancelled ? (
             <Chip tone="neutral" icon={Ban} size="sm">Cancelled</Chip>
+          ) : past ? (
+            <Chip tone="neutral" icon={History} size="sm">{mine ? "You were on" : "Finished"}</Chip>
           ) : mine ? (
             <Chip tone="good" icon={CheckCircle2} size="sm">{mine.source === "REGULAR" ? "Your regular slot" : "You're on"}</Chip>
           ) : view.isGap ? (
-            <Chip tone="bad" icon={HandHelping} size="sm">Needs cover</Chip>
+            <Chip tone="warn" icon={HandHelping} size="sm">Needs cover</Chip>
           ) : view.isFull ? (
             <Chip tone="neutral" size="sm">Full</Chip>
           ) : isAdHocKind(view.kind) && eligible ? (
             <Chip tone="info" size="sm">{view.spotsLeft} {view.spotsLeft === 1 ? "place" : "places"} left</Chip>
           ) : null}
-          {!cancelled && !mine && !eligible && <Chip tone="warn" icon={Lock} size="sm">{needsRole ? (view.kind === "HARVEST" ? "Join the pool" : "Role needed") : "Training needed"}</Chip>}
+          {locked && <Chip tone="neutral" icon={Lock} size="sm">{needsRole ? (view.kind === "HARVEST" ? "Join the pool" : "Role needed") : "Training needed"}</Chip>}
           <span className="ml-auto inline-flex items-center gap-1.5 text-sm text-muted-foreground tabular">
             <Users className="size-4" aria-hidden />
             {view.confirmedCount}/{view.shift.capacity}
@@ -110,7 +120,7 @@ export function ShiftCard({
             </span>
           </span>
         )}
-        {!cancelled && !mine && !eligible && reason && (
+        {locked && showReason && reason && (
           <span className="text-sm leading-snug text-status-warn">{reason}</span>
         )}
       </span>

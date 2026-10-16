@@ -4,16 +4,14 @@ import { requireAdmin } from "@/lib/session";
 import { shiftName } from "@/lib/roster";
 import { db } from "@/lib/db";
 import { addDays, dateToISO, formatDay, formatDayShort, isoToDate, todayISO, weekMonday, workWeek, WEEKDAY_SHORT, weekdayOf } from "@/lib/dates";
-import { ABSENCE_REASON_LABEL, fullName, type AbsenceReason } from "@/lib/domain";
+import { ABSENCE_REASON_LABEL, fullName } from "@/lib/domain";
 import { PageHeader } from "@/components/shared/page-header";
 import { AvatarBadge } from "@/components/shared/avatar-badge";
-import { Chip } from "@/components/shared/status-chip";
+import { AbsenceReasonChip } from "@/components/admin/absence-reason-chip";
 import { RecordAbsenceForm } from "@/components/admin/record-absence-form";
 import { cn } from "@/lib/utils";
 
 export const metadata = { title: "Absences" };
-
-const REASON_TONE: Record<AbsenceReason, "warn" | "bad" | "neutral"> = { HOLIDAY: "warn", SICK: "bad", OTHER: "neutral" };
 
 export default async function AbsencesPage() {
   await requireAdmin();
@@ -38,11 +36,12 @@ export default async function AbsencesPage() {
       <div className="overflow-x-auto rounded-2xl border border-border bg-card">
         <table className="w-full min-w-[56rem] border-collapse text-sm">
           <thead>
-            <tr className="border-b border-border bg-muted/60">
-              <th className="font-display sticky left-0 z-10 bg-muted/60 px-3 py-2 text-left text-xs font-bold uppercase tracking-wide text-muted-foreground">Volunteer</th>
+            <tr className="border-b border-border bg-muted">
+              <th scope="col" className="font-display sticky left-0 z-10 bg-muted px-3 py-2 text-left text-xs font-bold uppercase tracking-wide text-muted-foreground">Volunteer</th>
               {days.map((iso) => (
-                <th key={iso} className={cn("font-display px-0.5 py-2 text-center text-[0.65rem] font-bold uppercase leading-tight text-muted-foreground", iso === today && "text-teal")}>
-                  {WEEKDAY_SHORT[weekdayOf(iso)]}<br /><span className="text-xs tabular">{Number(iso.slice(8))}</span>
+                <th key={iso} scope="col" className={cn("font-display px-0.5 py-2 text-center text-xs font-bold uppercase leading-tight text-muted-foreground", iso === today && "text-teal")}>
+                  {WEEKDAY_SHORT[weekdayOf(iso)]}<br /><span className="tabular">{Number(iso.slice(8))}</span>
+                  {iso === today && <span className="sr-only"> (today)</span>}
                 </th>
               ))}
             </tr>
@@ -57,13 +56,13 @@ export default async function AbsencesPage() {
               const released = a.releasedAssignments.filter((r) => r.status === "RELEASED");
               return (
                 <tr key={a.id} className="align-top">
-                  <td className="sticky left-0 z-10 bg-card px-3 py-2.5">
+                  <th scope="row" className="sticky left-0 z-10 bg-card px-3 py-2.5 text-left font-normal">
                     <div className="flex items-center gap-2">
                       <AvatarBadge person={a.volunteer} size="sm" />
                       <div className="min-w-0">
                         <Link href={`/admin/volunteers/${a.volunteerId}`} className="block truncate font-bold text-ink hover:underline">{fullName(a.volunteer)}</Link>
                         <div className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
-                          <Chip tone={REASON_TONE[a.reason]} size="sm">{ABSENCE_REASON_LABEL[a.reason]}</Chip>
+                          <AbsenceReasonChip reason={a.reason} />
                           <span className="tabular">{s === e ? formatDayShort(s) : `${formatDayShort(s)} to ${formatDayShort(e)}`}</span>
                         </div>
                       </div>
@@ -75,9 +74,9 @@ export default async function AbsencesPage() {
                           const covered = confirmed >= r.shift.needed;
                           return (
                             <li key={r.id}>
-                              <Link href={`/admin/roster/${r.shiftId}`} className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold hover:underline", covered ? "bg-status-good-bg text-status-good" : "bg-status-bad-bg text-status-bad")}>
+                              <Link href={`/admin/roster/${r.shiftId}`} className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold hover:underline", covered ? "bg-status-good-bg text-status-good" : "bg-status-warn-bg text-status-warn")}>
                                 {covered ? <CheckCircle2 className="size-3" aria-hidden /> : <HandHelping className="size-3" aria-hidden />}
-                                {formatDay(dateToISO(r.shift.date))} · {r.shift.template.kind === "WAREHOUSE" ? "Warehouse" : r.shift.template.kind === "HARVEST" ? shiftName(r.shift) : r.shift.template.name.split(": ")[1]} · {covered ? "covered" : "open"}
+                                {formatDay(dateToISO(r.shift.date))} · {r.shift.template.kind === "WAREHOUSE" ? "Warehouse" : r.shift.template.kind === "HARVEST" ? shiftName(r.shift) : r.shift.template.name.split(": ")[1]} · {covered ? "covered" : "needs cover"}
                               </Link>
                             </li>
                           );
@@ -85,19 +84,22 @@ export default async function AbsencesPage() {
                       </ul>
                     )}
                     {released.length === 0 && <p className="mt-1.5 text-xs text-muted-foreground">No rostered shifts affected.</p>}
-                  </td>
+                  </th>
                   {days.map((iso) => {
                     const inRange = iso >= s && iso <= e;
                     const rel = released.find((r) => dateToISO(r.shift.date) === iso);
                     const covered = rel ? rel.shift.assignments.filter((x) => x.status === "CONFIRMED" || x.status === "ATTENDED").length >= rel.shift.needed : false;
+                    // Each away day says so in words, so the bar is not read by colour alone.
+                    const label = rel ? `Away. ${shiftName(rel.shift)} ${covered ? "covered" : "needs cover"}` : `Away (${ABSENCE_REASON_LABEL[a.reason].toLowerCase()})`;
                     return (
                       <td key={iso} className={cn("h-12 px-0.5 py-2", iso === today && "bg-teal-tint-soft")}>
                         {inRange && (
                           <div
-                            className={cn("flex h-7 items-center justify-center", iso === s && "rounded-l-full", iso === e && "rounded-r-full", rel ? (covered ? "bg-green" : "bg-status-bad") : "bg-muted-foreground/25")}
-                            title={rel ? `${shiftName(rel.shift)} ${covered ? "covered" : "needs cover"}` : ABSENCE_REASON_LABEL[a.reason]}
+                            className={cn("flex h-7 items-center justify-center", iso === s && "rounded-l-full", iso === e && "rounded-r-full", rel ? (covered ? "bg-green" : "bg-orange") : "bg-muted-foreground/25")}
+                            title={label}
                           >
-                            {rel && (covered ? <CheckCircle2 className="size-4 text-white" aria-label="Covered" /> : <HandHelping className="size-4 text-white" aria-label="Needs cover" />)}
+                            <span className="sr-only">{label}</span>
+                            {rel && (covered ? <CheckCircle2 className="size-4 text-white" aria-hidden /> : <HandHelping className="size-4 text-ink" aria-hidden />)}
                           </div>
                         )}
                       </td>
@@ -110,9 +112,9 @@ export default async function AbsencesPage() {
         </table>
       </div>
       <p className="-mt-4 flex flex-wrap gap-4 text-xs text-muted-foreground">
-        <span className="inline-flex items-center gap-1.5"><span className="inline-block h-3 w-6 rounded-full bg-muted-foreground/25" /> Away, no shift that day</span>
-        <span className="inline-flex items-center gap-1.5"><span className="inline-flex h-3 w-6 items-center justify-center rounded-full bg-status-bad" /> Released shift, still open</span>
-        <span className="inline-flex items-center gap-1.5"><span className="inline-flex h-3 w-6 items-center justify-center rounded-full bg-green" /> Released shift, covered</span>
+        <span className="inline-flex items-center gap-1.5"><span className="inline-block h-3 w-6 rounded-full bg-muted-foreground/25" aria-hidden /> Away, no shift that day</span>
+        <span className="inline-flex items-center gap-1.5"><span className="inline-flex h-3 w-6 items-center justify-center rounded-full bg-orange" aria-hidden /> Released shift, needs cover</span>
+        <span className="inline-flex items-center gap-1.5"><span className="inline-flex h-3 w-6 items-center justify-center rounded-full bg-green" aria-hidden /> Released shift, covered</span>
       </p>
 
       <section className="rounded-2xl border border-border bg-card p-5" aria-labelledby="rec-h">

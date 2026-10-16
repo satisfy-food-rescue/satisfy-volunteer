@@ -26,8 +26,10 @@ export function RecordAbsenceForm({ volunteers, today, defaultVolunteerId }: { v
   const [note, setNote] = useState("");
   const [pending, run] = useTransition();
   return (
+    // Sized by its own width, so it fits the narrow profile column as well as
+    // the full-width absences page.
     <form
-      className="grid grid-cols-1 gap-4 sm:grid-cols-2"
+      className="@container"
       onSubmit={(e) => {
         e.preventDefault();
         run(async () => {
@@ -36,32 +38,34 @@ export function RecordAbsenceForm({ volunteers, today, defaultVolunteerId }: { v
         });
       }}
     >
-      {!defaultVolunteerId && (
-        <div className="flex flex-col gap-1.5 sm:col-span-2">
-          <Label htmlFor="ab-vol">Volunteer</Label>
-          <OptionSelect id="ab-vol" value={volunteerId} onValueChange={setVolunteerId} options={volunteers.map((v) => ({ value: v.id, label: v.name }))} />
+      <div className="grid grid-cols-1 gap-4 @md:grid-cols-2">
+        {!defaultVolunteerId && (
+          <div className="flex flex-col gap-1.5 @md:col-span-2">
+            <Label htmlFor="ab-vol">Volunteer</Label>
+            <OptionSelect id="ab-vol" value={volunteerId} onValueChange={setVolunteerId} options={volunteers.map((v) => ({ value: v.id, label: v.name }))} />
+          </div>
+        )}
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="ab-start">From</Label>
+          <DatePicker id="ab-start" value={start} onChange={(v) => { setStart(v); if (v > end) setEnd(v); }} />
         </div>
-      )}
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="ab-start">From</Label>
-        <DatePicker id="ab-start" value={start} onChange={(v) => { setStart(v); if (v > end) setEnd(v); }} />
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="ab-end">To</Label>
-        <DatePicker id="ab-end" min={start} value={end} onChange={setEnd} />
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="ab-reason">Reason</Label>
-        <OptionSelect id="ab-reason" value={reason} onValueChange={setReason} options={[...REASONS]} />
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="ab-note">Note</Label>
-        <Textarea id="ab-note" rows={1} value={note} onChange={(e) => setNote(e.target.value)} className="min-h-11 text-base" placeholder="Optional" />
-      </div>
-      <div className="sm:col-span-2">
-        <Button type="submit" size="lg" className="h-11" disabled={pending || !volunteerId}>
-          {pending ? <Loader2 className="size-4 animate-spin" /> : <CalendarOff className="size-4" />} Record absence
-        </Button>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="ab-end">To</Label>
+          <DatePicker id="ab-end" min={start} value={end} onChange={setEnd} />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="ab-reason">Reason</Label>
+          <OptionSelect id="ab-reason" value={reason} onValueChange={setReason} options={[...REASONS]} />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="ab-note">Note</Label>
+          <Textarea id="ab-note" rows={1} value={note} onChange={(e) => setNote(e.target.value)} className="min-h-11 text-base" placeholder="Optional" />
+        </div>
+        <div className="@md:col-span-2">
+          <Button type="submit" size="lg" disabled={pending || !volunteerId}>
+            {pending ? <Loader2 className="size-4 animate-spin" /> : <CalendarOff className="size-4" />} Record absence
+          </Button>
+        </div>
       </div>
     </form>
   );

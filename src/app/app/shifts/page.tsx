@@ -1,11 +1,14 @@
 import Link from "next/link";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarOff, ChevronDown, ChevronLeft, ChevronRight, Lock } from "lucide-react";
 import { requireVolunteer } from "@/lib/session";
-import { addDays, formatDayShort, todayISO, weekMonday, workWeek, WEEKDAY_LONG, weekdayOf, isoToDate, formatMonth } from "@/lib/dates";
+import { addDays, formatDayShort, isWeekday, todayISO, weekMonday, workWeek, WEEKDAY_LONG, weekdayOf, isoToDate, formatMonth } from "@/lib/dates";
 import { shiftsBetween } from "@/lib/roster";
 import { trainingContext } from "@/lib/volunteer-data";
 import { eligibilityFor } from "@/lib/training";
 import { ShiftCard } from "@/components/app/shift-card";
+import { AppPageHeader } from "@/components/app/app-page-header";
+import { Chip } from "@/components/shared/status-chip";
+import { EmptyState } from "@/components/shared/empty-state";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/db";
 
@@ -15,7 +18,8 @@ export default async function ShiftsPage({ searchParams }: { searchParams: Promi
   const me = await requireVolunteer();
   const today = todayISO();
   const { week } = await searchParams;
-  const monday = weekMonday(week && /^\d{4}-\d{2}-\d{2}$/.test(week) ? week : today);
+  // At the weekend the week worth showing is the coming one.
+  const monday = weekMonday(week && /^\d{4}-\d{2}-\d{2}$/.test(week) ? week : isWeekday(today) ? today : addDays(today, 2));
   const days = workWeek(monday);
   const [shifts, training, absences] = await Promise.all([
     shiftsBetween(days[0], days[4]),
@@ -27,13 +31,46 @@ export default async function ShiftsPage({ searchParams }: { searchParams: Promi
   );
   const isAway = (iso: string) => absences.some((a) => a.startDate <= isoToDate(iso) && a.endDate >= isoToDate(iso));
   const thisWeek = weekMonday(today);
+  // Why some shifts are locked, said once above the list rather than on every
+  // card: only for kinds that actually appear on a day still to come.
+  const upcomingKinds = new Set(shifts.filter((s) => s.iso >= today).map((s) => s.kind));
+  const locks = [...eligibilityByKind.entries()].filter(([kind, e]) => upcomingKinds.has(kind as never) && !e.eligible && e.reason);
+  const needsRole = locks.some(([, e]) => !e.hasRole);
+
+  const renderDay = (iso: string) => {
+    const dayShifts = shifts.filter((s) => s.iso === iso);
+    const past = iso < today;
+    const away = isAway(iso);
+    return (
+      <section key={iso} aria-labelledby={`day-${iso}`}>
+        <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+          <h2 id={`day-${iso}`} className={cn("text-lg", iso === today ? "text-teal" : past ? "text-muted-foreground" : "text-ink")}>
+            {WEEKDAY_LONG[weekdayOf(iso)]}
+          </h2>
+          <span className="text-sm text-muted-foreground tabular">{formatDayShort(iso)}</span>
+          {iso === today && <span className="rounded-full bg-teal px-2 py-0.5 text-xs font-bold text-white">Today</span>}
+          {away && <Chip tone="neutral" icon={CalendarOff} size="sm">You&apos;re away</Chip>}
+        </div>
+        {dayShifts.length === 0 ? (
+          <EmptyState title="No shifts scheduled" className="py-4" />
+        ) : (
+          <div className="flex flex-col gap-2.5">
+            {dayShifts.map((view) => {
+              const e = eligibilityByKind.get(view.kind)!;
+              return <ShiftCard key={view.shift.id} view={view} meId={me.id} eligible={e.eligible} needsRole={!e.hasRole} reason={e.reason} past={past} showReason={false} />;
+            })}
+          </div>
+        )}
+      </section>
+    );
+  };
+  // In the current week only: browsing back to an old week shows every day.
+  const earlier = monday === thisWeek ? days.filter((iso) => iso < today) : [];
+  const ahead = days.filter((iso) => !earlier.includes(iso));
 
   return (
     <div className="flex flex-col gap-5 px-5 pb-6 pt-5">
-      <div>
-        <p className="eyebrow">Monday to Friday</p>
-        <h1 className="mt-1 text-3xl text-ink">Shifts</h1>
-      </div>
+      <AppPageHeader eyebrow="Monday to Friday" title="Shifts" />
 
       <nav aria-label="Week" className="flex items-center justify-between gap-2 rounded-2xl border border-border bg-card p-1.5">
         <Link href={`/app/shifts?week=${addDays(monday, -7)}`} className="tap flex items-center justify-center rounded-xl text-ink hover:bg-muted" aria-label="Previous week">
@@ -52,33 +89,33 @@ export default async function ShiftsPage({ searchParams }: { searchParams: Promi
         </Link>
       </nav>
 
-      {days.map((iso) => {
-        const dayShifts = shifts.filter((s) => s.iso === iso);
-        const past = iso < today;
-        const away = isAway(iso);
-        return (
-          <section key={iso} aria-labelledby={`day-${iso}`} className={cn(past && "opacity-60")}>
-            <div className="mb-2 flex items-baseline gap-2">
-              <h2 id={`day-${iso}`} className={cn("text-lg text-ink", iso === today && "text-teal")}>
-                {WEEKDAY_LONG[weekdayOf(iso)]}
-              </h2>
-              <span className="text-sm text-muted-foreground tabular">{formatDayShort(iso)}</span>
-              {iso === today && <span className="rounded-full bg-teal px-2 py-0.5 text-xs font-bold text-white">Today</span>}
-              {away && <span className="rounded-full bg-status-neutral-bg px-2 py-0.5 text-xs font-bold text-status-neutral">You&apos;re away</span>}
-            </div>
-            {dayShifts.length === 0 ? (
-              <p className="rounded-xl border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">No shifts scheduled.</p>
-            ) : (
-              <div className="flex flex-col gap-2.5">
-                {dayShifts.map((view) => {
-                  const e = eligibilityByKind.get(view.kind)!;
-                  return <ShiftCard key={view.shift.id} view={view} meId={me.id} eligible={e.eligible} needsRole={!e.hasRole} reason={e.reason} />;
-                })}
-              </div>
-            )}
-          </section>
-        );
-      })}
+      {locks.length > 0 && (
+        <div className="flex gap-3 rounded-2xl bg-status-neutral-bg p-4 text-status-neutral">
+          <Lock className="mt-0.5 size-5 shrink-0" aria-hidden />
+          <div className="min-w-0 text-sm leading-snug">
+            <p className="font-bold text-ink">Some shifts are locked for you</p>
+            <ul className="mt-1 flex flex-col gap-1">
+              {locks.map(([kind, e]) => <li key={kind}>{e.reason}</li>)}
+            </ul>
+            <Link href={needsRole ? "/app/profile" : "/app/training"} className="mt-2 inline-flex min-h-11 items-center font-semibold text-teal hover:underline">
+              {needsRole ? "Ask to change my roles" : "Go to my training"}
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* Days gone by fold away so the week opens on today. */}
+      {earlier.length > 0 && (
+        <details className="group rounded-2xl border border-border bg-card/60">
+          <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-2 px-4 font-semibold text-ink-soft [&::-webkit-details-marker]:hidden">
+            Earlier this week ({earlier.length} {earlier.length === 1 ? "day" : "days"})
+            <ChevronDown className="size-5 transition-transform group-open:rotate-180" aria-hidden />
+          </summary>
+          <div className="flex flex-col gap-5 px-3 pb-4 pt-1">{earlier.map(renderDay)}</div>
+        </details>
+      )}
+
+      {ahead.map(renderDay)}
     </div>
   );
 }

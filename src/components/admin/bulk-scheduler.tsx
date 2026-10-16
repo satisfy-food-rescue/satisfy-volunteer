@@ -6,10 +6,13 @@ import { toast } from "sonner";
 import { CalendarRange, Check, Loader2, Pencil } from "lucide-react";
 import { bulkSchedule, type BulkResult } from "@/app/admin/actions";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { addDays, formatDay, formatTimeRange, WEEKDAY_SHORT } from "@/lib/dates";
 import { cn } from "@/lib/utils";
+
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 type TemplateLite = { id: string; name: string; startTime: string; endTime: string; capacity: number; needed: number; weekdays: number[]; regulars: number };
 
@@ -33,7 +36,7 @@ export function BulkScheduler({ templates, today }: { templates: TemplateLite[];
       const result = await bulkSchedule({ templateIds: [...selected], startDate, endDate, weekdays: [...weekdays], assignRegulars, dryRun });
       if (!result.ok) return void toast.error(result.error);
       if (result.committed) {
-        toast.success(`Created ${result.created} shifts and ${result.assignments} regular assignments.`);
+        toast.success(`Created ${plural(result.created, "shift", "shifts")} and ${plural(result.assignments, "regular assignment", "regular assignments")}.`);
         router.push(`/admin/roster?view=month&date=${startDate}`);
         router.refresh();
         return;
@@ -56,11 +59,11 @@ export function BulkScheduler({ templates, today }: { templates: TemplateLite[];
           <legend className="font-display px-1 text-sm font-bold uppercase tracking-wide text-muted-foreground">Shift templates</legend>
           {templates.map((t) => (
             <label key={t.id} className={cn("flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors", selected.has(t.id) ? "border-teal bg-teal-tint-soft" : "border-border hover:bg-muted")}>
-              <input type="checkbox" className="mt-1 size-4 accent-[var(--brand-teal)]" checked={selected.has(t.id)} onChange={() => { invalidate(); setSelected(toggle(selected, t.id)); }} />
+              <Checkbox className="mt-0.5 size-5" checked={selected.has(t.id)} onCheckedChange={() => { invalidate(); setSelected(toggle(selected, t.id)); }} />
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-bold text-ink">{t.name}</span>
                 <span className="block text-xs text-muted-foreground tabular">
-                  {formatTimeRange(t.startTime, t.endTime)} · {t.weekdays.map((d) => WEEKDAY_SHORT[d]).join(" ")} · capacity {t.capacity}, min {t.needed} · {t.regulars} regulars
+                  {formatTimeRange(t.startTime, t.endTime)} · {t.weekdays.map((d) => WEEKDAY_SHORT[d]).join(" ")} · capacity {t.capacity}, min {t.needed} · {plural(t.regulars, "regular", "regulars")}
                 </span>
               </span>
             </label>
@@ -79,8 +82,8 @@ export function BulkScheduler({ templates, today }: { templates: TemplateLite[];
               <DatePicker id="bs-end" min={startDate} value={endDate} onChange={(d) => { invalidate(); setEndDate(d); }} />
             </div>
           </div>
-          <div>
-            <p className="mb-1.5 text-sm font-medium">Repeat on</p>
+          <fieldset aria-describedby="bs-weekdays-hint">
+            <legend className="mb-1.5 text-sm font-medium">Repeat on</legend>
             <div className="grid grid-cols-5 gap-1.5">
               {[1, 2, 3, 4, 5].map((d) => (
                 <label key={d} className={cn("flex h-11 cursor-pointer items-center justify-center rounded-lg border text-sm font-bold transition-colors has-focus-visible:outline-3 has-focus-visible:outline-ring", weekdays.has(d) ? "border-teal bg-teal-tint text-teal-deep" : "border-border text-muted-foreground hover:bg-muted")}>
@@ -89,27 +92,30 @@ export function BulkScheduler({ templates, today }: { templates: TemplateLite[];
                 </label>
               ))}
             </div>
-            <p className="mt-1.5 text-xs text-muted-foreground">Satisfy runs Monday to Friday, so weekends are never offered.</p>
-          </div>
+            <p id="bs-weekdays-hint" className="mt-1.5 text-xs text-muted-foreground">Satisfy runs Monday to Friday, so weekends are never offered.</p>
+          </fieldset>
           <label className="flex cursor-pointer items-start gap-3">
-            <input type="checkbox" className="mt-1 size-4 accent-[var(--brand-teal)]" checked={assignRegulars} onChange={(e) => { invalidate(); setAssignRegulars(e.target.checked); }} />
+            <Checkbox className="mt-0.5 size-5" checked={assignRegulars} onCheckedChange={(c) => { invalidate(); setAssignRegulars(c); }} />
             <span className="text-sm text-ink">Roster regular volunteers onto their usual weekday automatically</span>
           </label>
         </fieldset>
 
         <div className="flex flex-wrap gap-2">
-          <Button size="lg" variant={preview ? "outline" : "default"} className="h-11" disabled={!canRun || pending} onClick={() => run(true)}>
+          <Button size="lg" variant={preview ? "outline" : "default"} disabled={!canRun || pending} onClick={() => run(true)}>
             {pending && !preview ? <Loader2 className="size-4 animate-spin" /> : <CalendarRange className="size-4" />} Preview
           </Button>
           {preview && (
-            <Button size="lg" className="h-11" disabled={pending || preview.toCreate === 0} onClick={() => run(false)}>
-              {pending ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />} Create {preview.toCreate} shifts
+            <Button size="lg" disabled={pending || preview.toCreate === 0} onClick={() => run(false)}>
+              {pending ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />} Create {plural(preview.toCreate, "shift", "shifts")}
             </Button>
           )}
         </div>
       </div>
 
       <div className="@4xl/admin:col-span-3">
+        <p className="sr-only" aria-live="polite">
+          {preview ? `Preview ready: ${plural(preview.toCreate, "shift", "shifts")} to create, ${preview.skipped} already ${preview.skipped === 1 ? "exists" : "exist"}, ${plural(preview.assignments, "regular", "regulars")} rostered.` : ""}
+        </p>
         {!preview ? (
           <div className="flex h-full min-h-64 flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card/60 p-8 text-center">
             <Pencil className="size-8 text-muted-foreground" aria-hidden />
@@ -132,8 +138,8 @@ export function BulkScheduler({ templates, today }: { templates: TemplateLite[];
             </div>
             <div className="max-h-[32rem] overflow-y-auto rounded-2xl border border-border bg-card">
               <table className="w-full text-sm">
-                <thead className="font-display sticky top-0 bg-muted/90 text-left text-xs uppercase tracking-wide text-muted-foreground backdrop-blur">
-                  <tr><th className="px-3 py-2 font-bold">Date</th><th className="px-3 py-2 font-bold">Shift</th><th className="px-3 py-2 text-right font-bold">Regulars</th><th className="px-3 py-2 text-right font-bold">Status</th></tr>
+                <thead className="font-display sticky top-0 bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
+                  <tr><th scope="col" className="px-3 py-2 font-bold">Date</th><th scope="col" className="px-3 py-2 font-bold">Shift</th><th scope="col" className="px-3 py-2 text-right font-bold">Regulars</th><th scope="col" className="px-3 py-2 text-right font-bold">Status</th></tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {previewByDate.map(([iso, rows]) =>

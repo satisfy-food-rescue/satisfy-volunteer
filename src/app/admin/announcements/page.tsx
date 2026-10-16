@@ -30,7 +30,7 @@ export default async function AnnouncementsPage({ searchParams }: { searchParams
   const options = shifts.map(decorateShift).map((v) => ({ id: v.shift.id, label: `${formatDay(v.iso)}, ${formatTimeRange(v.shift.startTime, v.shift.endTime)}: ${v.name} (${v.confirmedCount})` }));
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-6">
+    <div className="mx-auto flex max-w-6xl flex-col gap-8">
       <PageHeader
         eyebrow="People"
         title="Announcements"

@@ -30,7 +30,7 @@ export async function DemoPersonas() {
   const byEmail = new Map(people.map((p) => [p.email, p]));
 
   return (
-    <main className="flex flex-1 flex-col">
+    <main id="main" className="flex flex-1 flex-col">
       <div className="bg-teal text-white">
         <div className="mx-auto grid w-full max-w-5xl gap-8 px-5 py-10 md:grid-cols-[1fr_19rem] md:items-center md:gap-12 md:px-10 md:py-14">
           <div>
@@ -86,7 +86,7 @@ export async function DemoPersonas() {
                 <button
                   type="submit"
                   className={cn(
-                    "group flex w-full flex-col gap-3 rounded-2xl border border-border bg-card p-5 text-left shadow-sm transition-all",
+                    "group flex w-full cursor-pointer flex-col gap-3 rounded-2xl border border-border bg-card p-5 text-left shadow-sm transition-all",
                     "hover:-translate-y-0.5 hover:border-teal/60 hover:shadow-md active:translate-y-0",
                   )}
                 >

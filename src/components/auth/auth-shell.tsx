@@ -16,7 +16,7 @@ export function AuthShell({
   footer?: React.ReactNode;
 }) {
   return (
-    <main className="flex flex-1 flex-col">
+    <main id="main" className="flex flex-1 flex-col">
       <div className="bg-teal px-4 pb-24 pt-10 sm:pb-28 sm:pt-12">
         <Link
           href="/sign-in"

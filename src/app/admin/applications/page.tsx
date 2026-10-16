@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarCheck, Clock, Mail, MapPin, Phone, RefreshCw, UserPlus } from "lucide-react";
+import { CalendarCheck, Clock, Mail, MapPin, Phone, RefreshCw, UserPlus, XCircle } from "lucide-react";
 import { requireAdmin } from "@/lib/session";
 import { isDemo } from "@/lib/env";
 import { db } from "@/lib/db";
@@ -21,7 +21,7 @@ export default async function ApplicationsPage() {
   const pending = apps.filter((a) => a.status === "PENDING");
   const reviewed = apps.filter((a) => a.status !== "PENDING");
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-6">
+    <div className="mx-auto flex max-w-6xl flex-col gap-8">
       <PageHeader eyebrow="Applications" title="New volunteer applications" description="Applicants fill in the sign-up form on the website, which lands in Infoodle. Approved applicants get an account here and an email inviting them to sign in. Then give them a call and book their initial visit from their profile." />
 
       <div className="flex items-start gap-3 rounded-2xl border border-border bg-card p-4 text-sm">
@@ -43,16 +43,16 @@ export default async function ApplicationsPage() {
             <div className="flex flex-wrap items-start gap-4">
               <AvatarBadge person={a} size="lg" />
               <div className="min-w-0 flex-1">
-                <h3 className="text-xl font-bold text-ink">{a.firstName} {a.lastName}{a.birthYear ? <span className="ml-2 text-base font-normal text-muted-foreground">{new Date().getFullYear() - a.birthYear}</span> : null}</h3>
+                <h3 className="text-xl font-bold text-ink">{a.firstName} {a.lastName}{a.birthYear ? <span className="ml-2 text-base font-normal text-muted-foreground">aged {new Date().getFullYear() - a.birthYear}</span> : null}</h3>
                 <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink-soft">
                   {a.suburb && <span className="inline-flex items-center gap-1"><MapPin className="size-4 text-sky" aria-hidden />{a.suburb}</span>}
                   <span className="inline-flex items-center gap-1"><Mail className="size-4 text-sky" aria-hidden />{a.email}</span>
                   {a.phone && <span className="inline-flex items-center gap-1 tabular"><Phone className="size-4 text-sky" aria-hidden />{a.phone}</span>}
                 </p>
-                <dl className="mt-3 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+                <dl className="mt-3 grid gap-x-6 gap-y-2 text-sm @2xl/admin:grid-cols-2">
                   <div><dt className="font-display text-xs font-bold uppercase tracking-wide text-muted-foreground">Interested in</dt><dd className="mt-0.5 flex flex-wrap gap-1">{a.interests.map((r) => <Chip key={r} tone="good" size="sm">{ROLE_SHORT[r]}</Chip>)}</dd></div>
                   <div><dt className="font-display text-xs font-bold uppercase tracking-wide text-muted-foreground">Availability</dt><dd className="mt-0.5 text-ink">{a.availability}</dd></div>
-                  {a.message && <div className="sm:col-span-2"><dt className="font-display text-xs font-bold uppercase tracking-wide text-muted-foreground">Message</dt><dd className="mt-0.5 text-ink">&ldquo;{a.message}&rdquo;</dd></div>}
+                  {a.message && <div className="@2xl/admin:col-span-2"><dt className="font-display text-xs font-bold uppercase tracking-wide text-muted-foreground">Message</dt><dd className="mt-0.5 text-ink">&ldquo;{a.message}&rdquo;</dd></div>}
                 </dl>
                 <p className="mt-3 inline-flex items-center gap-1.5 text-xs text-muted-foreground"><Clock className="size-3.5" aria-hidden />Submitted {formatInstant(a.submittedAt)}{a.infoodleId ? ` · Infoodle ${a.infoodleId}` : ""}</p>
               </div>
@@ -68,6 +68,7 @@ export default async function ApplicationsPage() {
       <section className="flex flex-col gap-3" aria-labelledby="rev-h">
         <h2 id="rev-h" className="text-2xl text-ink">Recently reviewed</h2>
         <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
+          {reviewed.length === 0 && <li className="px-4 py-8 text-center text-sm text-muted-foreground">No applications reviewed yet.</li>}
           {reviewed.map((a) => (
             <li key={a.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
               <AvatarBadge person={a} size="sm" />
@@ -75,7 +76,7 @@ export default async function ApplicationsPage() {
                 <span className="block font-bold text-ink">{a.firstName} {a.lastName}</span>
                 <span className="block text-xs text-muted-foreground">{a.status === "APPROVED" ? "Approved" : "Declined"} {a.reviewedAt ? formatInstant(a.reviewedAt) : ""}{a.reviewNote ? ` · ${a.reviewNote}` : ""}</span>
               </span>
-              {a.status === "APPROVED" ? <Chip tone="good" size="sm" icon={CalendarCheck}>Approved</Chip> : <Chip tone="neutral" size="sm">Declined</Chip>}
+              {a.status === "APPROVED" ? <Chip tone="good" size="sm" icon={CalendarCheck}>Approved</Chip> : <Chip tone="neutral" size="sm" icon={XCircle}>Declined</Chip>}
               {a.volunteerId && <Link href={`/admin/volunteers/${a.volunteerId}`} className="text-sm font-semibold text-teal hover:underline">Profile</Link>}
             </li>
           ))}

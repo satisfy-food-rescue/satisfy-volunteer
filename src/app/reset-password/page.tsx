@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ChevronLeft } from "lucide-react";
 import { findUsableToken } from "@/lib/auth";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { FormNotice } from "@/components/auth/form-notice";
@@ -13,14 +14,25 @@ export const dynamic = "force-dynamic";
 // submitted, so mail scanners that pre-fetch links cannot burn it.
 export default async function ResetPasswordPage({ searchParams }: { searchParams: Promise<{ token?: string }> }) {
   const { token = "" } = await searchParams;
-  const record = await findUsableToken(token);
+  const record = token ? await findUsableToken(token) : null;
 
   if (!record) {
+    // No token at all usually means the link was cut short when it was copied
+    // or wrapped by an email program, rather than an old link.
+    const incomplete = !token;
     return (
       <AuthShell
-        title="This link has expired"
-        description="Sign-in links work once and only for a limited time. Enter your email and we will send a fresh one."
-        footer={<Link href="/sign-in" className="font-semibold text-teal">Back to sign in</Link>}
+        title={incomplete ? "This link is not complete" : "This link has expired"}
+        description={
+          incomplete
+            ? "Part of the link seems to be missing. Open it straight from the email, or enter your email and we will send a fresh one."
+            : "Sign-in links work once and only for a limited time. Enter your email and we will send a fresh one."
+        }
+        footer={
+          <Link href="/sign-in" className="inline-flex min-h-11 items-center gap-1 font-semibold text-teal">
+            <ChevronLeft className="size-4" aria-hidden /> Back to sign in
+          </Link>
+        }
       >
         <LinkRequestForm />
       </AuthShell>

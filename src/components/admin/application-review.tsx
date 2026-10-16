@@ -27,8 +27,8 @@ export function ApplicationReview({ id, firstName }: { id: string; firstName: st
   }
   return (
     <div className="flex flex-wrap gap-2">
-      <Button size="lg" className="h-11" disabled={pending} onClick={() => go(() => approveApplication(id))}>{pending ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />} Approve {firstName}</Button>
-      <Button variant="outline" size="lg" className="h-11" disabled={pending} onClick={() => setDeclining(true)}><X className="size-4" /> Decline</Button>
+      <Button size="lg" disabled={pending} onClick={() => go(() => approveApplication(id))}>{pending ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />} Approve {firstName}</Button>
+      <Button variant="outline" size="lg" disabled={pending} onClick={() => setDeclining(true)}><X className="size-4" /> Decline</Button>
     </div>
   );
 }

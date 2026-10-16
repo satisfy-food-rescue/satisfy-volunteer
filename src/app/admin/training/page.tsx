@@ -4,7 +4,7 @@ import { ArrowDown, ArrowRight, ArrowUp, BellRing, Clock, Mail, MapPin, PlayCirc
 import { requireAdmin } from "@/lib/session";
 import { isDemo } from "@/lib/env";
 import { db } from "@/lib/db";
-import { formatInstant, formatInstantTime, todayISO, formatDate } from "@/lib/dates";
+import { formatInstant, formatInstantRange, todayISO, formatDate } from "@/lib/dates";
 import { DELIVERY_LABEL, EMAIL_KIND_LABEL, ROLE_SHORT, fullName } from "@/lib/domain";
 import { moduleStatuses, type ModuleStatus } from "@/lib/training";
 import { REMINDER_RULES } from "@/lib/reminders";
@@ -83,7 +83,7 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
     const desc = sort.startsWith("-");
     const Icon = desc ? ArrowDown : ArrowUp;
     return (
-      <th className={cn("px-4 py-2.5 font-bold", className)} aria-sort={active ? (desc ? "descending" : "ascending") : undefined}>
+      <th scope="col" className={cn("px-4 py-2.5 font-bold", className)} aria-sort={active ? (desc ? "descending" : "ascending") : undefined}>
         <Link href={trainingHref(sp, { tab: "people", sort: active && !desc ? `-${key}` : key === "expiry" ? undefined : key })} scroll={false} className={cn("inline-flex items-center gap-1 hover:text-ink", active && "text-ink")}>
           {label}{active && <Icon className="size-3.5" aria-hidden />}
         </Link>
@@ -94,7 +94,7 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
   const past = sessions.filter((s) => s.startsAt < new Date()).reverse();
 
   return (
-    <div className="mx-auto flex max-w-7xl flex-col gap-6">
+    <div className="mx-auto flex max-w-7xl flex-col gap-8">
       <PageHeader eyebrow="Training" title="Modules, sessions and reminders" description="Configure what each role must complete and how often. The gate in the volunteer app reads directly from these settings." />
       <UrlTabs value={tab === "sessions" || tab === "reminders" || tab === "people" ? tab : "modules"} className="gap-6">
         <TabsList variant="line" className="w-full justify-start overflow-x-auto overflow-y-hidden scrollbar-none">
@@ -123,7 +123,7 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
                     {m.mandatoryBeforeFirstShift && <span className="font-semibold text-teal">Mandatory before first shift</span>}
                   </p>
                 </div>
-                <div className="w-full sm:w-64">
+                <div className="w-full @xl/admin:w-64">
                   <p className="mb-1 flex justify-between text-xs font-semibold text-muted-foreground"><span>{required} volunteers</span><span className="tabular">{required ? Math.round(((complete + dueSoon) / required) * 100) : 100}% current</span></p>
                   <div className="flex h-2.5 overflow-hidden rounded-full bg-muted" role="img" aria-label={`${complete} complete, ${dueSoon} due soon, ${overdue} overdue, ${notStarted} not started`}>
                     {[["bg-green", complete], ["bg-orange", dueSoon], ["bg-status-bad", overdue]].map(([c, n]) => (n as number) > 0 && <span key={c as string} className={cn(c as string, "border-r-2 border-card last:border-r-0")} style={{ width: `${((n as number) / required) * 100}%` }} />)}
@@ -167,19 +167,19 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
                 <tr>
                   {sortHeader("name", "Volunteer")}
                   {sortHeader("module", "Module")}
-                  <th className="hidden px-4 py-2.5 font-bold md:table-cell">Completed</th>
-                  {sortHeader("expiry", "Expiry", "hidden sm:table-cell")}
-                  <th className="px-4 py-2.5 font-bold">Status</th>
+                  <th scope="col" className="hidden px-4 py-2.5 font-bold @2xl/admin:table-cell">Completed</th>
+                  {sortHeader("expiry", "Expiry", "hidden @xl/admin:table-cell")}
+                  <th scope="col" className="px-4 py-2.5 font-bold">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {rows.length === 0 && <tr><td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">{status === "attention" && !sp.module && !sp.q && !sp.expiry ? "Everyone is current. Ka pai." : "No training records match these filters."}</td></tr>}
                 {rows.map(({ v, s }) => (
                   <tr key={v.id + s.module.id} className="hover:bg-muted/40">
-                    <td className="px-4 py-2.5"><Link href={`/admin/volunteers/${v.id}`} className="flex items-center gap-2 font-bold text-ink hover:underline"><AvatarBadge person={v} size="sm" className="size-7 text-[0.6rem]" />{fullName(v)}</Link></td>
+                    <td className="px-4 py-2.5"><Link href={`/admin/volunteers/${v.id}`} className="flex items-center gap-2 font-bold text-ink hover:underline"><AvatarBadge person={v} size="sm" className="size-7 text-[0.6875rem]" />{fullName(v)}</Link></td>
                     <td className="px-4 py-2.5 text-ink-soft">{s.module.name}<span className="block text-xs text-muted-foreground">{DELIVERY_LABEL[s.module.delivery]}</span></td>
-                    <td className="hidden px-4 py-2.5 text-ink-soft tabular md:table-cell">{s.completedISO ? formatDate(s.completedISO) : <span className="text-muted-foreground">Never</span>}</td>
-                    <td className="hidden px-4 py-2.5 tabular sm:table-cell">
+                    <td className="hidden px-4 py-2.5 text-ink-soft tabular @2xl/admin:table-cell">{s.completedISO ? formatDate(s.completedISO) : <span className="text-muted-foreground">Never</span>}</td>
+                    <td className="hidden px-4 py-2.5 tabular @xl/admin:table-cell">
                       {s.expiresISO ? (
                         <>
                           <span className="text-ink-soft">{formatDate(s.expiresISO)}</span>
@@ -198,14 +198,14 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
         <TabsContent value="sessions" className="flex flex-col gap-4">
           <NewSessionForm today={today} modules={modules.map((m) => ({ id: m.id, name: m.name }))} />
           <h2 className="text-2xl text-ink">Upcoming</h2>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 @2xl/admin:grid-cols-2 @5xl/admin:grid-cols-3">
             {upcoming.map((s) => <SessionCard key={s.id} s={s} />)}
-            {upcoming.length === 0 && <p className="rounded-2xl border border-dashed border-border bg-card px-4 py-8 text-center text-muted-foreground md:col-span-2 xl:col-span-3">No sessions scheduled.</p>}
+            {upcoming.length === 0 && <p className="rounded-2xl border border-dashed border-border bg-card px-4 py-8 text-center text-muted-foreground @2xl/admin:col-span-2 @5xl/admin:col-span-3">No sessions scheduled.</p>}
           </div>
           {past.length > 0 && (
             <>
               <h2 className="mt-2 text-2xl text-ink">Past</h2>
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">{past.map((s) => <SessionCard key={s.id} s={s} />)}</div>
+              <div className="grid grid-cols-1 gap-3 @2xl/admin:grid-cols-2 @5xl/admin:grid-cols-3">{past.map((s) => <SessionCard key={s.id} s={s} />)}</div>
             </>
           )}
         </TabsContent>
@@ -237,6 +237,7 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
                 <Link href="/admin/outbox" className="text-sm font-semibold text-teal hover:underline">Open Outbox</Link>
               </div>
               <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
+                {reminderEmails.length === 0 && <li className="px-4 py-8 text-center text-sm text-muted-foreground">No reminders sent yet. They show here as the hourly checks send them.</li>}
                 {reminderEmails.map((e) => (
                   <li key={e.id}>
                     <Link href={`/admin/outbox/${e.id}`} className="flex items-start gap-3 px-3 py-2.5 hover:bg-muted">
@@ -267,7 +268,7 @@ function SessionCard({ s }: { s: { id: string; startsAt: Date; endsAt: Date; loc
   return (
     <Link href={`/admin/training/sessions/${s.id}`} className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-4 transition-colors hover:border-teal/60">
       <p className="font-bold text-ink">{s.module.name}</p>
-      <p className="inline-flex items-center gap-1.5 text-sm text-ink-soft tabular"><Clock className="size-4 text-sky" aria-hidden />{formatInstant(s.startsAt)} to {formatInstantTime(s.endsAt)}</p>
+      <p className="inline-flex items-center gap-1.5 text-sm text-ink-soft tabular"><Clock className="size-4 text-sky" aria-hidden />{formatInstantRange(s.startsAt, s.endsAt)}</p>
       <p className="inline-flex items-center gap-1.5 text-sm text-muted-foreground"><MapPin className="size-4" aria-hidden />{s.location}</p>
       <p className="inline-flex items-center gap-1.5 text-sm text-muted-foreground tabular"><Users className="size-4" aria-hidden />{isPast ? `${attended} attended of ${going.length} booked` : `${going.length} of ${s.capacity} booked`}</p>
     </Link>

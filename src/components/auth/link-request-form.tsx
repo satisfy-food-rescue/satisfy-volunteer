@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import { Loader2, Send } from "lucide-react";
 import { requestSignInLink, type LinkState } from "@/app/sign-in/actions";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,11 @@ import { FormNotice } from "./form-notice";
 
 export function LinkRequestForm({ initialEmail }: { initialEmail?: string }) {
   const [state, action, pending] = useActionState<LinkState, FormData>(requestSignInLink, { email: initialEmail });
+  const emailRef = useRef<HTMLInputElement>(null);
+  // The pending button is disabled while the form submits, which drops focus.
+  useEffect(() => {
+    if (state.error) emailRef.current?.focus();
+  }, [state]);
   if (state.sent) {
     return (
       <FormNotice tone="success">
@@ -22,10 +27,10 @@ export function LinkRequestForm({ initialEmail }: { initialEmail?: string }) {
   }
   return (
     <form action={action} className="flex flex-col gap-4">
-      {state.error && <FormNotice tone="error">{state.error}</FormNotice>}
+      {state.error && <FormNotice id="link-error" tone="error">{state.error}</FormNotice>}
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="email" className="text-base">Email</Label>
-        <Input id="email" name="email" type="email" autoComplete="email" inputMode="email" required defaultValue={state.email} className="h-12 text-base" />
+        <Input ref={emailRef} id="email" name="email" type="email" autoComplete="email" inputMode="email" required defaultValue={state.email} className="h-12 text-base" aria-invalid={state.invalid || undefined} aria-describedby={state.error ? "link-error" : undefined} />
       </div>
       <Button type="submit" size="lg" className="h-12 text-base" disabled={pending}>
         {pending ? <Loader2 className="size-5 animate-spin" aria-hidden /> : <Send className="size-5" aria-hidden />}

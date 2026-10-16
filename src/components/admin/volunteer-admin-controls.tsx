@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { CalendarPlus, Check, ClipboardCheck, Loader2, MessageSquareText, Pencil, PhoneCall, Power, Save, Send, UserPlus, X } from "lucide-react";
-import { bookInitialVisit, createVolunteer, logContact, recordCoordinatorCompletion, saveVolunteerNotes, sendVolunteerInvite, setVolunteerRoles, setVolunteerStatus, updateVolunteerProfile } from "@/app/admin/actions";
+import { bookInitialVisit, createVolunteer, type CreateVolunteerResult, logContact, recordCoordinatorCompletion, saveVolunteerNotes, sendVolunteerInvite, setVolunteerRoles, setVolunteerStatus, updateVolunteerProfile } from "@/app/admin/actions";
 import type { ActionResult } from "@/lib/volunteer-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { OptionSelect, type Option } from "@/components/shared/option-select";
 import { TIMES } from "@/components/admin/training-admin-controls";
+import { FieldError } from "@/components/admin/field-error";
 import { ROLE_LABEL, VOLUNTEER_ROLES, type VolunteerRole } from "@/lib/domain";
 import { cn } from "@/lib/utils";
 
@@ -102,8 +103,8 @@ export function RecordCompletionButton({ volunteerId, moduleId, moduleName, firs
             <DatePicker id={`done-${moduleId}`} value={date} max={today} onChange={setDate} />
           </div>
           <DialogFooter>
-            <Button variant="ghost" className="h-10" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button className="h-10" disabled={pending || !date} onClick={() => run(() => recordCoordinatorCompletion({ volunteerId, moduleId, completedISO: date }), () => setOpen(false))}>
+            <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button disabled={pending || !date} onClick={() => run(() => recordCoordinatorCompletion({ volunteerId, moduleId, completedISO: date }), () => setOpen(false))}>
               {pending ? <Spinner /> : <Check className="size-4" />} Mark complete
             </Button>
           </DialogFooter>
@@ -147,10 +148,10 @@ export function ProfileEditor({ volunteerId, initial, children }: { volunteerId:
   );
   return (
     <form
-      className="flex flex-col gap-4"
+      className="@container flex flex-col gap-4"
       onSubmit={(e) => { e.preventDefault(); run(() => updateVolunteerProfile({ volunteerId, ...v }), () => setEditing(false)); }}
     >
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 @md:grid-cols-2">
         {field("phone", "Mobile", { type: "tel" })}
         {field("suburb", "Suburb or town")}
         {field("emergencyName", "Emergency contact", { placeholder: "e.g. Sam, partner" })}
@@ -227,7 +228,7 @@ export function BookInitialVisitButton({
     );
   return (
     <>
-      <Button size={rebook ? "sm" : "lg"} variant={rebook ? "outline" : "default"} className={rebook ? "h-10" : "h-11"} onClick={() => { setMode("new"); setSlot(openSlots[0]?.value ?? ""); setOpen(true); }}>
+      <Button size={rebook ? "sm" : "lg"} variant={rebook ? "outline" : "default"} className={rebook ? "h-10" : undefined} onClick={() => { setMode("new"); setSlot(openSlots[0]?.value ?? ""); setOpen(true); }}>
         <CalendarPlus className="size-4" /> {rebook ? "Change initial visit" : "Book initial visit"}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
@@ -260,8 +261,8 @@ export function BookInitialVisitButton({
             </div>
           )}
           <DialogFooter>
-            <Button variant="ghost" className="h-10" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button className="h-10" disabled={pending || (mode === "existing" && !slot)} onClick={submit}>
+            <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button disabled={pending || (mode === "existing" && !slot)} onClick={submit}>
               {pending ? <Spinner /> : <Check className="size-4" />} {rebook ? "Move visit" : "Book visit"}
             </Button>
           </DialogFooter>
@@ -328,15 +329,27 @@ export function AccountControls({
 
 const EMPTY_VOLUNTEER = { firstName: "", lastName: "", email: "", phone: "", roles: ["WAREHOUSE"] as VolunteerRole[], sendInvite: true };
 
+type NewVolunteerField = Extract<CreateVolunteerResult, { ok: false }>["field"] & string;
+const FIELD_INPUT: Record<NewVolunteerField, string> = { firstName: "nv-first", lastName: "nv-last", email: "nv-email", phone: "nv-phone", roles: "nv-roles" };
+
 export function AddVolunteerButton() {
   const [open, setOpen] = useState(false);
   const [v, setV] = useState(EMPTY_VOLUNTEER);
+  // A server error about one field shows under that field, not as a toast.
+  const [fieldError, setFieldError] = useState<{ field: NewVolunteerField; message: string } | null>(null);
   const [pending, start] = useTransition();
   const router = useRouter();
-  const set = (k: "firstName" | "lastName" | "email" | "phone") => (e: React.ChangeEvent<HTMLInputElement>) => setV({ ...v, [k]: e.target.value });
+  const set = (k: "firstName" | "lastName" | "email" | "phone") => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setV({ ...v, [k]: e.target.value });
+    if (fieldError?.field === k) setFieldError(null);
+  };
+  const errorProps = (field: NewVolunteerField) =>
+    fieldError?.field === field ? { "aria-invalid": true, "aria-describedby": `${FIELD_INPUT[field]}-error` } : {};
+  const errorFor = (field: NewVolunteerField) =>
+    fieldError?.field === field && <FieldError id={`${FIELD_INPUT[field]}-error`}>{fieldError.message}</FieldError>;
   return (
     <>
-      <Button size="lg" className="h-11 px-4" onClick={() => setOpen(true)}>
+      <Button size="lg" className="px-4" onClick={() => { setFieldError(null); setOpen(true); }}>
         <UserPlus className="size-4" aria-hidden /> Add volunteer
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
@@ -352,7 +365,13 @@ export function AddVolunteerButton() {
               e.preventDefault();
               start(async () => {
                 const r = await createVolunteer(v);
-                if (!r.ok) return void toast.error(r.error);
+                if (!r.ok) {
+                  if (!r.field) return void toast.error(r.error);
+                  setFieldError({ field: r.field, message: r.error });
+                  document.getElementById(FIELD_INPUT[r.field])?.focus();
+                  return;
+                }
+                setFieldError(null);
                 toast.success(r.message);
                 setOpen(false);
                 setV(EMPTY_VOLUNTEER);
@@ -363,35 +382,40 @@ export function AddVolunteerButton() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="nv-first" className="text-base">First name</Label>
-                <Input id="nv-first" required value={v.firstName} onChange={set("firstName")} className="h-11 text-base" />
+                <Input id="nv-first" required value={v.firstName} onChange={set("firstName")} className="h-11 text-base" {...errorProps("firstName")} />
+                {errorFor("firstName")}
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="nv-last" className="text-base">Last name</Label>
-                <Input id="nv-last" value={v.lastName} onChange={set("lastName")} className="h-11 text-base" />
+                <Input id="nv-last" value={v.lastName} onChange={set("lastName")} className="h-11 text-base" {...errorProps("lastName")} />
+                {errorFor("lastName")}
               </div>
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="nv-email" className="text-base">Email</Label>
-              <Input id="nv-email" type="email" required value={v.email} onChange={set("email")} className="h-11 text-base" />
+              <Input id="nv-email" type="email" required value={v.email} onChange={set("email")} className="h-11 text-base" {...errorProps("email")} />
+              {errorFor("email")}
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="nv-phone" className="text-base">Mobile</Label>
-              <Input id="nv-phone" type="tel" value={v.phone} onChange={set("phone")} className="h-11 text-base" />
+              <Input id="nv-phone" type="tel" value={v.phone} onChange={set("phone")} className="h-11 text-base" {...errorProps("phone")} />
+              {errorFor("phone")}
             </div>
-            <fieldset className="flex flex-col gap-2">
+            <fieldset id="nv-roles" tabIndex={-1} className="flex flex-col gap-2 outline-none" {...errorProps("roles")}>
               <legend className="mb-1.5 text-base font-medium">Roles</legend>
               <div className="flex flex-wrap gap-2">
                 {VOLUNTEER_ROLES.map((r) => {
                   const on = v.roles.includes(r);
                   return (
                     <label key={r} className={cn("flex h-11 cursor-pointer items-center gap-2 rounded-full border px-4 text-sm font-semibold transition-colors has-focus-visible:outline-3 has-focus-visible:outline-ring", on ? "border-teal bg-teal-tint text-teal-deep" : "border-border bg-card text-muted-foreground hover:text-ink")}>
-                      <input type="checkbox" className="sr-only" checked={on} onChange={() => setV({ ...v, roles: on ? v.roles.filter((x) => x !== r) : [...v.roles, r] })} />
+                      <input type="checkbox" className="sr-only" checked={on} onChange={() => { setV({ ...v, roles: on ? v.roles.filter((x) => x !== r) : [...v.roles, r] }); if (fieldError?.field === "roles") setFieldError(null); }} />
                       {on && <Check className="size-4" aria-hidden />}
                       {ROLE_LABEL[r]}
                     </label>
                   );
                 })}
               </div>
+              {errorFor("roles")}
             </fieldset>
             <label className="flex min-h-11 cursor-pointer items-center justify-between gap-4">
               <span>

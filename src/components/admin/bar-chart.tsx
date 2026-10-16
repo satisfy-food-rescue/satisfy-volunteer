@@ -11,6 +11,8 @@ export function BarChart({
   format = (n: number) => String(n),
   max,
   title,
+  labelHeader,
+  valueHeader = "Value",
   className,
   tone = "teal",
 }: {
@@ -19,6 +21,9 @@ export function BarChart({
   format?: (n: number) => string;
   max?: number;
   title: string;
+  /** Heading for the label column of the table alternative, such as "Month" or "Module". */
+  labelHeader: string;
+  valueHeader?: string;
   className?: string;
   tone?: "teal" | "green" | "orange";
 }) {
@@ -63,7 +68,7 @@ export function BarChart({
       <details className="text-xs text-muted-foreground">
         <summary className="cursor-pointer font-semibold hover:text-ink">View as table</summary>
         <table className="mt-2 w-full text-left">
-          <thead><tr><th className="py-1 font-semibold">Period</th><th className="py-1 text-right font-semibold">Value</th></tr></thead>
+          <thead><tr><th scope="col" className="py-1 font-semibold">{labelHeader}</th><th scope="col" className="py-1 text-right font-semibold">{valueHeader}</th></tr></thead>
           <tbody>{data.map((d) => <tr key={d.label} className="border-t border-border"><td className="py-1">{d.sublabel ?? d.label}</td><td className="py-1 text-right tabular">{format(d.value)}{unit}</td></tr>)}</tbody>
         </table>
       </details>
