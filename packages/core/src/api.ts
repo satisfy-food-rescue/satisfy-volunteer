@@ -26,6 +26,55 @@ export type MutationOk = { message: string };
 export type ApiFailure = { error: string };
 
 // Auth ----------------------------------------------------------------------
+//
+// Volunteers sign in to the app the same ways as the website: password,
+// Google (in the system browser, handed back with a PKCE-bound code) or a
+// passkey (shared with the website: same relying party). Every sign-in
+// returns SignInResult. Accounts are never created from the app.
+
+/** GET /api/mobile/auth/config. Which sign-in methods this server offers,
+ *  so the app only shows buttons that work. */
+export type AuthConfig = {
+  /** The demo deployment: show the persona picker instead. */
+  demo: boolean;
+  google: boolean;
+  /** Passkeys are set up for this platform (the app sends X-Platform). */
+  passkeys: boolean;
+  /** The website, for "Forgot your password?" and Sign-in and security. */
+  webUrl: string;
+};
+
+/** POST /api/mobile/auth/password */
+export type PasswordSignInInput = { email: string; password: string };
+
+/** POST /api/mobile/auth/google, after the system browser returned to
+ *  satisfy://auth?code=... (or ?error=<reason>&email=...). `verifier` is the
+ *  PKCE verifier whose S256 challenge the app sent as ?app= when it opened
+ *  /auth/google. */
+export type GoogleSignInInput = { code: string; verifier: string };
+/** The ?error= reasons the browser can hand back. */
+export type GoogleSignInError =
+  | "google_cancelled"
+  | "google_failed"
+  | "google_unavailable"
+  | "google_unknown"
+  | "google_unverified"
+  | "inactive";
+
+/** POST /api/mobile/auth/passkey/options (sign in) and
+ *  POST /api/mobile/passkeys/options (add a passkey, signed in). `options`
+ *  is the WebAuthn JSON to hand to the device; send `challengeId` back with
+ *  its response. Valid for five minutes, once. */
+export type PasskeyOptions<O> = { challengeId: string; options: O };
+/** POST /api/mobile/auth/passkey */
+export type PasskeySignInInput<R> = { challengeId: string; response: R };
+/** POST /api/mobile/passkeys returns MutationOk. */
+export type PasskeyRegisterInput<R> = { challengeId: string; response: R; name: string };
+
+/** POST /api/mobile/auth/link: "Forgot your password?" or "First time
+ *  here?". Emails a link to set a password on the website. The reply is the
+ *  same whether or not the address has an account. Returns MutationOk. */
+export type SignInLinkInput = { email: string };
 
 /** GET /api/mobile/auth/personas (demo only). The volunteer personas a
  *  demo user can sign in as. The coordinator persona is web-only. */
@@ -311,6 +360,22 @@ export type ProfileInput = {
 
 /** POST /api/mobile/profile/role-request returns MutationOk. */
 export type RoleRequestInput = { message: string };
+
+// Sign-in and security -----------------------------------------------------
+
+/** GET /api/mobile/security. Passwords and Google are managed on the
+ *  website; passkeys can be added and removed here, since a phone's passkey
+ *  has to be created on the phone. */
+export type SecurityOverview = {
+  hasPassword: boolean;
+  google: { email: string | null } | null;
+  passkeys: { id: string; name: string; addedLabel: string; lastUsedLabel: string | null }[];
+  /** Whether this server can register passkeys for the app's platform. */
+  passkeysAvailable: boolean;
+  /** Sign-in and security on the website. */
+  manageUrl: string;
+};
+/** DELETE /api/mobile/passkeys/:id returns MutationOk. */
 
 // Push notifications --------------------------------------------------------
 

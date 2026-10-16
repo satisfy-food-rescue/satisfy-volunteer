@@ -1,4 +1,5 @@
 import { requireAdmin } from "@/lib/session";
+import { isDemo } from "@/lib/env";
 import { db } from "@/lib/db";
 import { addDays, todayISO } from "@/lib/dates";
 import { gapsBetween } from "@/lib/roster";
@@ -22,14 +23,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <SidebarProvider>
-      <AdminSidebar user={user} badges={{ applications, gaps: gaps.length, training: overdue }} />
+      <AdminSidebar user={user} demo={isDemo()} badges={{ applications, gaps: gaps.length, training: overdue }} />
       <SidebarInset className="min-w-0 bg-background">
         <header className="sticky top-0 z-30 flex h-14 items-center gap-2 bg-teal px-3 text-white md:hidden">
           <SidebarTrigger className="tap rounded-full text-white hover:bg-white/10 hover:text-white" />
           <LogoIcon tone="white" className="size-7" />
           <span className="font-display text-xs font-bold uppercase tracking-[0.18em] text-white">Coordinator</span>
         </header>
-        <div className="min-w-0 flex-1 px-5 py-8 md:px-10 md:py-10">{children}</div>
+        {/* A container, so page layouts respond to the space beside the sidebar rather than the window. */}
+        <div className="@container/admin min-w-0 flex-1 px-5 py-8 md:px-10 md:py-10">{children}</div>
         <BrandFooter className="pb-5" />
       </SidebarInset>
     </SidebarProvider>

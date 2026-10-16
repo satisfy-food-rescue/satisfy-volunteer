@@ -1,20 +1,34 @@
-// Renders every page against a running server as every persona and fails on
-// anything but a 200. Pages are discovered from src/app, so a new page is
-// covered without touching this file; a new dynamic segment needs a resolver
-// below. Then signs in to the native app API as every volunteer persona and
-// reads every endpoint. Run after `pnpm build && pnpm start:prod`:
+// Renders every page against a running demo server (DEMO_MODE=1) as every
+// persona and fails on anything but a 200. Pages are discovered from src/app,
+// so a new page is covered without touching this file; a new dynamic segment
+// needs a resolver below. Then signs in to the native app API as every
+// volunteer persona and reads every endpoint. Run against the same database
+// the server uses, after `pnpm build` and starting it with DEMO_MODE=1:
 //   BASE_URL=http://localhost:3000 pnpm test:smoke
+import "dotenv/config";
+import { createHash, randomBytes } from "node:crypto";
 import { globSync } from "node:fs";
 import { PrismaClient } from "../src/generated/prisma/client";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { PrismaPg } from "@prisma/adapter-pg";
 import type { Volunteer } from "../src/generated/prisma/client";
 import type * as Api from "@satisfy/core/api";
 import { addDays, isoToDate, todayISO } from "../src/lib/dates";
-import { PERSONA_COOKIE } from "../src/lib/session";
+import { SESSION_COOKIE } from "../src/lib/auth-shared";
+import { PERSONAS } from "../src/lib/personas";
 
 const base = process.env.BASE_URL ?? "http://localhost:3000";
-const url = process.env.DATABASE_URL ?? "file:./prisma/dev.db";
-const db = new PrismaClient({ adapter: new PrismaBetterSqlite3({ url }) });
+const db = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
+
+const keyOf = (v: Volunteer) => PERSONAS.find((p) => p.email === v.email)!.key;
+
+/** A browser session for a persona, written straight to the database the way
+ *  src/lib/session.ts does, so pages can be fetched with its cookie. */
+async function webSession(v: Volunteer): Promise<string> {
+  const token = randomBytes(32).toString("base64url");
+  const tokenHash = createHash("sha256").update(token).digest("hex");
+  await db.session.create({ data: { tokenHash, volunteerId: v.id, client: "WEB", expiresAt: new Date(Date.now() + 3_600_000), userAgent: "smoke test" } });
+  return token;
+}
 
 type Check = { path: string; persona: string | null; cookie?: string; expect: number; location?: string };
 
@@ -48,17 +62,19 @@ function routes() {
 
 async function main() {
   const values = await resolvers();
-  const personas = await db.volunteer.findMany({ where: { personaKey: { not: null } } });
+  const personas = await db.volunteer.findMany({ where: { email: { in: PERSONAS.map((p) => p.email) } } });
   const admins = personas.filter((p) => p.role === "ADMIN");
   const volunteers = personas.filter((p) => p.role !== "ADMIN");
   if (!admins.length || !volunteers.length) throw new Error("Seed has no admin or volunteer persona");
 
+  const cookies = new Map<string, string>();
+  for (const p of personas) cookies.set(p.id, await webSession(p));
   const checks: Check[] = [
     { path: "/", persona: null, expect: 307, location: "/sign-in" },
     { path: "/sign-in", persona: null, expect: 200 },
     { path: "/app", persona: null, expect: 307, location: "/sign-in" },
     { path: "/admin", persona: null, expect: 307, location: "/sign-in" },
-    { path: "/admin", persona: volunteers[0].personaKey, cookie: volunteers[0].id, expect: 307, location: "/app" },
+    { path: "/admin", persona: keyOf(volunteers[0]), cookie: cookies.get(volunteers[0].id), expect: 307, location: "/app" },
   ];
   for (const route of routes()) {
     const area = route.startsWith("/admin") ? admins : route.startsWith("/app") ? volunteers : null;
@@ -70,7 +86,7 @@ async function main() {
       if (!vs.length) throw new Error(`The seed has no rows for ${route}`);
       paths = vs.map((v) => route.replace(/\[[^\]]+\]/, encodeURIComponent(v)));
     }
-    for (const p of area) for (const path of paths) checks.push({ path, persona: p.personaKey, cookie: p.id, expect: 200 });
+    for (const p of area) for (const path of paths) checks.push({ path, persona: keyOf(p), cookie: cookies.get(p.id), expect: 200 });
   }
 
   const failures: string[] = [];
@@ -80,7 +96,7 @@ async function main() {
       for (let c = queue.shift(); c; c = queue.shift()) {
         const res = await fetch(base + c.path, {
           redirect: "manual",
-          headers: c.cookie ? { cookie: `${PERSONA_COOKIE}=${c.cookie}` } : {},
+          headers: c.cookie ? { cookie: `${SESSION_COOKIE}=${c.cookie}` } : {},
         });
         const location = res.headers.get("location");
         const who = c.persona ?? "signed out";
@@ -136,15 +152,16 @@ async function mobileApiChecks(admins: Volunteer[], volunteers: Volunteer[], val
   await call("signed out", "GET", "/session", { token: "not-a-real-token", expect: 401 });
   await call("signed out", "GET", "/no-such-endpoint", { expect: 404 });
   await call<Api.DemoPersonas>("signed out", "GET", "/auth/personas", {
-    check: (b) => volunteers.every((v) => b.personas.some((p) => p.key === v.personaKey)) && !b.personas.some((p) => admins.some((a) => a.personaKey === p.key)),
+    check: (b) => volunteers.every((v) => b.personas.some((p) => p.key === keyOf(v))) && !b.personas.some((p) => admins.some((a) => keyOf(a) === p.key)),
   });
-  for (const a of admins) await call(a.personaKey!, "POST", "/auth/demo", { body: { personaKey: a.personaKey }, expect: 403 });
+  await call<Api.AuthConfig>("signed out", "GET", "/auth/config", { check: (b) => b.demo === true && b.google === false && isStr(b.webUrl) });
+  for (const a of admins) await call(keyOf(a), "POST", "/auth/demo", { body: { personaKey: keyOf(a) }, expect: 403 });
 
   const shiftIds = values["/app/shifts/[id]"];
   const moduleCodes = values["/app/training/[code]"];
   await Promise.all(
     volunteers.map(async (v) => {
-      const who = v.personaKey!;
+      const who = keyOf(v);
       const signIn = await call<Api.SignInResult>(who, "POST", "/auth/demo", { body: { personaKey: who }, check: (b) => isStr(b.token) && b.session.me.id === v.id });
       const token = signIn?.token;
       if (!token) return;
@@ -160,6 +177,7 @@ async function mobileApiChecks(admins: Volunteer[], volunteers: Volunteer[], val
       await get<Api.TrainingOverview>("/training", (b) => b.required.length > 0 && isNum(b.summary.current) && isArr(b.sessions));
       for (const code of moduleCodes) await get<Api.TrainingModuleDetail>(`/training/modules/${code}`, (b) => b.module.code === code && isArr(b.paragraphs) && isArr(b.links));
       await get<Api.SlotOverview>("/slot", (b) => isArr(b.slots) && isArr(b.absences) && isArr(b.upcoming));
+      await get<Api.SecurityOverview>("/security", (b) => typeof b.hasPassword === "boolean" && isArr(b.passkeys) && isStr(b.manageUrl));
       await get<Api.HarvestOverview>("/harvest", (b) => isNum(b.poolCount) && b.training.length > 0 && b.harvests.every((s) => shiftOk(s) && s.kind === "HARVEST"));
       const profile: Api.ProfileInput = { phone: v.phone ?? "", suburb: v.suburb ?? "", emergencyName: v.emergencyName ?? "", emergencyPhone: v.emergencyPhone ?? "", availabilityNote: v.availabilityNote ?? "", lastMinuteOk: v.lastMinuteOk };
       await call<Api.MutationOk>(who, "PATCH", "/profile", { token, body: profile, check: (b) => isStr(b.message) });
@@ -175,4 +193,7 @@ main()
     console.error(e);
     process.exitCode = 1;
   })
-  .finally(() => db.$disconnect());
+  .finally(async () => {
+    await db.session.deleteMany({ where: { userAgent: "smoke test" } });
+    await db.$disconnect();
+  });

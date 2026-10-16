@@ -1,9 +1,10 @@
 import { Host, Switch } from "@expo/ui";
 import { router, type Href } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
 import { useEffect, useState } from "react";
-import { AppState, Linking, Pressable, View } from "react-native";
+import { Alert, AppState, Linking, Pressable, View } from "react-native";
 
-import type { Me, MobileSession, ProfileInput } from "@satisfy/core/api";
+import type { Me, MobileSession, ProfileInput, SecurityOverview } from "@satisfy/core/api";
 import { formatDate } from "@satisfy/core/dates";
 import { fullName, ROLE_LABEL } from "@satisfy/core/domain";
 import { QueryScreen } from "@/components/screen";
@@ -16,7 +17,8 @@ import { Icon, type IconName } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { useAuth } from "@/lib/auth";
 import { pushAvailability, pushPermission, registerForPush } from "@/lib/push";
-import { actions, useAction, useSession } from "@/lib/queries";
+import { actions, useAction, useSecurity, useSession } from "@/lib/queries";
+import { addPasskey, passkeysSupported } from "@/lib/sign-in";
 import { useTheme } from "@/theme";
 
 export function MeScreen() {
@@ -45,6 +47,7 @@ function Profile({ session }: { session: MobileSession }) {
       {me.infoodle && <Infoodle infoodle={me.infoodle} />}
       <Links />
       <NotificationsRow />
+      {!session.demo && <SignInSecurity />}
       <ProfileForm me={me} />
       <SignOut demo={session.demo} />
     </>
@@ -163,6 +166,70 @@ function NotificationsRow() {
           }}
         />
       )}
+    </Card>
+  );
+}
+
+/** Passkeys on this phone are created here (a phone's passkey has to be made
+ *  on the phone); the password and Google are managed on the website. */
+function SignInSecurity() {
+  const query = useSecurity();
+  if (!query.data) return null;
+  return <SecurityCard security={query.data} />;
+}
+
+function SecurityCard({ security }: { security: SecurityOverview }) {
+  const t = useTheme();
+  const add = useAction(addPasskey);
+  const remove = useAction(actions.removePasskey);
+  const canAdd = security.passkeysAvailable && passkeysSupported();
+  const methods = [security.hasPassword && "a password", security.google && "Google", security.passkeys.length > 0 && "a passkey"].filter(Boolean);
+  return (
+    <Card style={{ gap: 12 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+        <Icon name="key" size={20} color={t.tealText} />
+        <View style={{ flex: 1 }}>
+          <Text variant="bodySemibold">Sign-in and security</Text>
+          <Text variant="small" tone="mutedText">
+            {methods.length ? `You sign in with ${methods.join(", ").replace(/, ([^,]*)$/, " or $1")}.` : "No sign-in method set up yet."}
+          </Text>
+        </View>
+      </View>
+      {security.passkeys.map((p) => (
+        <View key={p.id} style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: t.border }}>
+          <Icon name="passkey" size={20} color={t.mutedText} />
+          <View style={{ flex: 1 }}>
+            <Text variant="bodySemibold">{p.name}</Text>
+            <Text variant="caption" tone="mutedText">
+              Added {p.addedLabel}
+              {p.lastUsedLabel ? ` · last used ${p.lastUsedLabel}` : ""}
+            </Text>
+          </View>
+          <Button
+            label="Remove"
+            variant="ghost"
+            size="md"
+            loading={remove.isPending && remove.variables === p.id}
+            onPress={() =>
+              Alert.alert("Remove this passkey?", `You won't be able to sign in with "${p.name}" any more.`, [
+                { text: "Cancel", style: "cancel" },
+                { text: "Remove", style: "destructive", onPress: () => remove.mutate(p.id) },
+              ])
+            }
+          />
+        </View>
+      ))}
+      {canAdd && (
+        <Button
+          label="Add a passkey on this phone"
+          icon="passkey"
+          variant="outline"
+          size="md"
+          loading={add.isPending}
+          onPress={() => add.mutate()}
+        />
+      )}
+      <Button label="Password and Google on the website" icon="external" variant="ghost" size="md" onPress={() => WebBrowser.openBrowserAsync(security.manageUrl)} />
     </Card>
   );
 }

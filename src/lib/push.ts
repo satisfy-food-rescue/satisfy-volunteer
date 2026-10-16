@@ -1,26 +1,31 @@
+import "server-only";
 // Push notifications to the native app. The Outbox row written by queueEmail
-// stays the record of what was sent; this delivers it to the volunteer's
-// registered devices. Delivery runs after the response so a slow or failing
-// Expo never fails, or slows, the action that triggered it.
-import { after } from "next/server";
+// is the record of what was sent; src/lib/emails.ts calls this to deliver it
+// to the volunteer's registered phones, after the response, and retries it
+// from the hourly job if Expo cannot be reached.
 import { db } from "./db";
+import { env } from "./env";
 import { sendExpoPush, type PushMessage } from "./expo-push";
 
-export async function pushToVolunteer(volunteerId: string, message: PushMessage) {
+export type PushResult = {
+  /** Phones the volunteer was signed in on when it was sent. */
+  devices: number;
+  /** Phones Expo accepted the notification for. */
+  delivered: number;
+  ticketIds: string[];
+};
+
+export async function pushToVolunteer(volunteerId: string, message: PushMessage): Promise<PushResult> {
   const tokens = await db.pushToken.findMany({ where: { volunteerId }, select: { token: true } });
-  if (tokens.length === 0) return;
-  const { delivered, unregistered } = await sendExpoPush(tokens.map((t) => t.token), message);
+  if (tokens.length === 0) return { devices: 0, delivered: 0, ticketIds: [] };
+  const { delivered, ticketIds, unregistered } = await sendExpoPush(
+    tokens.map((t) => t.token),
+    message,
+    { accessToken: env().EXPO_ACCESS_TOKEN },
+  );
+  // Expo says these apps were uninstalled: forget them so the next message
+  // falls back to email instead of going nowhere.
   if (unregistered.length) await db.pushToken.deleteMany({ where: { token: { in: unregistered } } });
   if (delivered.length) await db.pushToken.updateMany({ where: { token: { in: delivered } }, data: { lastUsedAt: new Date() } });
-}
-
-/** Fire and forget. Inside a request (server action, route handler) it runs
- *  after the response via after(); elsewhere (seed, scripts) it just runs. */
-export function queuePush(volunteerId: string, message: PushMessage) {
-  const task = () => pushToVolunteer(volunteerId, message).catch((e) => console.error("Push delivery failed", e));
-  try {
-    after(task);
-  } catch {
-    void task();
-  }
+  return { devices: tokens.length - unregistered.length, delivered: delivered.length, ticketIds };
 }

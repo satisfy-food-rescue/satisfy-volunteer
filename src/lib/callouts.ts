@@ -16,7 +16,7 @@ const calloutRef = (shiftId: string, volunteerId: string) => `callout:${shiftId}
 export async function calloutRecipients(view: ShiftView) {
   const onIt = new Set(view.confirmed.map((a) => a.volunteerId));
   const volunteers = await db.volunteer.findMany({
-    where: { status: "ACTIVE", role: "VOLUNTEER", roles: { contains: view.kind } },
+    where: { status: "ACTIVE", role: "VOLUNTEER", roles: { has: view.kind } },
     orderBy: { firstName: "asc" },
   });
   return volunteers.filter((v) => !onIt.has(v.id));

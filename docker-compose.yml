@@ -1,0 +1,22 @@
+# Local development services. `docker compose up -d db` starts Postgres on
+# localhost:5435 (5434 is Fair Food's, so both can run side by side).
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: satisfy
+    ports:
+      - "5435:5432"
+    volumes:
+      - satisfy-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d satisfy"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  satisfy-db:

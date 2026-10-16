@@ -3,7 +3,7 @@ import { BookOpen, CalendarDays, ChevronRight, MapPin, Users } from "lucide-reac
 import { requireVolunteer } from "@/lib/session";
 import { formatDate, formatInstant, formatInstantTime, relativeDays, todayISO } from "@/lib/dates";
 import { trainingContext } from "@/lib/volunteer-data";
-import { DELIVERY_LABEL, type Delivery } from "@/lib/domain";
+import { DELIVERY_LABEL } from "@/lib/domain";
 import { TrainingChip } from "@/components/shared/status-chip";
 import { SessionRsvp } from "@/components/app/session-rsvp";
 import { db } from "@/lib/db";
@@ -78,7 +78,7 @@ export default async function TrainingPage() {
                 <div className="min-w-0">
                   <p className="font-bold text-ink">{s.module.name}</p>
                   <p className="mt-0.5 text-sm text-muted-foreground">
-                    {s.module.validityMonths ? `Valid ${s.module.validityMonths} months` : "Once only"} · {DELIVERY_LABEL[s.module.delivery as Delivery]}
+                    {s.module.validityMonths ? `Valid ${s.module.validityMonths} months` : "Once only"} · {DELIVERY_LABEL[s.module.delivery]}
                   </p>
                 </div>
                 <TrainingChip status={s.status} size="sm" className="shrink-0" />

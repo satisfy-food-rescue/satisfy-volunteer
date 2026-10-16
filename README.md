@@ -1,54 +1,76 @@
 # Satisfy Volunteers
 
-Demo volunteer management app for Satisfy Food Rescue (Rangiora, North Canterbury), built by Awhina Tech as a sales prototype and a credible base for the full build. Two surfaces in one codebase: a mobile-first volunteer app and a desktop coordinator admin.
+Volunteer management for Satisfy Food Rescue (Rangiora, North Canterbury), built by Awhina Tech. Three surfaces: a mobile-first volunteer web app (`/app`), a desktop coordinator admin (`/admin`), and the native volunteer app in `mobile/` (Expo), which talks to the same server. Volunteers book shifts and cover gaps, keep their training current and mark themselves away; coordinators run the roster, training, harvests, applications and communication.
 
-## Run it
+The same code runs production and the sales demo. `DEMO_MODE=1` turns on the persona picker, regenerates demo data every day and sends no email. See [DEMO.md](DEMO.md) for the walkthrough and [DEPLOY.md](DEPLOY.md) for running it on Coolify.
 
-Requires Node 24 and pnpm (Corepack picks the pinned version).
+## Run it locally
+
+Requires Node 24, pnpm (Corepack picks the pinned version: `corepack enable`) and Docker.
 
 ```bash
+docker compose up -d db      # Postgres 17 on localhost:5435
+cp .env.example .env         # the defaults work for local development
 pnpm install
-pnpm dev
+pnpm db:deploy               # apply migrations
+pnpm db:seed                 # fill the database with the demo data
+pnpm dev                     # http://localhost:3000
 ```
 
-Open http://localhost:3000. The first `pnpm dev` creates a SQLite database and seeds it. Every seed date is relative to today, and the pre-dev script reseeds automatically when the date rolls over, so the demo never looks stale. To force a fresh seed:
+Sign in as one of the demo people with the password `kai-rescue-demo` (`DEMO_PASSWORD` in `src/lib/personas.ts`; demo data only):
 
-```bash
-pnpm db:reset
-```
+| Email | Who |
+| --- | --- |
+| `phillipa@satisfyfoodrescue.org.nz` | Coordinator (admin): gaps, overdue training, applications, the Outbox |
+| `margaret.fairweather@example.nz` | Regular warehouse volunteer, Tuesday and Thursday, one refresher due soon |
+| `tony.ratana@example.nz` | Driver help, Manual Handling overdue so route shifts are blocked |
+| `jess.moorhouse@example.nz` | Approved two days ago, no training yet, needs an initial visit |
 
-Other scripts: `pnpm lint`, `pnpm typecheck`, `pnpm test` (unit tests, Vitest), `pnpm build`.
+Or set `DEMO_MODE=1` in `.env` for the one-click persona picker. Without `RESEND_API_KEY`, emails are printed to the dev server console, so sign-in links can be copied from there. The demo data is relative to today; `pnpm db:seed` regenerates it.
+
+## Scripts
+
+| Command | What it does |
+| --- | --- |
+| `pnpm dev` | Dev server on port 3000 |
+| `pnpm build` / `pnpm start` | Production build (`output: "standalone"`) and the standalone server, as the Docker image runs it |
+| `pnpm lint` / `pnpm typecheck` | ESLint and TypeScript |
+| `pnpm test` | Unit tests (Vitest, `tests/unit`), no database |
+| `pnpm test:integration` | Outbox, push, sign-in links, the app's sign-in handoff and jobs against Postgres (`satisfy_test`, created automatically) |
+| `pnpm test:e2e` | Playwright against a production build with real sign-in (`satisfy_e2e`, recreated each run) |
+| `pnpm test:smoke` | Every page as every persona and every native app endpoint, against a running demo server (see CI) |
+| `pnpm db:migrate` | Create and apply a migration after editing `prisma/schema.prisma` |
+| `pnpm db:deploy` | Apply pending migrations (what the container does on start) |
+| `pnpm db:seed` | Replace the local database with the demo data. Refuses to run against production. |
+| `pnpm db:reset` | Drop, migrate and seed |
 
 ## CI
 
 `.github/workflows/ci.yaml` runs on every pull request and on pushes to `main`:
 
-- **Lint, types and schema**: `pnpm lint --max-warnings 0`, `pnpm typecheck`, `prisma validate`, `prisma format --check` and the unit tests (`pnpm test`, `tests/unit`).
-- **Build and smoke test**: builds, boots `pnpm start:prod` on a fresh database (the same create-and-seed path a deploy takes), then `pnpm test:smoke` renders every page as every persona and fails on anything but a 200. Pages are found from `src/app`, so new pages are covered automatically; a new dynamic segment needs a resolver in `scripts/smoke.ts`. It then signs in to the native app API as every volunteer persona, reads every endpoint, saves the profile unchanged and signs out; a new read endpoint needs a line in `mobileApiChecks`.
-- **Docker image**: builds the production image and boots it on an empty volume.
-- **Native app**: in `mobile/`, lint, types (with Expo's typed routes generated first, so every link is checked against a real screen), unit tests, `expo install --check` (every package matches the Expo SDK) and an `expo export` that bundles the app for iOS and Android.
-
-To run the smoke test locally, start a production server and point it there:
-
-```bash
-pnpm build && PORT=3100 pnpm start:prod
-BASE_URL=http://localhost:3100 pnpm test:smoke
-```
+- **Lint, types and schema**: lint with no warnings, types, `prisma validate` and `format --check`, unit tests.
+- **Integration tests** against a Postgres service, and a check that the migrations produce exactly the schema.
+- **Build and smoke test**: builds once, runs Playwright with real sign-in, then boots a demo server and runs `pnpm test:smoke`, which renders every page as every persona (pages are found from `src/app`; a new dynamic segment needs a resolver in `scripts/smoke.ts`) and calls every native app endpoint (a new read endpoint needs a line in `mobileApiChecks`).
+- **Docker image**: builds the production image and boots it against an empty Postgres the way a first deploy does: migrations, reference data, the bootstrap admin, then an hourly tick.
+- **Native app**: in `mobile/`, lint, types (with Expo's typed routes), unit tests, `expo install --check` and an `expo export` for iOS and Android.
 
 Dependabot opens weekly npm and monthly Actions and Docker base image updates.
 
-## Persona switcher
+## How it works
 
-There is no real authentication. The sign-in page lists four personas; picking one sets a cookie and everything downstream calls `requireVolunteer()` or `requireAdmin()` from `src/lib/session.ts`, which is the one file to replace with real sessions later.
+**Stack.** Next.js 16 App Router, React 19, TypeScript, Tailwind CSS v4, shadcn/ui on Base UI, Prisma 7 on Postgres (`@prisma/adapter-pg`), Zod, react-email and Resend. Conventions follow the Fair Food volunteer portal.
 
-| Persona | Who | What they show |
-| --- | --- | --- |
-| Phillipa | Coordinator (admin) | Dashboard gaps, overdue training, applications, volunteer profiles with contact history, shift types, Outbox |
-| Margaret Fairweather | Regular warehouse volunteer | Tue and Thu regular slot, one refresher due soon |
-| Tony Ratana | Driver help | Manual Handling overdue: route shifts blocked until the online refresher is done |
-| Jess Moorhouse | New volunteer | Approved two days ago, no training, needs an initial visit first |
+**Configuration** is validated at startup by `src/lib/env.ts`. Nothing is `NEXT_PUBLIC_`, so every setting is read at runtime and one Docker image serves every environment. See `.env.example`.
 
-"Switch persona" is on the volunteer Me tab and in the admin sidebar footer.
+**Sign-in** offers a password, Google, or a passkey, on the website and in the native app alike. The rules live once in `src/lib/sign-in.ts`; the website keeps an httpOnly cookie session (`src/lib/session.ts`) and the app a bearer token (`src/lib/mobile-auth.ts`), both stored only as their SHA-256 in `Session`. There is no public sign-up: people get an account when a coordinator approves their application or adds them, and are emailed an invite to set a password. Anyone whose account was imported can use "First time here?" to get a link. Web sessions slide for 30 days of inactivity, up to 180 days. Invite and reset links are single-use, hashed, never stored in the email log, and only used when the form is submitted, so mail scanners cannot burn them. Password attempts and link requests are rate limited. Deactivating a volunteer signs them out everywhere. Google sign-in is the authorization code flow with PKCE, with the ID token checked against Google's keys (`src/lib/oauth.ts`). `src/proxy.ts` sends signed-out visitors to sign-in with the page they wanted, and every page and action still checks with `requireVolunteer()` or `requireAdmin()`.
+
+**Email and push** go through one outbox (`src/lib/emails.ts`). Every message is written to the `Email` table first, which drives the Outbox page, each volunteer's communication history and the reminder de-duplication refs. It is then delivered after the response (`after()`): emails through Resend with an idempotency key, push notifications through Expo to every phone the volunteer is signed in on. Someone with no phone signed in to the app gets a push as an email with the same words. Failures are retried by the hourly job for two days. Templates are pure functions in `src/lib/email-templates.ts`, rendered by one react-email layout (`src/emails/message-email.tsx`).
+
+**Scheduled work** runs from one idempotent endpoint, `POST /api/cron/tick`, called hourly by `scripts/cron-tick.mjs` (a Coolify scheduled task). It sends training reminders (30 days before expiry, on the day, weekly while overdue, with the coordinator told once at three weeks), shift reminders from 4pm the day before, last-minute cover notifications and uncovered-shift alerts. It also retries undelivered messages and clears expired sessions, links and passkey challenges. Every message carries a de-duplication ref, so a missed or repeated tick is harmless.
+
+**Startup.** The container applies migrations, then `src/instrumentation.ts` runs `src/lib/bootstrap.ts`. On an empty production database that creates Satisfy's routes, shift types and training modules (`src/lib/reference-data.ts`), and while there is no active admin it makes `BOOTSTRAP_ADMIN_EMAIL` one. In demo mode it regenerates the demo data instead (`src/lib/demo/seed.ts`).
+
+**Vocabulary.** Enum values (roles, statuses, message kinds) are Postgres enums, written once more as string unions in `packages/core/src/domain.ts`, which the native app shares and which holds every display label. `src/lib/domain.ts` fails the build if the two drift apart.
 
 ## The theme file
 
@@ -56,48 +78,15 @@ Colours, logo and type follow the 2026 Satisfy Food Rescue brand refresh: primar
 
 Contrast was checked numerically. White on blue/teal is 6.8:1, so it carries buttons and white text. Satisfy Green and Orange are too light for white labels, so green text uses a darker shade (5.6:1) and orange fills carry dark ink text (5.3:1). Each colour has a pale tint for backgrounds and a darkened text shade. Body text is 16px minimum, tap targets 44px, and status is always icon plus label, never colour alone.
 
-## What is mocked
-
-- **Auth**: persona cookie, see above. Production uses email sign-in with passkeys, the same as the Fair Food portal.
-- **Email and push**: no email is sent. The sender is volunteering@satisfyfoodrescue.org.nz (`src/lib/brand.ts`). Every email and push notification the system would send is written to the `Email` table (`channel` is `EMAIL` or `PUSH`) and shown in Admin > Outbox with a branded preview. Templates are pure functions in `src/lib/email-templates.ts`, shared by the seed and the server actions. Pushes are also delivered for real to any phone signed in to the native app (see below).
-- **Reminders and cover checks**: the rules are real code in `src/lib/reminders.ts` and `src/lib/cover.ts` and can be run on demand from Admin > Training > Reminders. In production training reminders run nightly and cover checks hourly.
-- **Infoodle**: sync status, record ids and the application feed are sample data. The settings page describes what would sync in each direction once API access is confirmed.
-- **Database**: SQLite via Prisma 7 for zero setup. The schema avoids SQLite-only features (enums are strings with TypeScript unions in `src/lib/domain.ts`) so production is a datasource swap to Postgres.
-
-## Stack and layout
-
-Next.js 16 App Router, React 19, TypeScript, Tailwind CSS v4, shadcn/ui on Base UI, Prisma 7, Zod, lucide-react, sonner. Conventions mirror the Fair Food volunteer portal so this can grow into the real build.
-
-```
-packages/core               shared with the native app: dates, domain labels, the API contract
-prisma/schema.prisma        data model (Postgres-compatible)
-prisma/seed.ts              relative-to-today demo data
-scripts/ensure-db.ts        first-run push and seed, daily reseed
-scripts/smoke.ts            every page and API endpoint as every persona
-src/app/sign-in             persona picker
-src/app/app/*               volunteer app (bottom tab bar, max width 30rem)
-src/app/admin/*             coordinator admin (sidebar)
-src/app/api/mobile/*        native app API (route handlers)
-src/app/*/actions.ts        server actions, Zod-validated
-src/lib/volunteer-actions.ts  what a volunteer can change, shared by web and API
-src/lib/mobile-api/*        builds the API's contract types from roster and training views
-src/lib/training.ts         module status and the booking gate
-src/lib/roster.ts           shift views, gap detection, available volunteers
-src/lib/cover.ts            last-minute push notifications and coordinator alerts
-src/lib/email-templates.ts  every email, as pure builders
-src/components/ui           shadcn primitives (owned source)
-tests/unit                  Vitest unit tests for pure logic
-mobile/                     Expo app, see mobile/README.md
-```
-
 ## Native app API
 
 The Expo app in `mobile/` talks to `/api/mobile/*`. Volunteer features only: coordinator tools stay on the web.
 
 - **The contract** is `packages/core/src/api.ts`: every path, request body and response type, imported by both sides as `@satisfy/core/api`, so a mismatch fails `pnpm typecheck`. Reads return the payload type; mutations return `{ message }`. Failures are `{ error }`, written for the volunteer: 400 for a malformed request, 401 for a missing or expired token (the app signs out), 403 when sign-in is refused, 404 for an unknown id, 422 when the rule says no (shift full, training overdue), 500 for anything unexpected.
-- **Auth**: `Authorization: Bearer <token>`. In the demo, `POST /api/mobile/auth/demo` signs in as a volunteer persona (the coordinator gets a 403 pointing to the web). Tokens are 32 random bytes; only their SHA-256 is stored, in the `Session` table, which has the same shape as the production build's. A session lasts 180 days from last use. The daily reseed keeps persona sessions and push tokens, so a demo phone stays signed in. `src/lib/mobile-auth.ts`.
+- **Auth**: `Authorization: Bearer <token>`. The app signs in the same ways as the website, with the same rules (`src/lib/sign-in.ts`): `POST /api/mobile/auth/password`; Google in the system browser (`/auth/google?app=<PKCE challenge>`, which hands back `satisfy://auth?code=...`, redeemed with the verifier at `POST /api/mobile/auth/google`, so a code caught by another app is useless); and passkeys (`/api/mobile/auth/passkey`), which share the website's relying party, so one passkey works in both. `GET /api/mobile/auth/config` says which methods to show. In the demo, `POST /api/mobile/auth/demo` signs in as a volunteer persona instead (the coordinator gets a 403 pointing to the web). Tokens are 32 random bytes; only their SHA-256 is stored, in the `Session` table as `client: APP`. A session lasts 180 days from last use. The daily demo reseed keeps persona sessions and push tokens, so a demo phone stays signed in. `src/lib/mobile-auth.ts`.
+- **Passkeys in the app** need the site to vouch for it: `/.well-known/apple-app-site-association` (set `APPLE_TEAM_ID`) and `/.well-known/assetlinks.json` (set `ANDROID_CERT_FINGERPRINTS`). The iOS build adds `webcredentials:<host>` for an HTTPS `EXPO_PUBLIC_API_URL`.
 - **Rules live once**: route handlers call the same functions as the web server actions (`src/lib/volunteer-actions.ts`), and what each shift's button does (`ShiftAction`), the home alert and the tab badges are worked out on the server with the same code the web uses.
-- **Push**: the app registers its Expo push token (`POST /api/mobile/push-tokens`). Whenever a `PUSH` row is written to the Outbox for a volunteer with a registered device, it is also sent through Expo's push service after the response (`src/lib/push.ts`); tokens Expo reports as `DeviceNotRegistered` are removed. Set `EXPO_ACCESS_TOKEN` (optional) if the Expo project has enhanced push security turned on.
+- **Push**: the app registers its Expo push token (`POST /api/mobile/push-tokens`). A `PUSH` message for a volunteer with a registered phone is delivered through Expo's push service by the outbox (see Email and push below); tokens Expo reports as `DeviceNotRegistered` are removed. Set `EXPO_ACCESS_TOKEN` (optional) if the Expo project has enhanced push security turned on.
 - **Adding an endpoint**: add the types and path to `api.ts`, put any new rule in `src/lib` (a mutation in `volunteer-actions.ts` with its Zod schema), then add `src/app/api/mobile/<path>/route.ts` wrapping the handler in `mobileHandler` and returning `json<YourType>(...)` or `mutation(result)`. Add the read to `scripts/smoke.ts`.
 
 ## Domain rules worth knowing
@@ -115,3 +104,35 @@ The Expo app in `mobile/` talks to `/api/mobile/*`. Volunteer features only: coo
 - Every volunteer profile has a communication history: emails, push notifications, absences, calls and notes the coordinator logs, and changes made on the volunteer's behalf (`ContactLog`).
 
 See `DEMO.md` for the ten-minute walkthrough.
+
+## Layout
+
+```
+packages/core                shared with the native app: dates, domain labels, the API contract
+prisma/schema.prisma         data model; migrations in prisma/migrations
+src/proxy.ts                 signed-out redirect for /app and /admin
+src/instrumentation.ts       startup bootstrap
+src/app/sign-in, forgot-password, reset-password, auth/google   sign-in
+src/app/.well-known          passkey association for the native app
+src/app/app/*                volunteer app (bottom tab bar, max width 30rem)
+src/app/admin/*              coordinator admin (sidebar)
+src/app/api/mobile/*         native app API (route handlers)
+src/app/api/cron/tick        hourly jobs; api/health (+ /ready) for probes
+src/app/*/actions.ts         server actions, Zod-validated
+src/lib/env.ts               runtime configuration
+src/lib/sign-in.ts, session.ts, mobile-auth.ts, auth.ts, oauth.ts, webauthn.ts   sign-in
+src/lib/emails.ts, mailer.ts, push.ts, email-templates.ts                         outbox, delivery, wording
+src/lib/jobs.ts, reminders.ts, cover.ts                                           scheduled work
+src/lib/training.ts, roster.ts                                                    the booking gate and gaps
+src/lib/volunteer-actions.ts what a volunteer can change, shared by web and API
+src/lib/bootstrap.ts, reference-data.ts, demo/   startup data and the demo
+src/components/ui            shadcn primitives (owned source)
+tests/unit, integration, e2e
+mobile/                      Expo app, see mobile/README.md
+```
+
+## Not built yet
+
+- **Infoodle sync.** Waiting on API access. Until then new applications do not arrive automatically; coordinators add new volunteers from Volunteers > Add volunteer, and the Infoodle panels describe what will sync.
+- **Bulk import** of the existing volunteer list. Coordinators can add volunteers one at a time, and anyone added can sign in through "First time here?".
+- **Password and Google settings in the native app.** The app adds and removes passkeys itself and links to Sign-in and security on the website for the rest.

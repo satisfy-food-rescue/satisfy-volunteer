@@ -1,3 +1,4 @@
+import { View } from "react-native";
 import Svg, { G, Path } from "react-native-svg";
 
 import { useTheme } from "@/theme";
@@ -33,16 +34,20 @@ export function LogoIcon({ size, color }: { size: number; color: string }) {
 
 export type FoodKind = keyof typeof FOOD_GLYPH;
 
-/** A white food glyph on a brand-coloured disc, as in the brand footer. */
-export function FoodIcon({ kind, size }: { kind: FoodKind; size: number }) {
+/** A white food glyph on a brand-coloured disc, as in the brand footer.
+ *  `ringed` adds a white ring, for the teal band, where the apple's teal disc
+ *  would otherwise disappear (the web hero does the same). */
+export function FoodIcon({ kind, size, ringed }: { kind: FoodKind; size: number; ringed?: boolean }) {
   const t = useTheme();
   const disc = { broccoli: t.green75, carrot: t.orange, apple: t.teal }[kind];
-  return (
+  const icon = (
     <Svg width={size} height={size} viewBox={FOOD_VIEWBOX} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
       <Path d={DISC} fill={disc} />
       <Path d={FOOD_GLYPH[kind]} fill={t.white} />
     </Svg>
   );
+  if (!ringed) return icon;
+  return <View style={{ borderRadius: size, borderWidth: 2, borderColor: "rgba(255,255,255,0.8)" }}>{icon}</View>;
 }
 
 /** The brand footer ribbons. The web multiplies the teal ribbon over the

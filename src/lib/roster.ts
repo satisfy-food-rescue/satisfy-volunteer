@@ -1,7 +1,7 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { db } from "./db";
-import { dateToISO, isoToDate } from "./dates";
-import { ABSENCE_REASON_LABEL, ROLE_LABEL, fullName, isAdHocKind, parseRoles, type AbsenceReason, type ShiftKind, type VolunteerRole } from "./domain";
+import { dateToISO, isoToDate, todayISO } from "./dates";
+import { ABSENCE_REASON_LABEL, ROLE_LABEL, fullName, isAdHocKind, type ShiftKind } from "./domain";
 import { eligibilityFor, moduleStatuses } from "./training";
 
 export const shiftInclude = {
@@ -52,10 +52,10 @@ export function decorateShift(shift: ShiftFull): ShiftView {
   const confirmedCount = confirmed.length;
   const shortBy = Math.max(0, shift.needed - confirmedCount);
   const causes = released.map((r) => {
-    const reason = r.absence ? ABSENCE_REASON_LABEL[r.absence.reason as AbsenceReason].toLowerCase() : "away";
+    const reason = r.absence ? ABSENCE_REASON_LABEL[r.absence.reason].toLowerCase() : "away";
     return `${fullName(r.volunteer)} away (${reason})`;
   });
-  const kind = shift.template.kind as ShiftKind;
+  const kind = shift.template.kind;
   const adHoc = isAdHocKind(kind);
   if (shortBy > 0 && causes.length === 0 && !adHoc) causes.push("No regular volunteer for this slot");
   return {
@@ -102,10 +102,10 @@ export async function gapsBetween(fromISO: string, toISO: string): Promise<Shift
 /** Volunteers who could be added to a shift right now: hold the role, training
  *  current, not already on it, not away, and not on another shift that day. */
 export async function availableForShift(view: ShiftView) {
-  const today = dateToISO(new Date());
+  const today = todayISO();
   const [volunteers, modules, sameDay] = await Promise.all([
     db.volunteer.findMany({
-      where: { status: "ACTIVE", role: "VOLUNTEER", roles: { contains: view.kind } },
+      where: { status: "ACTIVE", role: "VOLUNTEER", roles: { has: view.kind } },
       include: {
         trainingRecords: true,
         absences: { where: { startDate: { lte: view.shift.date }, endDate: { gte: view.shift.date } } },
@@ -144,14 +144,14 @@ export async function shiftFormTemplates() {
     .map((t) => ({
       id: t.id,
       name: t.name,
-      kind: t.kind as ShiftKind,
+      kind: t.kind,
       startTime: t.startTime,
       endTime: t.endTime,
       capacity: t.capacity,
       needed: t.needed,
       defaultLocation: shiftLocation({ location: null, template: t }),
-      holders: volunteers.filter((v) => parseRoles(v.roles).includes(t.kind as VolunteerRole)).length,
-      roleLabel: ROLE_LABEL[t.kind as VolunteerRole],
+      holders: volunteers.filter((v) => v.roles.includes(t.kind)).length,
+      roleLabel: ROLE_LABEL[t.kind],
     }))
     .sort((a, b) => Number(b.kind === "HARVEST") - Number(a.kind === "HARVEST"));
 }

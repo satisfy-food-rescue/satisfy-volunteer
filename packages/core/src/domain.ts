@@ -1,5 +1,6 @@
-// Enum-like values. Stored as String in SQLite (no enum support); in a
-// Postgres production build these become Prisma enums with the same names.
+// Domain vocabulary shared by the web app and the native app. Each union
+// matches a Postgres enum in prisma/schema.prisma; src/lib/domain.ts fails the
+// web build if the two drift apart, so a new value needs a label here first.
 
 export const VOLUNTEER_ROLES = [
   "WAREHOUSE",
@@ -43,6 +44,9 @@ export function isAdHocKind(kind: ShiftKind): boolean {
   return kind === "HARVEST";
 }
 
+export type AccountRole = "ADMIN" | "VOLUNTEER";
+export type VolunteerStatus = "ACTIVE" | "INACTIVE";
+
 export type ShiftStatus = "DRAFT" | "SCHEDULED" | "CANCELLED";
 
 export type AssignmentStatus =
@@ -81,11 +85,15 @@ export const TRAINING_STATUS_LABEL: Record<TrainingStatus, string> = {
   NOT_REQUIRED: "Not required",
 };
 
+export type TrainingMethod = "SESSION" | "ONLINE" | "COORDINATOR";
+export type RsvpStatus = "GOING" | "DECLINED";
+
 export type ApplicationStatus = "PENDING" | "APPROVED" | "DECLINED";
 
 export type EmailKind =
   | "TRAINING_DUE_SOON"
   | "TRAINING_OVERDUE"
+  | "TRAINING_OVERDUE_COORDINATOR"
   | "SHIFT_REMINDER"
   | "ABSENCE_CONFIRMED"
   | "COVER_CONFIRMED"
@@ -94,7 +102,6 @@ export type EmailKind =
   | "TRAINING_COMPLETED"
   | "SESSION_CONFIRMED"
   | "HARVEST_CALLOUT"
-  | "WELCOME"
   | "LAST_MINUTE_CALLOUT"
   | "GAP_ESCALATION"
   | "ROLES_CHANGED"
@@ -102,11 +109,14 @@ export type EmailKind =
   | "SHIFT_CANCELLED"
   | "SHIFT_ADDED"
   | "SHIFT_PUBLISHED"
-  | "ANNOUNCEMENT";
+  | "ANNOUNCEMENT"
+  | "ACCOUNT_INVITE"
+  | "PASSWORD_RESET";
 
 export const EMAIL_KIND_LABEL: Record<EmailKind, string> = {
   TRAINING_DUE_SOON: "Training due soon",
   TRAINING_OVERDUE: "Training overdue",
+  TRAINING_OVERDUE_COORDINATOR: "Training overdue 3 weeks",
   SHIFT_REMINDER: "Shift reminder",
   ABSENCE_CONFIRMED: "Absence confirmed",
   COVER_CONFIRMED: "Cover confirmed",
@@ -115,7 +125,6 @@ export const EMAIL_KIND_LABEL: Record<EmailKind, string> = {
   TRAINING_COMPLETED: "Training completed",
   SESSION_CONFIRMED: "Session RSVP confirmed",
   HARVEST_CALLOUT: "Harvest callout",
-  WELCOME: "Welcome",
   LAST_MINUTE_CALLOUT: "Last-minute cover",
   GAP_ESCALATION: "Uncovered shift alert",
   ROLES_CHANGED: "Roles changed",
@@ -124,14 +133,35 @@ export const EMAIL_KIND_LABEL: Record<EmailKind, string> = {
   SHIFT_ADDED: "Added to a shift",
   SHIFT_PUBLISHED: "New shift",
   ANNOUNCEMENT: "Announcement",
+  ACCOUNT_INVITE: "Sign-in invite",
+  PASSWORD_RESET: "Password reset",
 };
 
 export type Channel = "EMAIL" | "PUSH";
 
+/** PENDING: recorded, not yet handed to the provider. CAPTURED: demo mode,
+ *  recorded for the Outbox and never sent. */
+export type DeliveryStatus = "PENDING" | "SENT" | "FAILED" | "CAPTURED";
+export const DELIVERY_STATUS_LABEL: Record<DeliveryStatus, string> = {
+  PENDING: "Sending",
+  SENT: "Sent",
+  FAILED: "Not delivered",
+  CAPTURED: "Demo: not sent",
+};
+
 /** Who an announcement goes to. */
 export type AnnouncementAudience = "ALL" | "ROLES" | "SHIFT";
 
-export type ContactLogKind = "CALL" | "NOTE" | "PROFILE_UPDATED" | "ROLES_CHANGED" | "VISIT_BOOKED" | "ROLE_REQUEST" | "SHIFT_CANCELLED";
+export type ContactLogKind =
+  | "CALL"
+  | "NOTE"
+  | "PROFILE_UPDATED"
+  | "ROLES_CHANGED"
+  | "VISIT_BOOKED"
+  | "ROLE_REQUEST"
+  | "SHIFT_CANCELLED"
+  | "ACCOUNT_CREATED"
+  | "STATUS_CHANGED";
 export const CONTACT_LOG_LABEL: Record<ContactLogKind, string> = {
   CALL: "Phone call",
   NOTE: "Note",
@@ -140,6 +170,8 @@ export const CONTACT_LOG_LABEL: Record<ContactLogKind, string> = {
   VISIT_BOOKED: "Initial visit booked",
   ROLE_REQUEST: "Asked to change roles",
   SHIFT_CANCELLED: "Shift cancelled",
+  ACCOUNT_CREATED: "Account created",
+  STATUS_CHANGED: "Status changed",
 };
 
 /** The first in-person training stage. New volunteers cannot book shifts until
@@ -149,21 +181,17 @@ export const INITIAL_VISIT_CODE = "INITIAL_VISIT";
 /** Days before expiry at which a module flips from Complete to Due soon. */
 export const DUE_SOON_DAYS = 30;
 
-export function parseRoles(csv: string): VolunteerRole[] {
-  return csv
-    .split(",")
-    .map((s) => s.trim())
-    .filter((s): s is VolunteerRole =>
-      (VOLUNTEER_ROLES as readonly string[]).includes(s),
-    );
+/** Keeps known roles only, de-duplicated, in display order. */
+export function sortRoles(roles: readonly string[]): VolunteerRole[] {
+  return VOLUNTEER_ROLES.filter((r) => roles.includes(r));
 }
 
-export function inHarvestPool(v: { roles: string }): boolean {
-  return parseRoles(v.roles).includes(HARVEST_ROLE);
+export function isVolunteerRole(value: string): value is VolunteerRole {
+  return (VOLUNTEER_ROLES as readonly string[]).includes(value);
 }
 
-export function joinRoles(roles: readonly VolunteerRole[]): string {
-  return VOLUNTEER_ROLES.filter((r) => roles.includes(r)).join(",");
+export function inHarvestPool(v: { roles: readonly VolunteerRole[] }): boolean {
+  return v.roles.includes(HARVEST_ROLE);
 }
 
 export function fullName(p: { firstName: string; lastName?: string | null }) {
@@ -172,4 +200,9 @@ export function fullName(p: { firstName: string; lastName?: string | null }) {
 
 export function initials(p: { firstName: string; lastName?: string | null }) {
   return `${p.firstName[0] ?? ""}${p.lastName?.[0] ?? ""}`.toUpperCase();
+}
+
+/** Emails are unique per person and compared case-insensitively. */
+export function normaliseEmail(email: string): string {
+  return email.trim().toLowerCase();
 }

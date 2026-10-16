@@ -5,7 +5,7 @@ import { requireAdmin } from "@/lib/session";
 import { db } from "@/lib/db";
 import { formatDay, formatDayLong, formatInstant, formatTimeRange, relativeDay, todayISO, dateToISO, formatDayRange } from "@/lib/dates";
 import { availableForShift, shiftById } from "@/lib/roster";
-import { ABSENCE_REASON_LABEL, ROLE_LABEL, fullName, isAdHocKind, parseRoles, type AbsenceReason } from "@/lib/domain";
+import { ABSENCE_REASON_LABEL, ROLE_LABEL, fullName, isAdHocKind } from "@/lib/domain";
 import { Button } from "@/components/ui/button";
 import { AvatarBadge } from "@/components/shared/avatar-badge";
 import { Chip } from "@/components/shared/status-chip";
@@ -35,9 +35,9 @@ export default async function AdminShiftPage({ params }: { params: Promise<{ id:
       ? db.email.findMany({ where: { ref: { startsWith: `shift-cancelled:${id}:` }, channel: "EMAIL" }, include: { volunteer: { select: { firstName: true, lastName: true } } }, orderBy: { createdAt: "asc" } })
       : Promise.resolve([]),
     db.email.findMany({ where: { ref: { startsWith: `callout:${id}:` }, channel: "EMAIL" }, select: { createdAt: true }, orderBy: { createdAt: "asc" } }),
-    draft ? db.volunteer.findMany({ where: { status: "ACTIVE", role: "VOLUNTEER", roles: { contains: view.kind } }, select: { roles: true } }) : Promise.resolve([]),
+    draft ? db.volunteer.findMany({ where: { status: "ACTIVE", role: "VOLUNTEER", roles: { has: view.kind } }, select: { roles: true } }) : Promise.resolve([]),
   ]);
-  const holders = roleHolders.filter((v) => parseRoles(v.roles).includes(view.kind)).length;
+  const holders = roleHolders.length;
   const pushedTo = pushes.flatMap((p) => (p.volunteer ? [fullName(p.volunteer)] : []));
   const toldOfCancellation = cancelNotices.flatMap((e) => (e.volunteer ? [fullName(e.volunteer)] : []));
 
@@ -119,8 +119,8 @@ export default async function AdminShiftPage({ params }: { params: Promise<{ id:
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
-        <section className="flex flex-col gap-3 lg:col-span-3" aria-labelledby="assigned-h">
+      <div className="grid grid-cols-1 gap-6 @4xl/admin:grid-cols-5">
+        <section className="flex flex-col gap-3 @4xl/admin:col-span-3" aria-labelledby="assigned-h">
           <div className="flex items-baseline justify-between">
             <h2 id="assigned-h" className="text-2xl text-ink">Assigned</h2>
             <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground tabular"><Users className="size-4" aria-hidden />{view.confirmedCount} of {view.shift.capacity} · minimum {view.shift.needed}</span>
@@ -156,7 +156,7 @@ export default async function AdminShiftPage({ params }: { params: Promise<{ id:
                     <AvatarBadge person={r.volunteer} size="sm" className="size-7 text-[0.6rem]" />
                     <span className="font-semibold">{fullName(r.volunteer)}</span>
                     <span className="text-muted-foreground">
-                      away {r.absence ? `(${ABSENCE_REASON_LABEL[r.absence.reason as AbsenceReason].toLowerCase()}, ${formatDayRange(dateToISO(r.absence.startDate), dateToISO(r.absence.endDate))})` : ""}
+                      away {r.absence ? `(${ABSENCE_REASON_LABEL[r.absence.reason].toLowerCase()}, ${formatDayRange(dateToISO(r.absence.startDate), dateToISO(r.absence.endDate))})` : ""}
                     </span>
                   </li>
                 ))}
@@ -165,7 +165,7 @@ export default async function AdminShiftPage({ params }: { params: Promise<{ id:
           )}
         </section>
 
-        <aside className="flex flex-col gap-3 lg:col-span-2" aria-labelledby="add-h">
+        <aside className="flex flex-col gap-3 @4xl/admin:col-span-2" aria-labelledby="add-h">
           <h2 id="add-h" className="text-2xl text-ink">{cancelled ? "Cancellation" : view.isGap ? "Find cover" : "Add a volunteer"}</h2>
           {draft && (
             <p className="rounded-2xl border border-dashed border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">Publish the shift first, then add volunteers or let them sign up.</p>

@@ -45,6 +45,9 @@ const ICONS = {
   wifiOff: ["wifi.exclamationmark", "cloud_off"],
   play: ["play.circle.fill", "play_circle"],
   external: ["arrow.up.right.square", "open_in_new"],
+  passkey: ["person.badge.key.fill", "passkey"],
+  key: ["key.fill", "key"],
+  mail: ["envelope.fill", "mail"],
 } as const satisfies Record<string, readonly [SFSymbol, AndroidSymbol]>;
 
 export type IconName = keyof typeof ICONS;

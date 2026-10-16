@@ -42,12 +42,12 @@ describe("chunk", () => {
 
 describe("sendExpoPush", () => {
   it("sends at most 100 messages per request, each with sound and data", async () => {
-    const expo = fakeExpo(() => ({ status: "ok", id: "t" }));
+    const expo = fakeExpo((to) => ({ status: "ok", id: `ticket-${to}` }));
     const tokens = Array.from({ length: 250 }, (_, i) => token(i));
     const result = await sendExpoPush(tokens, message, { fetch: expo.fetch, accessToken: "" });
     expect(expo.calls.map((c) => c.body.length)).toEqual([100, 100, 50]);
     expect(expo.calls[0].body[0]).toEqual({ to: token(0), title: "Cover needed", body: "Tomorrow 9am", sound: "default", data: message.data });
-    expect(result).toEqual({ delivered: tokens, unregistered: [] });
+    expect(result).toEqual({ delivered: tokens, ticketIds: tokens.map((t) => `ticket-${t}`), unregistered: [] });
   });
 
   it("sends the access token only when one is set", async () => {
@@ -68,7 +68,7 @@ describe("sendExpoPush", () => {
           : { status: "ok", id: "t" },
     );
     const result = await sendExpoPush([token(0), token(1), token(2)], message, { fetch: expo.fetch, accessToken: "" });
-    expect(result).toEqual({ delivered: [token(0)], unregistered: [token(1)] });
+    expect(result).toEqual({ delivered: [token(0)], ticketIds: ["t"], unregistered: [token(1)] });
     expect(error).toHaveBeenCalledTimes(1);
     expect(String(error.mock.calls[0][0])).toContain("too big");
   });
@@ -90,7 +90,7 @@ describe("sendExpoPush", () => {
   it("logs a non-2xx response and delivers nothing from that chunk", async () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     const expo = fakeExpo(() => ({}), 500);
-    expect(await sendExpoPush([token(0)], message, { fetch: expo.fetch, accessToken: "" })).toEqual({ delivered: [], unregistered: [] });
+    expect(await sendExpoPush([token(0)], message, { fetch: expo.fetch, accessToken: "" })).toEqual({ delivered: [], ticketIds: [], unregistered: [] });
     expect(error).toHaveBeenCalledTimes(1);
   });
 });
