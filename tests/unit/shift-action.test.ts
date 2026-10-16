@@ -7,8 +7,8 @@ import { shiftAction } from "@/lib/mobile-api/shifts";
 const TODAY = "2026-10-09";
 const ME = "me";
 
-function view(over: { iso?: string; status?: string; confirmed?: { id: string; volunteerId: string; source: string }[]; isFull?: boolean; isGap?: boolean } = {}): ShiftView {
-  return { iso: over.iso ?? TODAY, shift: { status: over.status ?? "SCHEDULED" }, confirmed: over.confirmed ?? [], isFull: over.isFull ?? false, isGap: over.isGap ?? false } as unknown as ShiftView;
+function view(over: { iso?: string; status?: string; kind?: string; confirmed?: { id: string; volunteerId: string; source: string }[]; isFull?: boolean; isGap?: boolean } = {}): ShiftView {
+  return { iso: over.iso ?? TODAY, kind: over.kind ?? "DRIVERS_ASSISTANT", shift: { status: over.status ?? "SCHEDULED" }, confirmed: over.confirmed ?? [], isFull: over.isFull ?? false, isGap: over.isGap ?? false } as unknown as ShiftView;
 }
 
 const eligible: Eligibility = { eligible: true, hasRole: true, blockers: [], reason: null };
@@ -48,6 +48,10 @@ describe("shiftAction follows the web's ShiftActions order", () => {
 
   it("a missing role is fixed by asking for the role, not by training", () => {
     expect(shiftAction(view(), ME, noRole, TODAY)).toEqual({ kind: "BLOCKED", reason: noRole.reason, fix: "role", moduleCode: null });
+  });
+
+  it("a harvest without the role is fixed by joining the harvest pool", () => {
+    expect(shiftAction(view({ kind: "HARVEST" }), ME, noRole, TODAY)).toEqual({ kind: "BLOCKED", reason: noRole.reason, fix: "harvestPool", moduleCode: null });
   });
 
   it("full comes after eligibility", () => {

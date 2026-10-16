@@ -20,7 +20,7 @@ function greeting() {
 export default async function HomePage() {
   const me = await requireVolunteer();
   const today = todayISO();
-  const { next, coverable, callout, alert, empty } = await loadHome(me, today);
+  const { next, coverable, harvest, alert, empty } = await loadHome(me, today);
   const others = next ? next.confirmed.filter((a) => a.volunteerId !== me.id) : [];
   const AlertIcon = alert?.tone === "info" ? GraduationCap : AlertTriangle;
 
@@ -49,7 +49,7 @@ export default async function HomePage() {
               <span className="block border-t border-border bg-teal-tint-soft px-5 py-4">
                 <span className="flex items-center justify-between gap-3">
                   <span className="min-w-0">
-                    <span className="block font-bold text-ink">{next.shift.template.name}</span>
+                    <span className="block font-bold text-ink">{next.name}</span>
                     <span className="mt-0.5 flex items-center gap-1.5 text-sm text-ink-soft">
                       <MapPin className="size-4 shrink-0 text-sky" aria-hidden />
                       {next.location}
@@ -134,21 +134,21 @@ export default async function HomePage() {
                 {coverable.length} {coverable.length === 1 ? "shift needs" : "shifts need"} cover
               </span>
               <span className="block text-sm text-muted-foreground">
-                Next: {formatDay(coverable[0].iso)}, {coverable[0].shift.template.name}
+                Next: {formatDay(coverable[0].iso)}, {coverable[0].name}
               </span>
             </span>
             <ArrowRight className="size-5 shrink-0 text-orange-text" aria-hidden />
           </Link>
         )}
 
-        {callout && (
-          <Link href="/app/harvest" className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-teal/60">
+        {harvest && (
+          <Link href={`/app/shifts/${harvest.shift.id}`} className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-teal/60">
             <FoodIcon kind="apple" className="size-11" />
             <span className="min-w-0 flex-1">
-              <span className="block font-bold text-ink">Harvest callout: {callout.title}</span>
+              <span className="block font-bold text-ink">Harvest: {harvest.name}</span>
               <span className="block text-sm text-muted-foreground">
-                {formatDay(callout.date.toISOString().slice(0, 10))}
-                {callout.rsvps[0]?.status === "GOING" ? " · You're going" : " · Tap to respond"}
+                {formatDay(harvest.iso)}
+                {harvest.confirmed.some((a) => a.volunteerId === me.id) ? " · You're going" : " · Tap to sign up"}
               </span>
             </span>
             <ArrowRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />

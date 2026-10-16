@@ -48,7 +48,7 @@ export default async function GapsPage() {
                         <ShiftKindIcon kind={view.kind} className="size-6" />
                       </span>
                       <div className="min-w-0 flex-1">
-                        <Link href={`/app/shifts/${view.shift.id}`} className="block font-bold text-ink hover:underline">{view.shift.template.name}</Link>
+                        <Link href={`/app/shifts/${view.shift.id}`} className="block font-bold text-ink hover:underline">{view.name}</Link>
                         <p className="text-sm text-muted-foreground tabular">{formatTimeRange(view.shift.startTime, view.shift.endTime)} · {view.location}</p>
                         <p className="mt-1.5 inline-flex items-start gap-1.5 text-sm font-semibold text-orange-text">
                           <HandHelping className="mt-0.5 size-4 shrink-0" aria-hidden />
@@ -59,7 +59,7 @@ export default async function GapsPage() {
                     <div className="mt-3">
                       <ShiftActions
                         compact
-                        state={{ shiftId: view.shift.id, mine: mine ? { id: mine.id, source: mine.source } : null, isPast: false, isCancelled: false, isFull: view.isFull, isGap: true, eligible: elig.eligible, reason: elig.reason, blockerModuleCode: elig.blockers[0]?.module.code ?? null, missingRole: !elig.hasRole }}
+                        state={{ shiftId: view.shift.id, mine: mine ? { id: mine.id, source: mine.source } : null, isPast: false, isCancelled: false, isFull: view.isFull, isGap: true, eligible: elig.eligible, reason: elig.reason, blockerModuleCode: elig.blockers[0]?.module.code ?? null, missingRole: !elig.hasRole, harvest: false }}
                       />
                     </div>
                   </article>

@@ -35,7 +35,7 @@ export async function notifyLastMinute(view: ShiftView, now = new Date()): Promi
   for (const { volunteer } of candidates) {
     const ref = lastMinuteRef(view.shift.id, volunteer.id);
     if (already.has(ref)) continue;
-    await queueEmail(volunteer, T.lastMinuteCallout({ shiftName: view.shift.template.name, dateISO: view.iso, start: view.shift.startTime, end: view.shift.endTime, shiftId: view.shift.id }), ref);
+    await queueEmail(volunteer, T.lastMinuteCallout({ shiftName: view.name, dateISO: view.iso, start: view.shift.startTime, end: view.shift.endTime, shiftId: view.shift.id }), ref);
     sent++;
   }
   return sent;
@@ -48,7 +48,7 @@ export async function escalateIfUncovered(view: ShiftView, now = new Date()): Pr
   const ref = `gap-escalation:${view.shift.id}`;
   if (await db.email.findFirst({ where: { ref }, select: { id: true } })) return false;
   const notified = await db.email.count({ where: { ref: { startsWith: `last-minute:${view.shift.id}:` } } });
-  await queueEmail(null, T.gapEscalation({ shiftName: view.shift.template.name, dateISO: view.iso, start: view.shift.startTime, end: view.shift.endTime, cause: view.causes.join("; "), notified, shiftId: view.shift.id }), ref);
+  await queueEmail(null, T.gapEscalation({ shiftName: view.name, dateISO: view.iso, start: view.shift.startTime, end: view.shift.endTime, cause: view.causes.join("; "), notified, shiftId: view.shift.id }), ref);
   return true;
 }
 
@@ -62,7 +62,7 @@ export async function afterShiftReleased(shiftId: string, cause: string | null, 
   if (!cause) return;
   const escalated = await escalateIfUncovered(view, now);
   if (!escalated) {
-    await queueEmail(null, T.gapAlert({ shiftName: view.shift.template.name, dateISO: view.iso, start: view.shift.startTime, end: view.shift.endTime, cause, shiftId: view.shift.id }));
+    await queueEmail(null, T.gapAlert({ shiftName: view.name, dateISO: view.iso, start: view.shift.startTime, end: view.shift.endTime, cause, shiftId: view.shift.id }));
   }
 }
 

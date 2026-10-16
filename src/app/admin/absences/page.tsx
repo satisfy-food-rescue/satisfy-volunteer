@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CheckCircle2, HandHelping } from "lucide-react";
 import { requireAdmin } from "@/lib/session";
+import { shiftName } from "@/lib/roster";
 import { db } from "@/lib/db";
 import { addDays, dateToISO, formatDay, formatDayShort, isoToDate, todayISO, weekMonday, workWeek, WEEKDAY_SHORT, weekdayOf } from "@/lib/dates";
 import { ABSENCE_REASON_LABEL, fullName, type AbsenceReason } from "@/lib/domain";
@@ -76,7 +77,7 @@ export default async function AbsencesPage() {
                             <li key={r.id}>
                               <Link href={`/admin/roster/${r.shiftId}`} className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold hover:underline", covered ? "bg-status-good-bg text-status-good" : "bg-status-bad-bg text-status-bad")}>
                                 {covered ? <CheckCircle2 className="size-3" aria-hidden /> : <HandHelping className="size-3" aria-hidden />}
-                                {formatDay(dateToISO(r.shift.date))} · {r.shift.template.kind === "WAREHOUSE" ? "Warehouse" : r.shift.template.name.split(": ")[1]} · {covered ? "covered" : "open"}
+                                {formatDay(dateToISO(r.shift.date))} · {r.shift.template.kind === "WAREHOUSE" ? "Warehouse" : r.shift.template.kind === "HARVEST" ? shiftName(r.shift) : r.shift.template.name.split(": ")[1]} · {covered ? "covered" : "open"}
                               </Link>
                             </li>
                           );
@@ -94,7 +95,7 @@ export default async function AbsencesPage() {
                         {inRange && (
                           <div
                             className={cn("flex h-7 items-center justify-center", iso === s && "rounded-l-full", iso === e && "rounded-r-full", rel ? (covered ? "bg-green" : "bg-status-bad") : "bg-muted-foreground/25")}
-                            title={rel ? `${rel.shift.template.name} ${covered ? "covered" : "needs cover"}` : ABSENCE_REASON_LABEL[a.reason as AbsenceReason]}
+                            title={rel ? `${shiftName(rel.shift)} ${covered ? "covered" : "needs cover"}` : ABSENCE_REASON_LABEL[a.reason as AbsenceReason]}
                           >
                             {rel && (covered ? <CheckCircle2 className="size-4 text-white" aria-label="Covered" /> : <HandHelping className="size-4 text-white" aria-label="Needs cover" />)}
                           </div>

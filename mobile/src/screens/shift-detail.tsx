@@ -85,6 +85,15 @@ function Detail({ shift, today }: { shift: ShiftDetail; today: string }) {
         </Row>
       </Card>
 
+      {shift.notes && (
+        <View style={{ gap: 8, padding: 16, borderRadius: radius.card, borderCurve: "continuous", backgroundColor: t.tealTintSoft }}>
+          <Text variant="eyebrow" tone="tealDeep">
+            From the coordinator
+          </Text>
+          <Text variant="body">{shift.notes}</Text>
+        </View>
+      )}
+
       {shift.isGap && shift.causes.length > 0 && (
         <View style={{ padding: 14, borderRadius: radius.lg, borderCurve: "continuous", backgroundColor: t.orangeTint }}>
           <Text variant="smallSemibold" tone="orangeText">

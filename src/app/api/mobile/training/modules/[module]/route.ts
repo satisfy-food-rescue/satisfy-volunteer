@@ -1,4 +1,5 @@
 import type { TrainingModuleDetail } from "@satisfy/core/api";
+import { moduleParagraphs } from "@satisfy/core/training";
 import { db } from "@/lib/db";
 import { todayISO } from "@/lib/dates";
 import { failure, json, mobileHandler } from "@/lib/mobile-auth";
@@ -11,10 +12,15 @@ export const dynamic = "force-dynamic";
 // Next.js needs one name for a dynamic segment at each level.
 export const GET = mobileHandler<{ module: string }>(async (me, _request, { params }) => {
   const { module: code } = await params;
-  const mod = await db.trainingModule.findUnique({ where: { code } });
+  const mod = await db.trainingModule.findUnique({ where: { code }, include: { links: { orderBy: { order: "asc" } } } });
   if (!mod) return failure(404, "Module not found.");
   const today = todayISO();
   const { statuses } = await trainingContext(me, today);
   const status = statuses.find((s) => s.module.id === mod.id)!;
-  return json<TrainingModuleDetail>({ today, module: moduleSummary(status), paragraphs: (mod.content ?? "").split("\n\n").filter(Boolean) });
+  return json<TrainingModuleDetail>({
+    today,
+    module: moduleSummary(status),
+    paragraphs: moduleParagraphs(mod.content),
+    links: mod.links.map((l) => ({ id: l.id, label: l.label, url: l.url })),
+  });
 });

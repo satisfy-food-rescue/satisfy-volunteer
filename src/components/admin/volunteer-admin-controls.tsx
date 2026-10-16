@@ -113,7 +113,7 @@ export function RecordCompletionButton({ volunteerId, moduleId, moduleName, firs
   );
 }
 
-export type ProfileValues = { phone: string; suburb: string; emergencyName: string; emergencyPhone: string; availabilityNote: string; lastMinuteOk: boolean; inHarvestPool: boolean };
+export type ProfileValues = { phone: string; suburb: string; emergencyName: string; emergencyPhone: string; availabilityNote: string; lastMinuteOk: boolean };
 
 export function ProfileEditor({ volunteerId, initial, children }: { volunteerId: string; initial: ProfileValues; children: React.ReactNode }) {
   const [editing, setEditing] = useState(false);
@@ -136,7 +136,7 @@ export function ProfileEditor({ volunteerId, initial, children }: { volunteerId:
       <Input id={`pe-${id}`} value={v[id] as string} onChange={set(id)} className="h-11 bg-card text-base" {...props} />
     </div>
   );
-  const toggle = (id: "lastMinuteOk" | "inHarvestPool", label: string, hint: string) => (
+  const toggle = (id: "lastMinuteOk", label: string, hint: string) => (
     <label className="flex min-h-11 cursor-pointer items-center justify-between gap-4 rounded-lg border border-border bg-card p-3">
       <span>
         <span className="block text-sm font-semibold text-ink">{label}</span>
@@ -161,7 +161,6 @@ export function ProfileEditor({ volunteerId, initial, children }: { volunteerId:
         <Textarea id="pe-availabilityNote" rows={3} value={v.availabilityNote} onChange={set("availabilityNote")} className="bg-card text-base" placeholder="e.g. Most weekday mornings, not Fridays" />
       </div>
       {toggle("lastMinuteOk", "Last-minute cover", "Gets a push notification when a shift they can do needs cover at short notice.")}
-      {toggle("inHarvestPool", "Harvest pool", "Hears about seasonal harvest callouts.")}
       <div className="flex gap-2">
         <Button type="submit" size="sm" className="h-10 px-4" disabled={pending}>{pending ? <Spinner /> : <Check className="size-4" />} Save details</Button>
         <Button type="button" variant="ghost" size="sm" className="h-10 px-4" onClick={() => setEditing(false)}><X className="size-4" /> Cancel</Button>

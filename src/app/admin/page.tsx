@@ -2,8 +2,8 @@ import Link from "next/link";
 import { AlertTriangle, ArrowRight, CalendarDays, Clock, HandHelping, Inbox, Users } from "lucide-react";
 import { requireAdmin } from "@/lib/session";
 import { db } from "@/lib/db";
-import { addDays, formatDay, formatDayLong, formatInstant, relativeDay, todayISO, weekMonday, formatDate } from "@/lib/dates";
-import { shiftsBetween } from "@/lib/roster";
+import { addDays, formatDay, formatDayLong, formatInstant, isoToDate, relativeDay, todayISO, weekMonday, formatDate } from "@/lib/dates";
+import { decorateShift, shiftInclude, shiftsBetween } from "@/lib/roster";
 import { moduleStatuses, trainingSummary } from "@/lib/training";
 import { fullName } from "@/lib/domain";
 import { PageHeader } from "@/components/shared/page-header";
@@ -19,13 +19,14 @@ export default async function AdminDashboard() {
   const user = await requireAdmin();
   const today = todayISO();
   const monday = weekMonday(today);
-  const [week, fortnight, volunteers, modules, applications, sessions] = await Promise.all([
+  const [week, fortnight, volunteers, modules, applications, sessions, harvests] = await Promise.all([
     shiftsBetween(monday, addDays(monday, 4)),
     shiftsBetween(today, addDays(today, 14)),
     db.volunteer.findMany({ where: { status: "ACTIVE", role: "VOLUNTEER" }, include: { trainingRecords: true } }),
     db.trainingModule.findMany({ orderBy: { order: "asc" } }),
     db.application.findMany({ where: { status: "PENDING" }, orderBy: { submittedAt: "desc" } }),
     db.trainingSession.findMany({ where: { startsAt: { gte: new Date() } }, include: { module: true, rsvps: true }, orderBy: { startsAt: "asc" }, take: 3 }),
+    db.shift.findMany({ where: { template: { kind: "HARVEST" }, date: { gte: isoToDate(today) }, status: { not: "CANCELLED" } }, include: shiftInclude, orderBy: [{ date: "asc" }, { startTime: "asc" }], take: 3 }),
   ]);
   const todays = week.filter((s) => s.iso === today);
   const gaps = fortnight.filter((s) => s.isGap);
@@ -118,6 +119,18 @@ export default async function AdminDashboard() {
               {attention.length === 0 && <li className="px-4 py-6 text-center text-sm text-muted-foreground">Everyone is current.</li>}
             </ul>
           </section>
+
+          {harvests.length > 0 && (
+            <section className="flex flex-col gap-3" aria-labelledby="harvests-h">
+              <div className="flex items-baseline justify-between">
+                <h2 id="harvests-h" className="text-2xl text-ink">Harvests</h2>
+                <Link href="/admin/harvests" className="text-sm font-semibold text-teal hover:underline">All</Link>
+              </div>
+              <div className="flex flex-col gap-2">
+                {harvests.map(decorateShift).map((s) => <ShiftRow key={s.shift.id} view={s} showDate={formatDay(s.iso)} />)}
+              </div>
+            </section>
+          )}
 
           <section className="flex flex-col gap-3" aria-labelledby="apps-h">
             <div className="flex items-baseline justify-between">

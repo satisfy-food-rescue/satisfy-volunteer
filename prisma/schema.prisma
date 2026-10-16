@@ -33,10 +33,11 @@ model Volunteer {
   role             String    @default("VOLUNTEER")
   // ACTIVE | INACTIVE
   status           String    @default("ACTIVE")
-  // Comma-separated volunteer roles: WAREHOUSE, DRIVERS_ASSISTANT, VOLUNTEER_DRIVER
+  // Comma-separated volunteer roles: WAREHOUSE, DRIVERS_ASSISTANT,
+  // VOLUNTEER_DRIVER, HARVEST. HARVEST is the harvest pool, which volunteers
+  // join and leave themselves.
   roles            String    @default("WAREHOUSE")
   isRegular        Boolean   @default(false)
-  inHarvestPool    Boolean   @default(false)
   // Happy to be phoned for same-day cover. Feeds the "last-minute available" list.
   lastMinuteOk     Boolean   @default(false)
   emergencyName    String?
@@ -54,8 +55,8 @@ model Volunteer {
   absences        Absence[]
   trainingRecords TrainingRecord[]
   sessionRsvps    SessionRsvp[]
-  harvestRsvps    HarvestRsvp[]
   emails          Email[]
+  announcements   Announcement[]
   contactLogs     ContactLog[]     @relation("ContactLogVolunteer")
   authoredLogs    ContactLog[]     @relation("ContactLogAuthor")
   sessions        Session[]
@@ -127,11 +128,12 @@ model Recipient {
   kind     String
 }
 
-// The recurring shape of a shift. Shifts are generated from templates
-// (bulk scheduling) and regular slots point at a template + weekday.
+// The shape of a shift. Recurring shifts are generated from templates (bulk
+// scheduling) and regular slots point at a template + weekday. Ad hoc kinds
+// (HARVEST) have no weekdays: each shift is created one at a time.
 model ShiftTemplate {
   id              String        @id @default(cuid())
-  // WAREHOUSE | DRIVERS_ASSISTANT | VOLUNTEER_DRIVER
+  // WAREHOUSE | DRIVERS_ASSISTANT | VOLUNTEER_DRIVER | HARVEST
   kind            String
   name            String
   routeId         String?
@@ -141,7 +143,8 @@ model ShiftTemplate {
   capacity        Int
   // Minimum crew for the shift to run comfortably. Confirmed < needed = gap.
   needed          Int
-  // Comma-separated ISO weekdays this template normally runs on, e.g. "1,2,3,4,5"
+  // Comma-separated ISO weekdays this template normally runs on, e.g.
+  // "1,2,3,4,5". Empty for ad hoc kinds.
   weekdays        String
   // The supervisor or driver volunteers work alongside, e.g. "Dave (staff driver)".
   workingWith     String?
@@ -157,21 +160,32 @@ model ShiftTemplate {
 }
 
 model Shift {
-  id          String        @id @default(cuid())
-  templateId  String
-  template    ShiftTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  id            String         @id @default(cuid())
+  templateId    String
+  template      ShiftTemplate  @relation(fields: [templateId], references: [id], onDelete: Cascade)
   // Calendar date at UTC midnight.
-  date        DateTime
-  startTime   String
-  endTime     String
-  capacity    Int
-  needed      Int
-  // SCHEDULED | CANCELLED
-  status      String        @default("SCHEDULED")
-  notes       String?
-  assignments Assignment[]
+  date          DateTime
+  startTime     String
+  endTime       String
+  capacity      Int
+  needed        Int
+  // DRAFT | SCHEDULED | CANCELLED. A draft is only visible to coordinators;
+  // publishing makes it bookable (and, if asked, emails who can do it).
+  status        String         @default("SCHEDULED")
+  // Overrides the template's name and location for one-off shifts, e.g.
+  // "Apple picking" at "Loburn orchard, 112 Hodgsons Road".
+  title         String?
+  location      String?
+  // Details for volunteers from the coordinator, shown on the shift and in
+  // the callout email.
+  notes         String?
+  publishedAt   DateTime?
+  assignments   Assignment[]
+  announcements Announcement[]
 
-  @@unique([templateId, date])
+  // Not unique: ad hoc kinds can run twice on one day. Bulk scheduling skips
+  // dates a template already has a shift on.
+  @@index([templateId, date])
   @@index([date])
 }
 
@@ -235,11 +249,27 @@ model TrainingModule {
   mandatoryBeforeFirstShift Boolean           @default(false)
   // IN_PERSON | ONLINE_CONFIRM
   delivery                  String
-  // Short read-and-confirm content for ONLINE_CONFIRM modules.
+  // Read-and-confirm content for ONLINE_CONFIRM modules, as paragraphs
+  // separated by a blank line.
   content                   String?
   order                     Int               @default(0)
   records                   TrainingRecord[]
   sessions                  TrainingSession[]
+  links                     TrainingLink[]
+}
+
+// A video or page an online module asks the volunteer to open, usually a
+// YouTube video from the SOP or an MPI course. Completion is locked until the
+// volunteer has read to the end of the content and opened every link.
+model TrainingLink {
+  id       String         @id @default(cuid())
+  moduleId String
+  module   TrainingModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  label    String
+  url      String
+  order    Int            @default(0)
+
+  @@index([moduleId])
 }
 
 model TrainingRecord {
@@ -287,32 +317,6 @@ model SessionRsvp {
   @@unique([sessionId, volunteerId])
 }
 
-model HarvestCallout {
-  id          String        @id @default(cuid())
-  title       String
-  date        DateTime
-  startTime   String
-  endTime     String
-  location    String
-  partner     String
-  description String
-  needed      Int
-  rsvps       HarvestRsvp[]
-}
-
-model HarvestRsvp {
-  id          String         @id @default(cuid())
-  calloutId   String
-  callout     HarvestCallout @relation(fields: [calloutId], references: [id], onDelete: Cascade)
-  volunteerId String
-  volunteer   Volunteer      @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
-  // GOING | DECLINED
-  status      String
-  createdAt   DateTime       @default(now())
-
-  @@unique([calloutId, volunteerId])
-}
-
 // Applicants arriving from the Infoodle sign-up form (mocked).
 model Application {
   id           String    @id @default(cuid())
@@ -348,7 +352,8 @@ model Email {
   // TRAINING_DUE_SOON | TRAINING_OVERDUE | SHIFT_REMINDER | ABSENCE_CONFIRMED |
   // COVER_CONFIRMED | GAP_ALERT | APPLICATION_APPROVED | TRAINING_COMPLETED |
   // SESSION_CONFIRMED | HARVEST_CALLOUT | WELCOME | LAST_MINUTE_CALLOUT |
-  // GAP_ESCALATION | ROLES_CHANGED | ROLE_CHANGE_REQUEST | SHIFT_CANCELLED
+  // GAP_ESCALATION | ROLES_CHANGED | ROLE_CHANGE_REQUEST | SHIFT_CANCELLED |
+  // SHIFT_ADDED | SHIFT_PUBLISHED | ANNOUNCEMENT
   kind        String
   subject     String
   preview     String
@@ -362,6 +367,32 @@ model Email {
 
   @@index([createdAt])
   @@index([ref])
+}
+
+// A message from the coordinator to a group of volunteers: everyone, some
+// roles, or the crew of one shift (a harvest that moved, say). Each recipient
+// gets an Email row (and a PUSH row when asked) with ref
+// "announcement:<id>:<volunteerId>", so it shows on their timeline.
+model Announcement {
+  id             String     @id @default(cuid())
+  subject        String
+  // Paragraphs separated by a blank line.
+  body           String
+  // ALL | ROLES | SHIFT
+  audience       String
+  // Comma-separated roles when audience is ROLES.
+  roles          String?
+  shiftId        String?
+  shift          Shift?     @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  // Who it went to, in words, kept for the history after a shift is deleted.
+  audienceLabel  String
+  push           Boolean    @default(false)
+  recipientCount Int
+  authorId       String?
+  author         Volunteer? @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  createdAt      DateTime   @default(now())
+
+  @@index([createdAt])
 }
 
 // The coordinator's record of contact with a volunteer: phone calls, notes and

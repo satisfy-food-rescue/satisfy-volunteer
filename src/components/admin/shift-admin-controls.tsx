@@ -3,8 +3,10 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Check, UserMinus, UserPlus, X, Ban, Loader2, Phone, Zap } from "lucide-react";
-import { addToShift, cancelShift, removeFromShift, setAttendance } from "@/app/admin/actions";
+import { Check, UserMinus, UserPlus, X, Ban, Loader2, Phone, Zap, Send, Trash2, Megaphone } from "lucide-react";
+import { addToShift, cancelShift, deleteDraftShift, publishShift, removeFromShift, setAttendance } from "@/app/admin/actions";
+import { Checkbox } from "@/components/ui/checkbox";
+import { calloutAudience } from "@/components/admin/shift-form";
 import { ActionButton } from "@/components/app/action-button";
 import { AvatarBadge } from "@/components/shared/avatar-badge";
 import { Chip } from "@/components/shared/status-chip";
@@ -135,6 +137,68 @@ export function CancelShiftButton({ shiftId, label, booked }: { shiftId: string;
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+/** Publishes a draft from the shift page, optionally with a callout. */
+export function PublishShiftButton({ shiftId, label, holders, roleLabel, harvest }: { shiftId: string; label: string; holders: number; roleLabel: string; harvest: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [callout, setCallout] = useState(harvest);
+  const [pending, start] = useTransition();
+  const router = useRouter();
+  const submit = () =>
+    start(async () => {
+      const r = await publishShift(shiftId, callout);
+      if (r.ok) {
+        toast.success(r.message);
+        setOpen(false);
+        router.refresh();
+      } else toast.error(r.error);
+    });
+  return (
+    <>
+      <Button size="sm" className="h-10" onClick={() => { setCallout(harvest); setOpen(true); }}>
+        <Send className="size-4" /> Publish
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl text-ink">Publish this shift?</DialogTitle>
+            <DialogDescription>
+              <span className="font-semibold text-ink">{label}.</span> Volunteers who can do it will see it and can book straight away.
+            </DialogDescription>
+          </DialogHeader>
+          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-teal-tint-soft p-3">
+            <Checkbox className="mt-0.5 size-5" checked={callout} onCheckedChange={setCallout} />
+            <span className="flex flex-col gap-0.5">
+              <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-ink"><Megaphone className="size-4 text-teal" aria-hidden /> Send a callout</span>
+              <span className="text-sm text-muted-foreground">Emails and notifies {calloutAudience(holders, roleLabel, harvest)}, with a Sign up button.</span>
+            </span>
+          </label>
+          <DialogFooter>
+            <Button variant="ghost" className="h-10" disabled={pending} onClick={() => setOpen(false)}>Not yet</Button>
+            <Button className="h-10" disabled={pending} onClick={submit}>
+              {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Send className="size-4" />} Publish
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+export function DeleteDraftButton({ shiftId, back }: { shiftId: string; back: string }) {
+  return (
+    <ActionButton
+      variant="outline"
+      size="sm"
+      className="h-10 text-destructive"
+      confirm="Delete this draft? Nobody has seen it, so nobody is told."
+      action={() => deleteDraftShift(shiftId)}
+      redirectTo={back}
+    >
+      <Trash2 className="size-4" /> Delete draft
+    </ActionButton>
   );
 }
 

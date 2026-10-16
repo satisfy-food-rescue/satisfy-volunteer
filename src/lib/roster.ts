@@ -1,7 +1,7 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { db } from "./db";
 import { dateToISO, isoToDate } from "./dates";
-import { ABSENCE_REASON_LABEL, fullName, type AbsenceReason, type ShiftKind } from "./domain";
+import { ABSENCE_REASON_LABEL, ROLE_LABEL, fullName, isAdHocKind, parseRoles, type AbsenceReason, type ShiftKind, type VolunteerRole } from "./domain";
 import { eligibilityFor, moduleStatuses } from "./training";
 
 export const shiftInclude = {
@@ -16,12 +16,16 @@ export type ShiftView = {
   shift: ShiftFull;
   iso: string;
   kind: ShiftKind;
+  /** The shift's own title (a harvest's "Apple picking"), else the template's. */
+  name: string;
+  isDraft: boolean;
   confirmed: AssignmentFull[];
   released: AssignmentFull[];
   confirmedCount: number;
   spotsLeft: number;
   isFull: boolean;
-  /** Confirmed crew below the minimum needed. */
+  /** Confirmed crew below the minimum needed on a recurring shift. Ad hoc
+   *  shifts (harvests) are never gaps: an unfilled place is just open. */
   isGap: boolean;
   shortBy: number;
   /** Why the gap exists, e.g. "Brian Tweedie away (holiday)". */
@@ -29,9 +33,16 @@ export type ShiftView = {
   location: string;
 };
 
-export function shiftLocation(template: ShiftFull["template"]): string {
+export function shiftLocation(shift: Pick<ShiftFull, "location" | "template">): string {
+  if (shift.location) return shift.location;
+  const { template } = shift;
   if (template.kind === "WAREHOUSE") return "Satisfy warehouse, Rangiora";
+  if (template.kind === "HARVEST") return "Location to be confirmed";
   return `${template.route?.name ?? "Route"} collection, departs the warehouse`;
+}
+
+export function shiftName(shift: { title: string | null; template: { name: string } }): string {
+  return shift.title || shift.template.name;
 }
 
 export function decorateShift(shift: ShiftFull): ShiftView {
@@ -44,35 +55,44 @@ export function decorateShift(shift: ShiftFull): ShiftView {
     const reason = r.absence ? ABSENCE_REASON_LABEL[r.absence.reason as AbsenceReason].toLowerCase() : "away";
     return `${fullName(r.volunteer)} away (${reason})`;
   });
-  if (shortBy > 0 && causes.length === 0) causes.push("No regular volunteer for this slot");
+  const kind = shift.template.kind as ShiftKind;
+  const adHoc = isAdHocKind(kind);
+  if (shortBy > 0 && causes.length === 0 && !adHoc) causes.push("No regular volunteer for this slot");
   return {
     shift,
     iso: dateToISO(shift.date),
-    kind: shift.template.kind as ShiftKind,
+    kind,
+    name: shiftName(shift),
+    isDraft: shift.status === "DRAFT",
     confirmed,
     released,
     confirmedCount,
     spotsLeft: Math.max(0, shift.capacity - confirmedCount),
     isFull: confirmedCount >= shift.capacity,
-    isGap: shift.status === "SCHEDULED" && shortBy > 0,
+    isGap: shift.status === "SCHEDULED" && shortBy > 0 && !adHoc,
     shortBy,
     causes,
-    location: shiftLocation(shift.template),
+    location: shiftLocation(shift),
   };
 }
 
-export async function shiftsBetween(fromISO: string, toISO: string): Promise<ShiftView[]> {
+/** Drafts are for coordinators only. Everything a volunteer sees leaves them
+ *  out, so a shift appears for volunteers the moment it is published. */
+type Visibility = { drafts?: boolean };
+
+export async function shiftsBetween(fromISO: string, toISO: string, { drafts = false }: Visibility = {}): Promise<ShiftView[]> {
   const shifts = await db.shift.findMany({
-    where: { date: { gte: isoToDate(fromISO), lte: isoToDate(toISO) } },
+    where: { date: { gte: isoToDate(fromISO), lte: isoToDate(toISO) }, ...(drafts ? {} : { status: { not: "DRAFT" } }) },
     include: shiftInclude,
-    orderBy: [{ date: "asc" }, { template: { order: "asc" } }],
+    orderBy: [{ date: "asc" }, { template: { order: "asc" } }, { startTime: "asc" }],
   });
   return shifts.map(decorateShift);
 }
 
-export async function shiftById(id: string): Promise<ShiftView | null> {
+export async function shiftById(id: string, { drafts = false }: Visibility = {}): Promise<ShiftView | null> {
   const shift = await db.shift.findUnique({ where: { id }, include: shiftInclude });
-  return shift ? decorateShift(shift) : null;
+  if (!shift || (shift.status === "DRAFT" && !drafts)) return null;
+  return decorateShift(shift);
 }
 
 export async function gapsBetween(fromISO: string, toISO: string): Promise<ShiftView[]> {
@@ -110,4 +130,28 @@ export async function availableForShift(view: ShiftView) {
       return { volunteer: v, eligibility: elig, coversBefore: v.assignments.length };
     })
     .filter((x) => x.eligibility.eligible);
+}
+
+/** Shift types a coordinator can create a one-off shift from, with how many
+ *  active volunteers a callout would reach. Harvest first: it is the reason
+ *  one-off shifts exist. */
+export async function shiftFormTemplates() {
+  const [templates, volunteers] = await Promise.all([
+    db.shiftTemplate.findMany({ where: { active: true }, include: { route: true }, orderBy: { order: "asc" } }),
+    db.volunteer.findMany({ where: { status: "ACTIVE", role: "VOLUNTEER" }, select: { roles: true } }),
+  ]);
+  return templates
+    .map((t) => ({
+      id: t.id,
+      name: t.name,
+      kind: t.kind as ShiftKind,
+      startTime: t.startTime,
+      endTime: t.endTime,
+      capacity: t.capacity,
+      needed: t.needed,
+      defaultLocation: shiftLocation({ location: null, template: t }),
+      holders: volunteers.filter((v) => parseRoles(v.roles).includes(t.kind as VolunteerRole)).length,
+      roleLabel: ROLE_LABEL[t.kind as VolunteerRole],
+    }))
+    .sort((a, b) => Number(b.kind === "HARVEST") - Number(a.kind === "HARVEST"));
 }

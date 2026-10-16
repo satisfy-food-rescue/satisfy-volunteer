@@ -3,8 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { CalendarPlus, Check, Loader2, Pencil, Play, X } from "lucide-react";
-import { createSession, markSessionAttendance, runRemindersNow, updateModule } from "@/app/admin/actions";
+import { CalendarPlus, Check, Link2, Loader2, Pencil, Play, Plus, Trash2, X } from "lucide-react";
+import { createSession, markSessionAttendance, runRemindersNow, saveModule, type ModuleInput } from "@/app/admin/actions";
 import { ActionButton } from "@/components/app/action-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,15 +14,17 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { DatePicker } from "@/components/ui/date-picker";
 import { OptionSelect, type Option } from "@/components/shared/option-select";
 import { formatTime } from "@/lib/dates";
-import { ROLE_SHORT, VOLUNTEER_ROLES, type VolunteerRole } from "@/lib/domain";
+import { ROLE_SHORT, VOLUNTEER_ROLES } from "@/lib/domain";
 import { cn } from "@/lib/utils";
 
-export type ModuleForm = { id: string; name: string; validityMonths: number | null; requiredRoles: VolunteerRole[]; mandatoryBeforeFirstShift: boolean; delivery: "IN_PERSON" | "ONLINE_CONFIRM" };
+export type ModuleForm = Omit<ModuleInput, "id"> & { id: string | null };
 
 const DELIVERY: Option<ModuleForm["delivery"]>[] = [
   { value: "IN_PERSON", label: "In-person session" },
-  { value: "ONLINE_CONFIRM", label: "Online: read and confirm" },
+  { value: "ONLINE_CONFIRM", label: "Online module" },
 ];
+
+const BLANK_MODULE: ModuleForm = { id: null, name: "", description: "", validityMonths: 12, requiredRoles: [], mandatoryBeforeFirstShift: false, delivery: "ONLINE_CONFIRM", content: "", links: [] };
 
 // Session times in 15-minute steps across the working day.
 export const TIMES: Option[] = Array.from({ length: (20 - 6) * 4 + 1 }, (_, i) => {
@@ -31,34 +33,59 @@ export const TIMES: Option[] = Array.from({ length: (20 - 6) * 4 + 1 }, (_, i) =
   return { value, label: formatTime(value) };
 });
 
-export function ModuleEditor({ module }: { module: ModuleForm }) {
+/** Edits a module, or adds one when `module` is omitted. */
+export function ModuleEditor({ module }: { module?: ModuleForm }) {
+  const initial = module ?? BLANK_MODULE;
   const [open, setOpen] = useState(false);
-  const [v, setV] = useState(module);
+  const [v, setV] = useState(initial);
   const [pending, run] = useTransition();
   const router = useRouter();
+  const key = v.id ?? "new";
   if (!open) {
-    return <Button variant="outline" size="sm" className="h-9" onClick={() => setOpen(true)}><Pencil className="size-4" /> Configure</Button>;
+    return module ? (
+      <Button variant="outline" size="sm" className="h-9" onClick={() => setOpen(true)}><Pencil className="size-4" /> Edit module</Button>
+    ) : (
+      <Button size="lg" className="h-11 self-start" onClick={() => setOpen(true)}><Plus className="size-4" /> Add a module</Button>
+    );
   }
+  const online = v.delivery === "ONLINE_CONFIRM";
+  const setLink = (i: number, patch: Partial<ModuleForm["links"][number]>) => setV({ ...v, links: v.links.map((l, j) => (j === i ? { ...l, ...patch } : l)) });
   return (
     <form
-      className="mt-3 grid gap-x-4 gap-y-5 rounded-xl border border-teal/25 bg-teal-tint-soft p-4 sm:grid-cols-2"
-      onSubmit={(e) => { e.preventDefault(); run(async () => { const r = await updateModule(v); if (r.ok) { toast.success(r.message); setOpen(false); router.refresh(); } else toast.error(r.error); }); }}
+      className={cn("grid gap-x-4 gap-y-5 rounded-xl border border-teal/25 bg-teal-tint-soft p-4 sm:grid-cols-2", module && "mt-3")}
+      onSubmit={(e) => {
+        e.preventDefault();
+        run(async () => {
+          const r = await saveModule(v);
+          if (r.ok) {
+            toast.success(r.message);
+            setOpen(false);
+            if (!module) setV(BLANK_MODULE);
+            router.refresh();
+          } else toast.error(r.error);
+        });
+      }}
     >
+      {!module && <h2 className="text-xl text-ink sm:col-span-2">New module</h2>}
       <div className="flex flex-col gap-1.5 sm:col-span-2">
-        <Label htmlFor={`m-name-${v.id}`}>Module name</Label>
-        <Input id={`m-name-${v.id}`} value={v.name} onChange={(e) => setV({ ...v, name: e.target.value })} className="h-11 bg-card text-base" />
+        <Label htmlFor={`m-name-${key}`}>Module name</Label>
+        <Input id={`m-name-${key}`} required value={v.name} onChange={(e) => setV({ ...v, name: e.target.value })} className="h-11 bg-card text-base" placeholder="For example, Use of Ladders" />
+      </div>
+      <div className="flex flex-col gap-1.5 sm:col-span-2">
+        <Label htmlFor={`m-desc-${key}`}>Summary</Label>
+        <Input id={`m-desc-${key}`} required value={v.description} onChange={(e) => setV({ ...v, description: e.target.value })} className="h-11 bg-card text-base" placeholder="One line shown on the training list" />
       </div>
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor={`m-val-${v.id}`}>Valid for</Label>
+        <Label htmlFor={`m-val-${key}`}>Valid for</Label>
         <div className="relative">
-          <Input id={`m-val-${v.id}`} type="number" min={1} max={60} placeholder="Never expires" aria-describedby={`m-val-hint-${v.id}`} value={v.validityMonths ?? ""} onChange={(e) => setV({ ...v, validityMonths: e.target.value ? Number(e.target.value) : null })} className="h-11 bg-card pr-20 text-base" />
+          <Input id={`m-val-${key}`} type="number" min={1} max={60} placeholder="Never expires" aria-describedby={`m-val-hint-${key}`} value={v.validityMonths ?? ""} onChange={(e) => setV({ ...v, validityMonths: e.target.value ? Number(e.target.value) : null })} className="h-11 bg-card pr-20 text-base" />
           {v.validityMonths != null && <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">months</span>}
         </div>
-        <p id={`m-val-hint-${v.id}`} className="text-xs text-muted-foreground">Leave blank if it never expires.</p>
+        <p id={`m-val-hint-${key}`} className="text-xs text-muted-foreground">Leave blank if it never expires.</p>
       </div>
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor={`m-del-${v.id}`}>Delivery</Label>
-        <OptionSelect id={`m-del-${v.id}`} value={v.delivery} onValueChange={(d) => setV({ ...v, delivery: d })} options={DELIVERY} />
+        <Label htmlFor={`m-del-${key}`}>Delivery</Label>
+        <OptionSelect id={`m-del-${key}`} value={v.delivery} onValueChange={(d) => setV({ ...v, delivery: d })} options={DELIVERY} />
       </div>
       <fieldset className="flex flex-col gap-2 sm:col-span-2">
         <legend className="mb-2 text-sm font-medium">Required for</legend>
@@ -75,6 +102,33 @@ export function ModuleEditor({ module }: { module: ModuleForm }) {
           })}
         </div>
       </fieldset>
+      {online && (
+        <>
+          <div className="flex flex-col gap-1.5 sm:col-span-2">
+            <Label htmlFor={`m-content-${key}`}>What volunteers read</Label>
+            <Textarea id={`m-content-${key}`} rows={8} value={v.content} onChange={(e) => setV({ ...v, content: e.target.value })} aria-describedby={`m-content-hint-${key}`} className="bg-card text-base leading-relaxed" placeholder={"Bend your knees, not your back.\n\nTest the weight first."} />
+            <p id={`m-content-hint-${key}`} className="text-xs text-muted-foreground">Leave a blank line between points. Each point is shown as a numbered card, and volunteers scroll to the last one before they can confirm.</p>
+          </div>
+          <fieldset className="flex flex-col gap-2 sm:col-span-2" aria-describedby={`m-links-hint-${key}`}>
+            <legend className="mb-1 text-sm font-medium">Videos and links</legend>
+            <p id={`m-links-hint-${key}`} className="-mt-1 mb-1 text-xs text-muted-foreground">Volunteers must open each one before they can confirm. YouTube videos, MPI courses or any https page.</p>
+            {v.links.map((l, i) => (
+              <div key={i} className="grid grid-cols-[1fr_auto] gap-2 rounded-lg border border-border bg-card p-2.5 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)_auto]">
+                <Input aria-label={`Link ${i + 1} label`} value={l.label} onChange={(e) => setLink(i, { label: e.target.value })} className="h-10 text-base" placeholder="Video title" />
+                <Input aria-label={`Link ${i + 1} address`} type="url" inputMode="url" value={l.url} onChange={(e) => setLink(i, { url: e.target.value })} className="col-span-1 row-start-2 h-10 text-base sm:row-start-auto" placeholder="https://www.youtube.com/watch?v=" />
+                <Button type="button" variant="ghost" size="icon" className="row-span-2 size-10 self-center text-muted-foreground hover:text-destructive sm:row-span-1" aria-label={`Remove link ${i + 1}`} onClick={() => setV({ ...v, links: v.links.filter((_, j) => j !== i) })}>
+                  <Trash2 className="size-4" />
+                </Button>
+              </div>
+            ))}
+            {v.links.length < 10 && (
+              <Button type="button" variant="outline" size="sm" className="h-10 self-start bg-card" onClick={() => setV({ ...v, links: [...v.links, { label: "", url: "" }] })}>
+                <Link2 className="size-4" /> Add a video or link
+              </Button>
+            )}
+          </fieldset>
+        </>
+      )}
       <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-card p-3 sm:col-span-2">
         <Checkbox className="mt-0.5 size-5" checked={v.mandatoryBeforeFirstShift} onCheckedChange={(c) => setV({ ...v, mandatoryBeforeFirstShift: c })} />
         <span className="flex flex-col">
@@ -83,8 +137,8 @@ export function ModuleEditor({ module }: { module: ModuleForm }) {
         </span>
       </label>
       <div className="flex gap-2 sm:col-span-2">
-        <Button type="submit" size="sm" className="h-10 px-4" disabled={pending}>{pending ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />} Save module</Button>
-        <Button type="button" variant="ghost" size="sm" className="h-10 px-4" onClick={() => { setV(module); setOpen(false); }}><X className="size-4" /> Cancel</Button>
+        <Button type="submit" size="sm" className="h-10 px-4" disabled={pending}>{pending ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />} {module ? "Save module" : "Add module"}</Button>
+        <Button type="button" variant="ghost" size="sm" className="h-10 px-4" onClick={() => { setV(initial); setOpen(false); }}><X className="size-4" /> Cancel</Button>
       </div>
     </form>
   );

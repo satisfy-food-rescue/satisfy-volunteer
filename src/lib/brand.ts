@@ -7,7 +7,7 @@ export const ORG = {
   base: "Rangiora, North Canterbury",
   website: "https://www.satisfyfoodrescue.org.nz",
   coverage: "Waimakariri, Hurunui and Christchurch City",
-  coordinatorEmail: "volunteers@satisfyfoodrescue.org.nz",
+  coordinatorEmail: "volunteering@satisfyfoodrescue.org.nz",
 };
 
 export const IMPACT = {

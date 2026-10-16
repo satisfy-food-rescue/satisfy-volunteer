@@ -2,7 +2,7 @@
 import type { Me, MobileSession } from "@satisfy/core/api";
 import type { Volunteer } from "@/generated/prisma/client";
 import { dateToISO, formatInstant, todayISO } from "../dates";
-import { parseRoles } from "../domain";
+import { inHarvestPool, parseRoles } from "../domain";
 import { isDemo } from "../demo";
 import { coverableGaps, trainingContext } from "../volunteer-data";
 
@@ -18,7 +18,7 @@ export function meView(v: Volunteer): Me {
     emergencyPhone: v.emergencyPhone,
     availabilityNote: v.availabilityNote,
     lastMinuteOk: v.lastMinuteOk,
-    inHarvestPool: v.inHarvestPool,
+    inHarvestPool: inHarvestPool(v),
     roles: parseRoles(v.roles),
     joinedISO: dateToISO(v.joinedAt),
     infoodle: v.infoodleId ? { id: v.infoodleId, syncedLabel: v.infoodleSyncedAt ? formatInstant(v.infoodleSyncedAt) : null } : null,

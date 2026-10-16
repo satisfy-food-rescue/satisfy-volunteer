@@ -52,7 +52,7 @@ export default function TabStackLayout({ segment }: { segment: string }) {
       <Stack.Screen name="shift/[id]" options={{ title: "" }} />
       <Stack.Screen name="module/[code]" options={{ title: "" }} />
       <Stack.Screen name="slot" options={{ title: "My regular slot" }} />
-      <Stack.Screen name="harvest" options={{ title: "Harvest pool" }} />
+      <Stack.Screen name="harvest" options={{ title: "Harvest" }} />
     </Stack>
   );
 }

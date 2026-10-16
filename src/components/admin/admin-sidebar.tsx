@@ -12,8 +12,10 @@ import {
   ListChecks,
   LogOut,
   Mail,
+  Megaphone,
   Settings,
   Smartphone,
+  Sprout,
   Users,
 } from "lucide-react";
 import {
@@ -48,6 +50,7 @@ const SECTIONS: { label: string; links: NavLink[] }[] = [
     links: [
       { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
       { href: "/admin/roster", label: "Roster", icon: CalendarRange, badge: "gaps" },
+      { href: "/admin/harvests", label: "Harvests", icon: Sprout },
       { href: "/admin/absences", label: "Absences", icon: CalendarOff },
       { href: "/admin/shift-types", label: "Shift types", icon: ListChecks },
     ],
@@ -58,6 +61,7 @@ const SECTIONS: { label: string; links: NavLink[] }[] = [
       { href: "/admin/volunteers", label: "Volunteers", icon: Users },
       { href: "/admin/training", label: "Training", icon: GraduationCap, badge: "training" },
       { href: "/admin/applications", label: "Applications", icon: Inbox, badge: "applications" },
+      { href: "/admin/announcements", label: "Announcements", icon: Megaphone },
     ],
   },
   {

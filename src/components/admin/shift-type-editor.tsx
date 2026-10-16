@@ -36,7 +36,8 @@ function NumberField({ id, label, hint, unit, value, min, max, onChange }: { id:
   );
 }
 
-export function ShiftTypeEditor({ shiftType }: { shiftType: ShiftTypeForm }) {
+/** `adHoc` (harvests): never a cover gap, so the last-minute rules do not apply. */
+export function ShiftTypeEditor({ shiftType, adHoc = false }: { shiftType: ShiftTypeForm; adHoc?: boolean }) {
   const [open, setOpen] = useState(false);
   const [v, setV] = useState(shiftType);
   const [pending, run] = useTransition();
@@ -67,14 +68,16 @@ export function ShiftTypeEditor({ shiftType }: { shiftType: ShiftTypeForm }) {
         <Label htmlFor={id("end")}>End</Label>
         <OptionSelect id={id("end")} value={v.endTime} onValueChange={(endTime) => setV({ ...v, endTime })} options={TIMES.filter((t) => t.value > v.startTime)} />
       </div>
-      <NumberField id={id("needed")} label="Minimum crew" min={1} max={40} value={v.needed} onChange={(needed) => setV({ ...v, needed })} hint="Fewer confirmed than this is a gap." />
+      <NumberField id={id("needed")} label="Minimum crew" min={1} max={40} value={v.needed} onChange={(needed) => setV({ ...v, needed })} hint={adHoc ? "How many a new one asks for." : "Fewer confirmed than this is a gap."} />
       <NumberField id={id("cap")} label="Maximum crew" min={1} max={40} value={v.capacity} onChange={(capacity) => setV({ ...v, capacity })} />
-      <fieldset className="grid gap-x-4 gap-y-5 rounded-lg border border-border bg-card p-4 sm:col-span-2 sm:grid-cols-2 lg:col-span-4">
-        <legend className="px-1 text-sm font-semibold text-ink">Last-minute cover</legend>
-        <NumberField id={id("lm")} label="Notify last-minute volunteers" unit="hours" min={0} max={168} value={v.lastMinuteHours} onChange={(lastMinuteHours) => setV({ ...v, lastMinuteHours })} hint="When a gap opens this close to the start, eligible volunteers who opted in get a push notification. 0 turns it off." />
-        <NumberField id={id("esc")} label="Alert the coordinator" unit="hours" min={0} max={168} value={v.escalateHours} onChange={(escalateHours) => setV({ ...v, escalateHours })} hint="Still uncovered this close to the start: you get an email to step in. 0 turns it off." />
-      </fieldset>
-      <p className="text-xs text-muted-foreground sm:col-span-2 lg:col-span-4">Times and crew sizes apply to shifts scheduled from now on. Shifts already on the roster keep theirs.</p>
+      {!adHoc && (
+        <fieldset className="grid gap-x-4 gap-y-5 rounded-lg border border-border bg-card p-4 sm:col-span-2 sm:grid-cols-2 lg:col-span-4">
+          <legend className="px-1 text-sm font-semibold text-ink">Last-minute cover</legend>
+          <NumberField id={id("lm")} label="Notify last-minute volunteers" unit="hours" min={0} max={168} value={v.lastMinuteHours} onChange={(lastMinuteHours) => setV({ ...v, lastMinuteHours })} hint="When a gap opens this close to the start, eligible volunteers who opted in get a push notification. 0 turns it off." />
+          <NumberField id={id("esc")} label="Alert the coordinator" unit="hours" min={0} max={168} value={v.escalateHours} onChange={(escalateHours) => setV({ ...v, escalateHours })} hint="Still uncovered this close to the start: you get an email to step in. 0 turns it off." />
+        </fieldset>
+      )}
+      <p className="text-xs text-muted-foreground sm:col-span-2 lg:col-span-4">Times and crew sizes apply to shifts {adHoc ? "planned" : "scheduled"} from now on. Shifts already on the roster keep theirs.</p>
       <div className="flex gap-2 sm:col-span-2 lg:col-span-4">
         <Button type="submit" size="sm" className="h-10 px-4" disabled={pending}>{pending ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />} Save shift type</Button>
         <Button type="button" variant="ghost" size="sm" className="h-10 px-4" onClick={() => setOpen(false)}><X className="size-4" /> Cancel</Button>

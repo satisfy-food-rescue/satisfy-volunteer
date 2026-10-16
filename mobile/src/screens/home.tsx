@@ -282,7 +282,7 @@ function CoverCard({ cover }: { cover: Home["cover"] }) {
 function HarvestCard({ harvest }: { harvest: NonNullable<Home["harvest"]> }) {
   const t = useTheme();
   return (
-    <Pressable onPress={() => router.push("/harvest")}
+    <Pressable onPress={() => router.push({ pathname: "/shift/[id]", params: { id: harvest.id } })}
         accessibilityRole="button"
         style={({ pressed }) => ({
           flexDirection: "row",
@@ -298,10 +298,10 @@ function HarvestCard({ harvest }: { harvest: NonNullable<Home["harvest"]> }) {
       >
         <FoodIcon kind="apple" size={44} />
         <View style={{ flex: 1 }}>
-          <Text variant="bodyBold">Harvest callout: {harvest.title}</Text>
+          <Text variant="bodyBold">Harvest: {harvest.title}</Text>
           <Text variant="small" tone="mutedText">
             {formatDay(harvest.iso)}
-            {harvest.going ? " · You're going" : " · Tap to respond"}
+            {harvest.going ? " · You're going" : " · Tap to sign up"}
           </Text>
         </View>
         <Icon name="arrowRight" size={18} color={t.mutedText} />

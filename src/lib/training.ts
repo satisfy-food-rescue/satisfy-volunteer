@@ -2,6 +2,7 @@ import type { TrainingModule, TrainingRecord } from "@/generated/prisma/client";
 import { dateToISO, daysBetween } from "./dates";
 import {
   DUE_SOON_DAYS,
+  HARVEST_ROLE,
   ROLE_LABEL,
   SHIFT_KIND_LABEL,
   parseRoles,
@@ -95,7 +96,10 @@ export function eligibilityFor(
       eligible: false,
       hasRole: false,
       blockers: [],
-      reason: `${SHIFT_KIND_LABEL[kind]} shifts need the ${ROLE_LABEL[kind as VolunteerRole].toLowerCase()} role. Ask the coordinator to add it to your profile.`,
+      reason:
+        kind === HARVEST_ROLE
+          ? "Join the harvest pool to sign up for harvests."
+          : `${SHIFT_KIND_LABEL[kind]} shifts need the ${ROLE_LABEL[kind as VolunteerRole].toLowerCase()} role. Ask the coordinator to add it to your profile.`,
     };
   }
   const blockers: Blocker[] = [];

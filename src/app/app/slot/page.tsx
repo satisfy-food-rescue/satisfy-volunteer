@@ -56,7 +56,7 @@ export default async function SlotPage() {
         <p className="mt-1 mb-4 text-sm text-muted-foreground">
           Holiday or sick? Tell us the dates and your shifts are released so someone else can cover. Your slot picks up again when you are back.
         </p>
-        <MarkAwayForm today={today} upcoming={upcoming.map((u) => ({ iso: u.iso, name: u.shift.template.name }))} />
+        <MarkAwayForm today={today} upcoming={upcoming.map((u) => ({ iso: u.iso, name: u.name }))} />
       </section>
 
       <section aria-labelledby="absences-heading">

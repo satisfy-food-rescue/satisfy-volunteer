@@ -5,6 +5,7 @@ export const VOLUNTEER_ROLES = [
   "WAREHOUSE",
   "DRIVERS_ASSISTANT",
   "VOLUNTEER_DRIVER",
+  "HARVEST",
 ] as const;
 export type VolunteerRole = (typeof VOLUNTEER_ROLES)[number];
 
@@ -12,13 +13,19 @@ export const ROLE_LABEL: Record<VolunteerRole, string> = {
   WAREHOUSE: "Warehouse sorting",
   DRIVERS_ASSISTANT: "Driver help",
   VOLUNTEER_DRIVER: "Volunteer driver",
+  HARVEST: "Harvest",
 };
 
 export const ROLE_SHORT: Record<VolunteerRole, string> = {
   WAREHOUSE: "Warehouse",
   DRIVERS_ASSISTANT: "Driver help",
   VOLUNTEER_DRIVER: "Driver",
+  HARVEST: "Harvest",
 };
+
+/** The harvest pool is the HARVEST role. Unlike the other roles, volunteers
+ *  join and leave it themselves. */
+export const HARVEST_ROLE: VolunteerRole = "HARVEST";
 
 export type ShiftKind = VolunteerRole;
 
@@ -26,7 +33,17 @@ export const SHIFT_KIND_LABEL: Record<ShiftKind, string> = {
   WAREHOUSE: "Warehouse sorting",
   DRIVERS_ASSISTANT: "Driver help",
   VOLUNTEER_DRIVER: "Volunteer driver",
+  HARVEST: "Harvest",
 };
+
+/** Ad hoc kinds are created one shift at a time, not from a weekly pattern.
+ *  They have no regulars, so an unfilled place is not a gap to cover: it is
+ *  just open, and stays out of the cover lists and last-minute pushes. */
+export function isAdHocKind(kind: ShiftKind): boolean {
+  return kind === "HARVEST";
+}
+
+export type ShiftStatus = "DRAFT" | "SCHEDULED" | "CANCELLED";
 
 export type AssignmentStatus =
   | "CONFIRMED"
@@ -46,7 +63,7 @@ export const ABSENCE_REASON_LABEL: Record<AbsenceReason, string> = {
 export type Delivery = "IN_PERSON" | "ONLINE_CONFIRM";
 export const DELIVERY_LABEL: Record<Delivery, string> = {
   IN_PERSON: "In-person session",
-  ONLINE_CONFIRM: "Online: read and confirm",
+  ONLINE_CONFIRM: "Online module",
 };
 
 export type TrainingStatus =
@@ -82,7 +99,10 @@ export type EmailKind =
   | "GAP_ESCALATION"
   | "ROLES_CHANGED"
   | "ROLE_CHANGE_REQUEST"
-  | "SHIFT_CANCELLED";
+  | "SHIFT_CANCELLED"
+  | "SHIFT_ADDED"
+  | "SHIFT_PUBLISHED"
+  | "ANNOUNCEMENT";
 
 export const EMAIL_KIND_LABEL: Record<EmailKind, string> = {
   TRAINING_DUE_SOON: "Training due soon",
@@ -101,9 +121,15 @@ export const EMAIL_KIND_LABEL: Record<EmailKind, string> = {
   ROLES_CHANGED: "Roles changed",
   ROLE_CHANGE_REQUEST: "Role change request",
   SHIFT_CANCELLED: "Shift cancelled",
+  SHIFT_ADDED: "Added to a shift",
+  SHIFT_PUBLISHED: "New shift",
+  ANNOUNCEMENT: "Announcement",
 };
 
 export type Channel = "EMAIL" | "PUSH";
+
+/** Who an announcement goes to. */
+export type AnnouncementAudience = "ALL" | "ROLES" | "SHIFT";
 
 export type ContactLogKind = "CALL" | "NOTE" | "PROFILE_UPDATED" | "ROLES_CHANGED" | "VISIT_BOOKED" | "ROLE_REQUEST" | "SHIFT_CANCELLED";
 export const CONTACT_LOG_LABEL: Record<ContactLogKind, string> = {
@@ -130,6 +156,10 @@ export function parseRoles(csv: string): VolunteerRole[] {
     .filter((s): s is VolunteerRole =>
       (VOLUNTEER_ROLES as readonly string[]).includes(s),
     );
+}
+
+export function inHarvestPool(v: { roles: string }): boolean {
+  return parseRoles(v.roles).includes(HARVEST_ROLE);
 }
 
 export function joinRoles(roles: readonly VolunteerRole[]): string {

@@ -126,7 +126,7 @@ function ModuleRow({ module: m, today }: { module: ModuleSummary; today: string 
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <Icon name={online ? "book" : "calendar"} size={15} color={t.greenText} />
           <Text variant="smallBold" tone="greenText">
-            {online ? "Read and confirm online" : "Book a session"}
+            {online ? "Complete it online" : "Book a session"}
           </Text>
           <Icon name="chevronRight" size={13} color={t.greenText} />
         </View>

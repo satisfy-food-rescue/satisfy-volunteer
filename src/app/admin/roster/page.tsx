@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarPlus } from "lucide-react";
+import { CalendarPlus, Plus } from "lucide-react";
 import { requireAdmin } from "@/lib/session";
 import { addDays, monthEnd, monthStart, todayISO, weekMonday } from "@/lib/dates";
 import { shiftsBetween } from "@/lib/roster";
@@ -17,7 +17,7 @@ export default async function RosterPage({ searchParams }: { searchParams: Promi
   const date = sp.date && /^\d{4}-\d{2}-\d{2}$/.test(sp.date) ? sp.date : today;
   const anchor = view === "week" ? weekMonday(date) : monthStart(date);
   const [from, to] = view === "week" ? [anchor, addDays(anchor, 4)] : [addDays(monthStart(anchor), -6), addDays(monthEnd(anchor), 6)];
-  const shifts = await shiftsBetween(from, to);
+  const shifts = await shiftsBetween(from, to, { drafts: true });
   const gaps = shifts.filter((s) => s.isGap && s.iso >= today);
 
   return (
@@ -26,7 +26,12 @@ export default async function RosterPage({ searchParams }: { searchParams: Promi
         eyebrow="Roster"
         title={view === "week" ? "This week's shifts" : "Month at a glance"}
         description={gaps.length ? `${gaps.length} shift${gaps.length === 1 ? " in view still needs" : "s in view still need"} cover.` : "Every shift in view has its minimum crew."}
-        actions={<Button size="lg" className="h-11" render={<Link href="/admin/roster/bulk" />}><CalendarPlus className="size-4" /> Bulk schedule</Button>}
+        actions={
+          <>
+            <Button variant="outline" size="lg" className="h-11 bg-card" render={<Link href="/admin/roster/new" />}><Plus className="size-4" /> New shift</Button>
+            <Button size="lg" className="h-11" render={<Link href="/admin/roster/bulk" />}><CalendarPlus className="size-4" /> Bulk schedule</Button>
+          </>
+        }
       />
       <RosterNav view={view} anchor={anchor} today={today} />
       {view === "week" ? <WeekView monday={anchor} shifts={shifts} today={today} /> : <MonthView anchor={anchor} shifts={shifts} today={today} />}

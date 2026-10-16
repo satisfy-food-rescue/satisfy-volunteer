@@ -4,9 +4,9 @@
 import type { Volunteer } from "@/generated/prisma/client";
 import type { Home, HomeAlert } from "@satisfy/core/api";
 import { db } from "./db";
-import { formatInstant, isoToDate } from "./dates";
-import { INITIAL_VISIT_CODE } from "./domain";
-import { coverableGaps, myUpcomingShifts, trainingContext } from "./volunteer-data";
+import { formatInstant } from "./dates";
+import { INITIAL_VISIT_CODE, inHarvestPool } from "./domain";
+import { coverableGaps, myUpcomingShifts, trainingContext, upcomingHarvests } from "./volunteer-data";
 
 type Summary = { overdue: number; notStarted: number; dueSoon: number };
 /** The volunteer's booked initial visit, if any. */
@@ -32,13 +32,11 @@ export function homeEmpty(s: Summary, needsVisit: boolean, visit: Visit): Home["
 }
 
 export async function loadHome(me: Volunteer, today: string) {
-  const [upcoming, training, coverable, callouts, visitRsvp] = await Promise.all([
+  const [upcoming, training, coverable, harvests, visitRsvp] = await Promise.all([
     myUpcomingShifts(me.id, today),
     trainingContext(me, today),
     coverableGaps(me.id, today),
-    me.inHarvestPool
-      ? db.harvestCallout.findMany({ where: { date: { gte: isoToDate(today) } }, include: { rsvps: { where: { volunteerId: me.id } } }, orderBy: { date: "asc" }, take: 1 })
-      : Promise.resolve([]),
+    inHarvestPool(me) ? upcomingHarvests(today) : Promise.resolve([]),
     db.sessionRsvp.findFirst({ where: { volunteerId: me.id, status: "GOING", session: { startsAt: { gte: new Date() }, module: { code: INITIAL_VISIT_CODE } } }, include: { session: true } }),
   ]);
   const visit = visitRsvp?.session ?? null;
@@ -47,7 +45,9 @@ export async function loadHome(me: Volunteer, today: string) {
     next: upcoming[0] ?? null,
     training,
     coverable,
-    callout: callouts[0] ?? null,
+    /** The next harvest, for pool members: their own if booked, else the
+     *  soonest with a place left. */
+    harvest: harvests.find((h) => h.confirmed.some((a) => a.volunteerId === me.id)) ?? harvests.find((h) => !h.isFull) ?? null,
     alert: homeAlert(training.summary, needsVisit, visit),
     empty: homeEmpty(training.summary, needsVisit, visit),
   };

@@ -4,7 +4,7 @@ import { Sprout, Zap } from "lucide-react";
 import { requireAdmin } from "@/lib/session";
 import { db } from "@/lib/db";
 import { todayISO, WEEKDAY_SHORT } from "@/lib/dates";
-import { ROLE_SHORT, fullName, parseRoles } from "@/lib/domain";
+import { ROLE_SHORT, fullName, inHarvestPool, parseRoles } from "@/lib/domain";
 import { moduleStatuses, trainingSummary } from "@/lib/training";
 import { PageHeader } from "@/components/shared/page-header";
 import { AvatarBadge } from "@/components/shared/avatar-badge";
@@ -27,8 +27,8 @@ export default async function VolunteersPage({ searchParams }: { searchParams: P
     .filter(({ v, summary }) => {
       if (q && !`${fullName(v)} ${v.suburb ?? ""} ${v.email}`.toLowerCase().includes(q)) return false;
       if (sp.type === "regular" && !v.isRegular) return false;
-      if (sp.type === "harvest" && !v.inHarvestPool) return false;
-      if (sp.type === "casual" && (v.isRegular || v.inHarvestPool)) return false;
+      if (sp.type === "harvest" && !inHarvestPool(v)) return false;
+      if (sp.type === "casual" && (v.isRegular || inHarvestPool(v))) return false;
       if (sp.role && !parseRoles(v.roles).includes(sp.role as never)) return false;
       if (sp.training === "COMPLETE" && !summary.compliant) return false;
       if (sp.training && sp.training !== "COMPLETE" && summary.worst !== sp.training && !(sp.training === "DUE_SOON" && summary.dueSoon > 0 && summary.compliant)) return false;
@@ -37,7 +37,7 @@ export default async function VolunteersPage({ searchParams }: { searchParams: P
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-6">
-      <PageHeader eyebrow="People" title="Volunteers" description={`${volunteers.filter((x) => x.status === "ACTIVE").length} active volunteers. ${volunteers.filter((x) => x.isRegular).length} hold a regular slot, ${volunteers.filter((x) => x.inHarvestPool).length} are in the harvest pool.`} />
+      <PageHeader eyebrow="People" title="Volunteers" description={`${volunteers.filter((x) => x.status === "ACTIVE").length} active volunteers. ${volunteers.filter((x) => x.isRegular).length} hold a regular slot, ${volunteers.filter((x) => inHarvestPool(x)).length} are in the harvest pool.`} />
       <Suspense><VolunteerFilters /></Suspense>
       <div className="overflow-hidden rounded-2xl border border-border bg-card">
         <table className="w-full text-sm">
@@ -70,7 +70,7 @@ export default async function VolunteersPage({ searchParams }: { searchParams: P
                 <td className="px-4 py-2.5"><TrainingChip status={summary.worst} size="sm" /></td>
                 <td className="hidden px-4 py-2.5 text-right sm:table-cell">
                   <span className="inline-flex items-center gap-2 text-muted-foreground">
-                    {v.inHarvestPool && <Sprout className="size-4" aria-label="Harvest pool" />}
+                    {inHarvestPool(v) && <Sprout className="size-4" aria-label="Harvest pool" />}
                     {v.lastMinuteOk && <Zap className="size-4" aria-label="Last-minute available" />}
                   </span>
                 </td>

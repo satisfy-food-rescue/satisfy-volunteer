@@ -24,6 +24,6 @@ export const GET = mobileHandler(async (me) => {
         removable: startISO >= today,
       };
     }),
-    upcoming: upcoming.map((u) => ({ iso: u.iso, name: u.shift.template.name })),
+    upcoming: upcoming.map((u) => ({ iso: u.iso, name: u.name })),
   });
 });

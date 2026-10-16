@@ -34,6 +34,16 @@ export async function myUpcomingShifts(volunteerId: string, today = todayISO(), 
   return shifts.map(decorateShift);
 }
 
+/** Published harvests from today on, soonest first. */
+export async function upcomingHarvests(today = todayISO()): Promise<ShiftView[]> {
+  const shifts = await db.shift.findMany({
+    where: { date: { gte: isoToDate(today) }, status: "SCHEDULED", template: { kind: "HARVEST" } },
+    include: shiftInclude,
+    orderBy: [{ date: "asc" }, { startTime: "asc" }],
+  });
+  return shifts.map(decorateShift);
+}
+
 export async function myRegularSlots(volunteerId: string) {
   return db.regularSlot.findMany({
     where: { volunteerId },

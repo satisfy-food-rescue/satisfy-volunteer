@@ -93,7 +93,6 @@ export const actions = {
   completeModule: (moduleId: string) => api<MutationOk>(`/training/modules/${encodeURIComponent(moduleId)}/complete`, { method: "POST" }),
   rsvpSession: ({ id, going }: { id: string; going: boolean }) => api<MutationOk>(`/training/sessions/${encodeURIComponent(id)}/rsvp`, { method: "POST", body: { going } }),
   setHarvestPool: (inPool: boolean) => api<MutationOk>("/harvest/pool", { method: "PUT", body: { inPool } }),
-  rsvpHarvest: ({ id, going }: { id: string; going: boolean }) => api<MutationOk>(`/harvest/callouts/${encodeURIComponent(id)}/rsvp`, { method: "POST", body: { going } }),
   updateProfile: (input: ProfileInput) => api<MutationOk>("/profile", { method: "PATCH", body: input }),
   requestRoleChange: (message: string) => api<MutationOk>("/profile/role-request", { method: "POST", body: { message } }),
 };

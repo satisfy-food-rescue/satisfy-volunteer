@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { ArrowDown, ArrowRight, ArrowUp, BellRing, Clock, Mail, MapPin, Smartphone, Users } from "lucide-react";
+import { ArrowDown, ArrowRight, ArrowUp, BellRing, Clock, Mail, MapPin, PlayCircle, Smartphone, Users } from "lucide-react";
 import { requireAdmin } from "@/lib/session";
 import { db } from "@/lib/db";
 import { formatInstant, formatInstantTime, todayISO, formatDate } from "@/lib/dates";
@@ -50,7 +50,7 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
   const { tab } = sp;
   const today = todayISO();
   const [modules, volunteers, sessions, reminderEmails] = await Promise.all([
-    db.trainingModule.findMany({ orderBy: { order: "asc" } }),
+    db.trainingModule.findMany({ orderBy: { order: "asc" }, include: { links: { orderBy: { order: "asc" } } } }),
     db.volunteer.findMany({ where: { status: "ACTIVE", role: "VOLUNTEER" }, include: { trainingRecords: true } }),
     db.trainingSession.findMany({ include: { module: true, rsvps: { include: { volunteer: true } } }, orderBy: { startsAt: "asc" } }),
     db.email.findMany({ where: { kind: { in: ["TRAINING_DUE_SOON", "TRAINING_OVERDUE", "LAST_MINUTE_CALLOUT", "GAP_ESCALATION"] } }, include: { volunteer: true }, orderBy: { createdAt: "desc" }, take: 8 }),
@@ -106,6 +106,7 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
         </TabsList>
 
         <TabsContent value="modules" className="flex flex-col gap-3">
+          <ModuleEditor />
           {moduleStats.map(({ m, required, complete, dueSoon, overdue, notStarted }) => (
             <article key={m.id} className="rounded-2xl border border-border bg-card p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -116,6 +117,7 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
                     <span><span className="font-semibold text-ink">{m.validityMonths ? `Every ${m.validityMonths} months` : "Once"}</span></span>
                     <span>{DELIVERY_LABEL[m.delivery as Delivery]}</span>
                     <span>Required for {parseRoles(m.requiredRoles).map((r) => ROLE_SHORT[r].toLowerCase()).join(", ")}</span>
+                    {m.links.length > 0 && <span className="inline-flex items-center gap-1"><PlayCircle className="size-4 text-sky" aria-hidden />{m.links.length} {m.links.length === 1 ? "video or link" : "videos or links"}</span>}
                     {m.mandatoryBeforeFirstShift && <span className="font-semibold text-teal">Mandatory before first shift</span>}
                   </p>
                 </div>
@@ -136,7 +138,19 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
                 </div>
               </div>
               <div className="mt-3">
-                <ModuleEditor module={{ id: m.id, name: m.name, validityMonths: m.validityMonths, requiredRoles: parseRoles(m.requiredRoles), mandatoryBeforeFirstShift: m.mandatoryBeforeFirstShift, delivery: m.delivery as "IN_PERSON" | "ONLINE_CONFIRM" }} />
+                <ModuleEditor
+                  module={{
+                    id: m.id,
+                    name: m.name,
+                    description: m.description,
+                    validityMonths: m.validityMonths,
+                    requiredRoles: parseRoles(m.requiredRoles),
+                    mandatoryBeforeFirstShift: m.mandatoryBeforeFirstShift,
+                    delivery: m.delivery as Delivery,
+                    content: m.content ?? "",
+                    links: m.links.map((l) => ({ label: l.label, url: l.url })),
+                  }}
+                />
               </div>
             </article>
           ))}

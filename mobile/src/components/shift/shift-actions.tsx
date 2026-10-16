@@ -73,7 +73,9 @@ export function ShiftActions({ shift, compact = false }: { shift: ShiftSummary; 
               {a.reason}
             </Text>
           </View>
-          {a.fix === "role" ? (
+          {a.fix === "harvestPool" ? (
+            <Button label="Join the harvest pool" variant="outline" block onPress={() => router.push("/harvest")} />
+          ) : a.fix === "role" ? (
             <Button label="Ask to change my roles" variant="outline" block onPress={() => router.push("/role-request")} />
           ) : (
             <Button
@@ -94,7 +96,7 @@ export function ShiftActions({ shift, compact = false }: { shift: ShiftSummary; 
     case "BOOK":
       return (
         <Button
-          label={a.cover ? "I can cover this" : "Book this shift"}
+          label={a.cover ? "I can cover this" : shift.kind === "HARVEST" ? "Sign me up" : "Book this shift"}
           icon={a.cover ? "cover" : undefined}
           variant={a.cover ? "cover" : "primary"}
           block
