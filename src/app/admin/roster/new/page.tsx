@@ -18,7 +18,7 @@ export default async function NewShiftPage({ searchParams }: { searchParams: Pro
   const harvest = t.kind === "HARVEST";
   const back = sp.from === "harvests" ? { href: "/admin/harvests", label: "Harvests" } : { href: "/admin/roster", label: "Roster" };
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-6">
+    <div className="mx-auto flex max-w-6xl flex-col gap-8">
       <Link href={back.href} className="-ml-1 inline-flex min-h-11 items-center gap-1 self-start pr-2 text-sm font-semibold text-muted-foreground hover:text-ink">
         <ChevronLeft className="size-5" aria-hidden /> {back.label}
       </Link>

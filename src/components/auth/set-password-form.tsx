@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import { KeyRound, Loader2 } from "lucide-react";
 import { setPasswordWithToken, type SetPasswordState } from "@/app/reset-password/actions";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,12 @@ import { PasswordInput } from "./password-input";
 export function SetPasswordForm({ token, email, submitLabel }: { token: string; email: string; submitLabel: string }) {
   const [state, action, pending] = useActionState<SetPasswordState, FormData>(setPasswordWithToken, {});
   const fe = state.fieldErrors ?? {};
+  const passwordRef = useRef<HTMLInputElement>(null);
+  // The pending button is disabled while the form submits, which drops focus.
+  // Both fields are cleared after a refusal, so start again at the first.
+  useEffect(() => {
+    if (state.error || state.fieldErrors) passwordRef.current?.focus();
+  }, [state]);
   return (
     <form action={action} className="flex flex-col gap-4">
       <input type="hidden" name="token" value={token} />
@@ -20,7 +26,7 @@ export function SetPasswordForm({ token, email, submitLabel }: { token: string; 
       {state.error && <FormNotice tone="error">{state.error}</FormNotice>}
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="password" className="text-base">New password</Label>
-        <PasswordInput id="password" name="password" autoComplete="new-password" required minLength={PASSWORD_MIN} aria-invalid={Boolean(fe.password) || undefined} aria-describedby="password-help" />
+        <PasswordInput ref={passwordRef} id="password" name="password" autoComplete="new-password" required minLength={PASSWORD_MIN} aria-invalid={Boolean(fe.password) || undefined} aria-describedby="password-help" />
         <p id="password-help" className={fe.password ? "text-sm text-status-bad" : "text-sm text-muted-foreground"}>
           {fe.password ?? `At least ${PASSWORD_MIN} characters. A short phrase you will remember works well.`}
         </p>

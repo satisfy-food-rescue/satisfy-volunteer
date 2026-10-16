@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2, Send } from "lucide-react";
@@ -16,9 +16,26 @@ export function RoleChangeRequest() {
   const [message, setMessage] = useState("");
   const [pending, run] = useTransition();
   const router = useRouter();
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  // Set when the form closes, so focus goes back to the button that opened it
+  // rather than falling to the top of the page.
+  const restoreFocus = useRef(false);
+
+  useEffect(() => {
+    if (!open && restoreFocus.current) {
+      restoreFocus.current = false;
+      triggerRef.current?.focus();
+    }
+  }, [open]);
+
+  const close = () => {
+    restoreFocus.current = true;
+    setOpen(false);
+  };
+
   if (!open) {
     return (
-      <Button variant="outline" className="h-11 self-start text-base" onClick={() => setOpen(true)}>
+      <Button ref={triggerRef} variant="outline" className="h-11 self-start text-base" onClick={() => setOpen(true)}>
         Ask to change my roles
       </Button>
     );
@@ -30,17 +47,21 @@ export function RoleChangeRequest() {
         e.preventDefault();
         run(async () => {
           const r = await requestRoleChange(message);
-          if (r.ok) { toast.success(r.message); setMessage(""); setOpen(false); router.refresh(); } else toast.error(r.error);
+          if (r.ok) { toast.success(r.message); setMessage(""); close(); router.refresh(); } else toast.error(r.error);
         });
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Escape" && !pending) close();
       }}
     >
       <Label htmlFor="role-request" className="text-base">What would you like to change?</Label>
-      <Textarea id="role-request" rows={3} value={message} onChange={(e) => setMessage(e.target.value)} className="text-base" placeholder="e.g. I'd like to try driver help on Fridays" />
+      {/* Opened by an explicit tap, so moving focus into the field is expected. */}
+      <Textarea id="role-request" autoFocus rows={3} value={message} onChange={(e) => setMessage(e.target.value)} className="text-base" placeholder="e.g. I'd like to try driver help on Fridays" />
       <div className="flex gap-2">
         <Button type="submit" className="h-11 flex-1 text-base" disabled={pending || message.trim().length < 3}>
           {pending ? <Loader2 className="size-5 animate-spin" aria-hidden /> : <Send className="size-5" aria-hidden />} Send request
         </Button>
-        <Button type="button" variant="ghost" className="h-11 px-4 text-base" onClick={() => setOpen(false)}>Cancel</Button>
+        <Button type="button" variant="ghost" className="h-11 px-4 text-base" disabled={pending} onClick={close}>Cancel</Button>
       </div>
     </form>
   );

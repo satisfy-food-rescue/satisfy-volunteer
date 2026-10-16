@@ -6,9 +6,9 @@ Use the demo deployment, or run it locally with `DEMO_MODE=1` in `.env` (see the
 
 Sign in as **Phillipa**.
 
-- Dashboard: point at the four tiles. "Gaps, next 14 days" is the pain point from the discovery call: who is away and what is uncovered.
-- Scroll to **Coverage gaps**: two seeded absences (Brian on holiday, Heather off sick) have released their shifts. The line under each gap says exactly why it exists.
-- **Training attention** on the right: Tony's Manual Handling is overdue, several others are due within 30 days.
+- **Today**: the coverage board opens the page. This week and next, every shift is a block: green is covered, orange needs cover, today is outlined. This is the pain point from the discovery call, answered at a glance: who is away and what is uncovered. Any block opens its shift.
+- Scroll to **Gaps to fill**: two seeded absences (Brian on holiday, Heather off sick) have released their shifts. Each gap says exactly why it exists.
+- **Training** on the right: Tony's Manual Handling is overdue, several others are due within 30 days.
 - Click **Roster** in the sidebar: week view with each day's shifts, anything short tinted orange with a gap count. Flip to **Month** to show the whole picture. Mention **Bulk schedule** (preview before anything is created, regulars land on their weekday).
 
 ## 2. The training gate (Tony) - 3 min
@@ -24,8 +24,8 @@ Switch persona (sidebar footer icon) and sign in as **Tony Ratana**. Narrow the 
 
 Still as Tony:
 
-- Tap **Me**, then **My regular slot and absences** (or Home > Mark me away). Pick next week, reason Holiday. The preview says which of his regular Wednesday route shifts will be released. Submit.
-- Switch persona back to **Phillipa**. The dashboard now shows a new gap: "Driver help: Rangiora / Kaiapoi ... Tony Ratana away (holiday)". Click it.
+- On Home, under his next shift, tap **Can't make one? Mark me away** (or Me, then **My regular slot and absences**). Pick next week, reason Holiday. The preview says which of his regular Wednesday route shifts will be released. Submit.
+- Switch persona back to **Phillipa**. The coverage board turns that day orange and **Gaps to fill** shows the new gap: "Driver help: Rangiora / Kaiapoi ... Tony Ratana away (holiday)". Click it.
 - On the shift page, the **Find cover** panel lists only volunteers who hold the driver help role, are training-current, are not away and are free that day. The **Last-minute available** group is people who opted in to last-minute cover. Click **Add** on one (Steve Kirkwood is the backup driver). The chip flips to Covered.
 - For a gap close to the start, the panel also says who already got a last-minute push notification. The seed always has one: a route shift on the next working day that someone called in sick for this morning (Roster, tinted orange).
 - **Absences** in the sidebar shows the same story as a calendar: bars for who is away, with each released shift marked open or covered.

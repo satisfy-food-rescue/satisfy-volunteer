@@ -65,7 +65,7 @@ export function OnlineModule({ moduleId, moduleName, paragraphs, links }: { modu
           <ol className="flex flex-col gap-3">
             {paragraphs.map((p, i) => (
               <li key={i} className="flex gap-3 rounded-2xl border border-border bg-card p-4">
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-teal-tint font-display font-bold text-teal-deep">{i + 1}</span>
+                <span aria-hidden className="flex size-8 shrink-0 items-center justify-center rounded-full bg-teal-tint font-display font-bold text-teal-deep">{i + 1}</span>
                 <p className="text-base leading-relaxed text-ink">{p}</p>
               </li>
             ))}
@@ -123,7 +123,7 @@ function ConfirmModuleForm({ moduleId, moduleName, gate }: { moduleId: string; m
   return (
     <div className="flex flex-col gap-4 rounded-2xl border border-teal/25 bg-teal-tint-soft p-5">
       {gate.steps.length > 0 && (
-        <ul className="flex flex-col gap-1.5" aria-label="Before you confirm">
+        <ul className="flex flex-col gap-1.5" aria-label="Before you confirm" aria-live="polite">
           {gate.steps.map((s) => (
             <li key={s.key} className={cn("flex items-center gap-2 text-sm font-semibold", s.done ? "text-green-text" : "text-ink-soft")}>
               {s.done ? <CheckCircle2 className="size-5 shrink-0" aria-hidden /> : <Circle className="size-5 shrink-0 text-muted-foreground" aria-hidden />}
@@ -133,15 +133,20 @@ function ConfirmModuleForm({ moduleId, moduleName, gate }: { moduleId: string; m
           ))}
         </ul>
       )}
-      <label className={cn("flex items-start gap-3 rounded-xl border bg-white p-4 transition-colors has-focus-visible:outline-3 has-focus-visible:outline-ring", locked ? "cursor-not-allowed opacity-60" : "cursor-pointer", checked ? "border-teal" : "border-border")}>
+      <label className={cn("flex items-start gap-3 rounded-xl border bg-card p-4 transition-colors has-focus-visible:outline-3 has-focus-visible:outline-ring", locked ? "cursor-not-allowed opacity-60" : "cursor-pointer", checked ? "border-teal" : "border-border")}>
         <input type="checkbox" className="mt-1 size-5 shrink-0 accent-[var(--brand-teal)]" disabled={locked} checked={checked && !locked} onChange={(e) => setChecked(e.target.checked)} aria-describedby={locked ? `gate-hint-${moduleId}` : undefined} />
         <span className="text-base leading-snug text-ink">I have read and understood {moduleName} and will follow it on every shift.</span>
       </label>
-      {locked && (
-        <p id={`gate-hint-${moduleId}`} className="-mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
-          <Lock className="size-4 shrink-0" aria-hidden /> Unlocks once the steps above are done.
-        </p>
-      )}
+      {/* Always rendered so the change from locked to ready is announced. */}
+      <div aria-live="polite" className={locked ? "-mt-1" : "sr-only"}>
+        {locked ? (
+          <p id={`gate-hint-${moduleId}`} className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            <Lock className="size-4 shrink-0" aria-hidden /> Unlocks once the steps above are done.
+          </p>
+        ) : (
+          <p>Steps done. You can now confirm.</p>
+        )}
+      </div>
       <Button
         size="lg"
         className="h-12 text-base"

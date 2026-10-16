@@ -1,12 +1,14 @@
-import { CalendarCheck } from "lucide-react";
+import { CalendarCheck, CalendarOff } from "lucide-react";
 import { requireVolunteer } from "@/lib/session";
 import { formatDay, formatTimeRange, todayISO, dateToISO, WEEKDAY_LONG } from "@/lib/dates";
 import { myAbsences, myRegularSlots, myUpcomingShifts } from "@/lib/volunteer-data";
 import { ABSENCE_REASON_LABEL } from "@/lib/domain";
 import { MarkAwayForm } from "@/components/app/mark-away-form";
 import { RemoveAbsenceButton } from "@/components/app/remove-absence-button";
+import { AppPageHeader } from "@/components/app/app-page-header";
 import { Chip } from "@/components/shared/status-chip";
 import { EmptyState } from "@/components/shared/empty-state";
+import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
 export const metadata = { title: "My regular slot" };
@@ -21,24 +23,21 @@ export default async function SlotPage() {
   ]);
 
   return (
-    <div className="flex flex-col gap-6 px-5 pb-6 pt-5">
-      <div>
-        <p className="eyebrow">Recurring commitment</p>
-        <h1 className="mt-1 text-3xl text-ink">My regular slot</h1>
-      </div>
+    <div className="flex flex-col gap-6 px-5 pb-6 pt-3">
+      <AppPageHeader back={{ href: "/app/profile", label: "Me" }} eyebrow="Recurring commitment" title="My regular slot" />
 
       {slots.length === 0 ? (
         <EmptyState
           icon={CalendarCheck}
           title="No regular slot yet"
           description="Most volunteers hold a weekly slot. Once your training is done, talk to the coordinator or book a few one-off shifts to find a morning that suits."
-          action={<Link href="/app/shifts" className="font-semibold text-teal hover:underline">Browse shifts</Link>}
+          action={<Button variant="outline" className="h-11" render={<Link href="/app/shifts" />}>Browse shifts</Button>}
         />
       ) : (
         <ul className="flex flex-col gap-2.5">
           {slots.map((s) => (
             <li key={s.id} className="flex items-center gap-4 rounded-2xl border border-teal/25 bg-teal-tint-soft p-4">
-              <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-white text-teal">
+              <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-card text-teal">
                 <CalendarCheck className="size-6" aria-hidden />
               </span>
               <span className="min-w-0">
@@ -62,7 +61,7 @@ export default async function SlotPage() {
       <section aria-labelledby="absences-heading">
         <h2 id="absences-heading" className="mb-2 text-xl text-ink">Upcoming absences</h2>
         {absences.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">None planned. Ka pai.</p>
+          <EmptyState icon={CalendarOff} title="None planned" description="Ka pai." className="py-6" />
         ) : (
           <ul className="flex flex-col gap-2.5">
             {absences.map((a) => {
@@ -72,7 +71,7 @@ export default async function SlotPage() {
               return (
                 <li key={a.id} className="rounded-2xl border border-border bg-card p-4">
                   <div className="flex items-start justify-between gap-3">
-                    <div>
+                    <div className="min-w-0 break-words">
                       <p className="font-bold text-ink">{s === e ? formatDay(s) : `${formatDay(s)} to ${formatDay(e)}`}</p>
                       <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                         <Chip tone="neutral" size="sm">{ABSENCE_REASON_LABEL[a.reason]}</Chip>

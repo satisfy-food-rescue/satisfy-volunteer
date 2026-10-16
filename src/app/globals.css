@@ -29,8 +29,6 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *));
-
 @theme inline {
   /* Fonts (loaded via next/font in layout.tsx, which sets these variables) */
   --font-sans: var(--font-brand);
@@ -65,8 +63,6 @@
   --color-chart-5: var(--chart-5);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
   --color-sidebar-accent: var(--sidebar-accent);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
@@ -93,7 +89,6 @@
   --color-app-backdrop: var(--app-backdrop);
   --color-ink: var(--ink);
   --color-ink-soft: var(--ink-soft);
-  --color-canvas: var(--canvas);
 
   /* Status tokens: never used alone, always with an icon and a label */
   --color-status-good: var(--status-good);
@@ -106,6 +101,9 @@
   --color-status-neutral-bg: var(--status-neutral-bg);
   --color-status-info: var(--status-info);
   --color-status-info-bg: var(--status-info-bg);
+
+  /* Lifted surfaces that sit over the teal band (home hero, coverage board). */
+  --shadow-raised: 0 12px 32px -16px rgb(16 48 58 / 0.45);
 
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
@@ -197,37 +195,10 @@
   /* Admin sidebar: the blue/teal block from the brand sheet, white logo. */
   --sidebar: var(--brand-teal);
   --sidebar-foreground: rgb(255 255 255 / 86%);
-  --sidebar-primary: #ffffff;
-  --sidebar-primary-foreground: var(--brand-teal);
   --sidebar-accent: rgb(255 255 255 / 10%);
   --sidebar-accent-foreground: #ffffff;
   --sidebar-border: rgb(255 255 255 / 14%);
   --sidebar-ring: var(--teal-on);
-}
-
-/* Dark mode is not part of the demo scope but the tokens exist so a future
-   re-skin has somewhere to put them. */
-.dark {
-  --background: #0b1f26;
-  --foreground: #eef5f7;
-  --card: #122a33;
-  --card-foreground: #eef5f7;
-  --popover: #122a33;
-  --popover-foreground: #eef5f7;
-  --primary: var(--brand-light-blue);
-  --primary-foreground: #0b1f26;
-  --primary-hover: #5aa9b5;
-  --secondary: #1a3640;
-  --secondary-foreground: #eef5f7;
-  --muted: #1a3640;
-  --muted-foreground: #9fb6bd;
-  --accent: #1a3640;
-  --accent-foreground: #eef5f7;
-  --destructive: #f87171;
-  --border: rgb(255 255 255 / 12%);
-  --input: rgb(255 255 255 / 16%);
-  --ring: var(--brand-light-blue);
-  --sidebar: #0b4a5b;
 }
 
 @layer base {
@@ -236,7 +207,8 @@
   }
   html {
     @apply font-sans;
-    font-size: 16px;
+    /* 100% rather than a fixed size, so the browser text size setting applies. */
+    font-size: 100%;
     overflow-x: clip;
     -webkit-tap-highlight-color: transparent;
   }
@@ -258,6 +230,10 @@
   :focus-visible {
     outline: 3px solid var(--ring);
     outline-offset: 2px;
+  }
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
   }
 }
 
@@ -284,6 +260,8 @@
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

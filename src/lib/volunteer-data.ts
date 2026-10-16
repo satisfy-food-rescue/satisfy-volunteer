@@ -1,6 +1,6 @@
 import type { Volunteer } from "@/generated/prisma/client";
 import { db } from "./db";
-import { addDays, isoToDate, todayISO } from "./dates";
+import { addDays, durationHours, isoToDate, todayISO } from "./dates";
 import { moduleStatuses, trainingSummary, type ModuleStatus } from "./training";
 import { decorateShift, gapsBetween, shiftInclude, type ShiftView } from "./roster";
 
@@ -58,4 +58,17 @@ export async function myAbsences(volunteerId: string, today = todayISO()) {
     include: { releasedAssignments: { include: { shift: { include: { template: true } } } } },
     orderBy: { startDate: "asc" },
   });
+}
+
+/** What the volunteer has given over the past year, from marked attendance:
+ *  the recognition panel on the home screen. */
+export async function myYear(volunteerId: string, today = todayISO()) {
+  const attended = await db.assignment.findMany({
+    where: { volunteerId, status: "ATTENDED", shift: { date: { gte: isoToDate(addDays(today, -365)), lt: isoToDate(today) } } },
+    include: { shift: { select: { startTime: true, endTime: true } } },
+  });
+  return {
+    shifts: attended.length,
+    hours: Math.round(attended.reduce((n, a) => n + durationHours(a.shift.startTime, a.shift.endTime), 0)),
+  };
 }

@@ -1,10 +1,13 @@
 import Link from "next/link";
-import { AlertTriangle, ArrowRight, CalendarDays, CalendarOff, GraduationCap, HandHelping, MapPin } from "lucide-react";
+import { AlertTriangle, ArrowRight, CalendarOff, ChevronRight, GraduationCap, HandHelping, MapPin, Repeat } from "lucide-react";
 import { requireVolunteer } from "@/lib/session";
-import { formatDay, formatTimeRange, relativeDays, todayISO, formatDayLong } from "@/lib/dates";
+import { WEEKDAY_SHORT, formatDay, formatTimeRange, isoToDate, relativeDays, todayISO, formatDayLong, weekdayOf } from "@/lib/dates";
 import { loadHome } from "@/lib/home";
 import { IMPACT, compactCount, formatCount } from "@/lib/brand";
+import type { ShiftView } from "@/lib/roster";
 import { AvatarBadge } from "@/components/shared/avatar-badge";
+import { Chip } from "@/components/shared/status-chip";
+import { kindTileClass } from "@/components/app/shift-card";
 import { FoodIcon } from "@/components/brand/logo";
 import { APP_COLUMN_SIZES, Photo, shiftPhoto } from "@/components/shared/photo";
 import { Button } from "@/components/ui/button";
@@ -14,13 +17,38 @@ export const metadata = { title: "Home" };
 
 function greeting() {
   const hour = Number(new Intl.DateTimeFormat("en-NZ", { timeZone: "Pacific/Auckland", hour: "numeric", hourCycle: "h23" }).format(new Date()));
-  return hour < 12 ? "Mōrena" : hour < 17 ? "Kia ora" : "Kia ora";
+  return hour < 12 ? "Mōrena" : "Kia ora";
+}
+
+
+/** One row of the home agenda: the shifts booked after the next one. */
+function AgendaRow({ view, meId }: { view: ShiftView; meId: string }) {
+  const mine = view.confirmed.find((a) => a.volunteerId === meId);
+  return (
+    <li>
+      <Link href={`/app/shifts/${view.shift.id}`} className="group flex items-center gap-4 px-4 py-3 transition-colors hover:bg-muted">
+        <span className={cn("flex size-14 shrink-0 flex-col items-center justify-center rounded-xl leading-none", kindTileClass(view.kind))}>
+          <span className="text-xs font-bold uppercase">{WEEKDAY_SHORT[weekdayOf(view.iso)]}</span>
+          <span className="mt-1 font-display text-2xl font-bold tabular">{isoToDate(view.iso).getUTCDate()}</span>
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-bold leading-snug text-ink">{view.name}</span>
+          <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground tabular">
+            {formatTimeRange(view.shift.startTime, view.shift.endTime)}
+            {mine?.source === "REGULAR" && <Chip tone="neutral" icon={Repeat} size="sm">Regular</Chip>}
+            {mine?.source === "COVER" && <Chip tone="warn" icon={HandHelping} size="sm">Covering</Chip>}
+          </span>
+        </span>
+        <ChevronRight className="size-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" aria-hidden />
+      </Link>
+    </li>
+  );
 }
 
 export default async function HomePage() {
   const me = await requireVolunteer();
   const today = todayISO();
-  const { next, coverable, harvest, alert, empty } = await loadHome(me, today);
+  const { next, later, year, coverable, harvest, alert, empty } = await loadHome(me, today);
   const others = next ? next.confirmed.filter((a) => a.volunteerId !== me.id) : [];
   const AlertIcon = alert?.tone === "info" ? GraduationCap : AlertTriangle;
 
@@ -38,7 +66,7 @@ export default async function HomePage() {
           {next ? (
             <Link
               href={`/app/shifts/${next.shift.id}`}
-              className="group block overflow-hidden rounded-2xl bg-card shadow-[0_12px_32px_-16px_rgb(16_48_58/0.45)] transition-shadow hover:ring-2 hover:ring-teal/50"
+              className="group block overflow-hidden rounded-2xl bg-card shadow-raised transition-shadow hover:ring-2 hover:ring-teal/50"
             >
               <Photo photo={shiftPhoto(next.kind)} sizes={APP_COLUMN_SIZES} decorative preload className="h-36" />
               <span className="block p-5">
@@ -59,9 +87,9 @@ export default async function HomePage() {
                 </span>
                 {others.length > 0 && (
                   <span className="mt-3 flex items-center gap-2">
-                    <span className="flex -space-x-1.5">
+                    <span className="flex -space-x-1">
                       {others.slice(0, 5).map((a) => (
-                        <AvatarBadge key={a.id} person={a.volunteer} size="sm" className="ring-2 ring-teal-tint-soft" />
+                        <AvatarBadge key={a.id} person={a.volunteer} size="sm" className="ring-2 ring-card" />
                       ))}
                     </span>
                     <span className="text-sm text-ink-soft">
@@ -73,7 +101,7 @@ export default async function HomePage() {
               </span>
             </Link>
           ) : (
-            <div className="rounded-2xl bg-card p-5 shadow-[0_12px_32px_-16px_rgb(16_48_58/0.45)] ring-1 ring-border">
+            <div className="rounded-2xl bg-card p-5 shadow-raised ring-1 ring-border">
               <p id="next-shift" className="eyebrow">Next shift</p>
               <p className="mt-1.5 text-xl font-bold text-ink">No shifts booked yet</p>
               <p className="mt-1 text-sm text-muted-foreground">
@@ -105,24 +133,30 @@ export default async function HomePage() {
           </Link>
         )}
 
-        <section aria-label="Quick actions" className="grid grid-cols-3 gap-2.5">
-          {[
-            { href: "/app/shifts", label: "Book a shift", icon: CalendarDays },
-            { href: "/app/slot", label: "Mark me away", icon: CalendarOff },
-            { href: "/app/training", label: "My training", icon: GraduationCap },
-          ].map((q) => (
-            <Link
-              key={q.href}
-              href={q.href}
-              className="group flex min-h-[6.25rem] flex-col items-center justify-start gap-2.5 rounded-2xl border border-border bg-card px-2 pb-3 pt-4 text-center text-sm font-bold leading-tight text-ink shadow-sm transition-colors hover:border-teal/60"
-            >
-              <span className="flex size-11 items-center justify-center rounded-full bg-teal-tint text-teal transition-colors group-hover:bg-teal group-hover:text-white">
-                <q.icon className="size-5" aria-hidden />
-              </span>
-              {q.label}
-            </Link>
-          ))}
-        </section>
+        {next && (
+          <section aria-labelledby="later-h">
+            <h2 id="later-h" className="mb-2.5 text-xl text-ink">
+              {later.length > 0 ? "After that" : "Your shifts"}
+            </h2>
+            <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+              {later.map((view) => (
+                <AgendaRow key={view.shift.id} view={view} meId={me.id} />
+              ))}
+              <li>
+                <Link href="/app/slot" className="group flex items-center gap-4 px-4 py-3 text-teal transition-colors hover:bg-teal-tint-soft">
+                  <span className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-teal-tint">
+                    <CalendarOff className="size-6" aria-hidden />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-bold">Can&apos;t make one? Mark me away</span>
+                    <span className="block text-sm text-muted-foreground">Your shifts go to someone who can cover.</span>
+                  </span>
+                  <ChevronRight className="size-5 shrink-0 transition-transform group-hover:translate-x-0.5" aria-hidden />
+                </Link>
+              </li>
+            </ul>
+          </section>
+        )}
 
         {coverable.length > 0 && (
           <Link href="/app/gaps" className="flex items-center gap-3 rounded-2xl border border-orange/60 bg-card p-4 shadow-sm transition-colors hover:border-orange">
@@ -155,23 +189,45 @@ export default async function HomePage() {
           </Link>
         )}
 
-        <section aria-label="Impact" className="rounded-2xl bg-teal p-5 text-white">
-          <p className="font-display text-xs font-bold uppercase tracking-[0.14em] text-teal-on">Together, over {IMPACT.yearsRunning} years</p>
-          <dl className="mt-4 grid grid-cols-3 gap-3">
-            {(
-              [
-                ["broccoli", compactCount(IMPACT.kgRescued), "kg of kai rescued"],
-                ["carrot", compactCount(IMPACT.meals), "meals shared"],
-                ["apple", `${formatCount(IMPACT.co2Tonnes)} t`, `CO2e avoided in ${IMPACT.co2Period}`],
-              ] as const
-            ).map(([icon, n, l]) => (
-              <div key={l} className="flex flex-col">
-                <FoodIcon kind={icon} className="size-9 rounded-full ring-2 ring-white/80" />
-                <dd className="mt-2.5 font-display text-2xl font-bold text-white tabular">{n}</dd>
-                <dt className="mt-0.5 text-xs leading-snug text-white/80">{l}</dt>
-              </div>
-            ))}
-          </dl>
+        <section aria-labelledby="mahi-h" className="overflow-hidden rounded-3xl bg-teal text-white">
+          <div className="p-5 pb-6">
+            <h2 id="mahi-h" className="font-display text-xs font-bold uppercase tracking-[0.14em] text-teal-on">Your mahi, past 12 months</h2>
+            {year.shifts > 0 ? (
+              <>
+                <p className="mt-3 flex items-end gap-5">
+                  <span className="flex flex-col">
+                    <span className="font-display text-6xl font-bold leading-none tabular">{year.hours}</span>
+                    <span className="mt-1.5 text-sm font-semibold text-white/85">hours given</span>
+                  </span>
+                  <span className="flex flex-col">
+                    <span className="font-display text-6xl font-bold leading-none text-teal-on tabular">{year.shifts}</span>
+                    <span className="mt-1.5 text-sm font-semibold text-white/85">{year.shifts === 1 ? "shift" : "shifts"}</span>
+                  </span>
+                </p>
+                <p className="mt-4 text-white/90">Ngā mihi nui, {me.firstName}. Every one of those mornings put kai on someone&apos;s table.</p>
+              </>
+            ) : (
+              <p className="mt-3 text-lg text-white/90">Your hours show up here after your first shift. Ngā mihi for joining us.</p>
+            )}
+          </div>
+          <div className="border-t border-white/15 bg-teal-deep/40 p-5">
+            <p className="font-display text-xs font-bold uppercase tracking-[0.14em] text-teal-on">Together, over {IMPACT.yearsRunning} years</p>
+            <ul className="mt-3 grid grid-cols-3 gap-3">
+              {(
+                [
+                  ["broccoli", compactCount(IMPACT.kgRescued), "kg of kai rescued"],
+                  ["carrot", compactCount(IMPACT.meals), "meals shared"],
+                  ["apple", `${formatCount(IMPACT.co2Tonnes)} t`, `CO2e avoided in ${IMPACT.co2Period}`],
+                ] as const
+              ).map(([icon, n, l]) => (
+                <li key={l} className="flex flex-col">
+                  <FoodIcon kind={icon} className="size-8 rounded-full ring-2 ring-white/80" />
+                  <span className="mt-2 font-display text-xl font-bold text-white tabular">{n}</span>
+                  <span className="mt-0.5 text-xs leading-snug text-white/85">{l}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         </section>
       </div>
     </div>

@@ -6,7 +6,7 @@ import { AvatarBadge } from "@/components/shared/avatar-badge";
 // The home page continues the band below it to hold the greeting.
 export function AppHeader({ person }: { person: { firstName: string; lastName?: string | null } }) {
   return (
-    <header className="flex items-center justify-between bg-teal px-5 pb-3 pt-4 text-white">
+    <header className="flex items-center justify-between bg-teal px-5 pb-3 pt-[max(1rem,env(safe-area-inset-top))] text-white">
       <Link href="/app" className="-m-1 rounded-lg p-1" aria-label="Home">
         <Logo tone="white" className="h-12" />
       </Link>

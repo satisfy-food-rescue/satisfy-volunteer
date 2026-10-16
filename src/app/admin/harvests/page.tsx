@@ -36,15 +36,15 @@ export default async function HarvestsAdminPage() {
   const drafts = upcoming.filter((v) => v.isDraft).length;
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-6">
+    <div className="mx-auto flex max-w-6xl flex-col gap-8">
       <PageHeader
         eyebrow="Roster"
         title="Harvests"
         description="One-off picking days. Plan one as a draft while the details firm up, then publish it to email and notify the whole harvest pool with a Sign up button."
-        actions={<Button size="lg" className="h-11" render={<Link href="/admin/roster/new?kind=HARVEST&from=harvests" />}><Plus className="size-4" /> Plan a harvest</Button>}
+        actions={<Button size="lg" render={<Link href="/admin/roster/new?kind=HARVEST&from=harvests" />}><Plus className="size-4" /> Plan a harvest</Button>}
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 @2xl/admin:grid-cols-3">
         <StatTile label="Harvest pool" value={pool.length} hint="Active volunteers who joined" icon={Sprout} tone="neutral" href="/admin/volunteers?type=harvest" />
         <StatTile label="Trained to pick" value={ready} hint={`${pool.length - ready} still to finish harvest training`} icon={GraduationCap} tone={ready < pool.length ? "warn" : "good"} href="/admin/training?tab=people" />
         <StatTile label="Upcoming harvests" value={upcoming.length - drafts} hint={drafts ? `Plus ${drafts} ${drafts === 1 ? "draft" : "drafts"}` : "No drafts waiting"} icon={Sprout} tone="info" />

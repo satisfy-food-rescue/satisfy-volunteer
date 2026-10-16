@@ -21,8 +21,9 @@ export default async function ProfilePage() {
       <header className="flex items-center gap-4">
         <AvatarBadge person={me} size="lg" />
         <div className="min-w-0">
-          <h1 className="text-[1.75rem] leading-tight text-ink">{fullName(me)}</h1>
+          <h1 className="break-words text-3xl leading-tight text-ink">{fullName(me)}</h1>
           <p className="text-sm text-muted-foreground">Volunteer since {formatDate(dateToISO(me.joinedAt))}</p>
+          {!demo && me.infoodleId && <p className="text-sm text-muted-foreground">Infoodle record {me.infoodleId}</p>}
         </div>
       </header>
 
@@ -37,7 +38,8 @@ export default async function ProfilePage() {
         <RoleChangeRequest />
       </section>
 
-      {me.infoodleId && (
+      {/* Infoodle sync only runs in the demo, so production claims nothing about it. */}
+      {demo && me.infoodleId && (
         <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3">
           <RefreshCw className="size-5 shrink-0 text-sky" aria-hidden />
           <div className="min-w-0 flex-1">

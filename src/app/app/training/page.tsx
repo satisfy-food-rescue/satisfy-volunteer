@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { BookOpen, CalendarDays, ChevronRight, MapPin, Users } from "lucide-react";
 import { requireVolunteer } from "@/lib/session";
-import { formatDate, formatInstant, formatInstantTime, relativeDays, todayISO } from "@/lib/dates";
+import { formatDate, formatInstantRange, relativeDays, todayISO } from "@/lib/dates";
 import { trainingContext } from "@/lib/volunteer-data";
 import { DELIVERY_LABEL } from "@/lib/domain";
 import { TrainingChip } from "@/components/shared/status-chip";
 import { SessionRsvp } from "@/components/app/session-rsvp";
+import { EmptyState } from "@/components/shared/empty-state";
+import { AppPageHeader } from "@/components/app/app-page-header";
 import { db } from "@/lib/db";
 import { cn } from "@/lib/utils";
 
@@ -33,10 +35,7 @@ export default async function TrainingPage() {
 
   return (
     <div className="flex flex-col gap-6 px-5 pb-6 pt-5">
-      <div>
-        <p className="eyebrow">Health and safety</p>
-        <h1 className="mt-1 text-3xl text-ink">Training</h1>
-      </div>
+      <AppPageHeader eyebrow="Health and safety" title="Training" />
 
       <div className={cn("rounded-2xl p-5", summary.compliant ? "bg-green-tint-soft ring-1 ring-green/40" : "bg-card ring-1 ring-border")}>
         <p className="font-display font-bold text-3xl text-ink tabular">
@@ -91,7 +90,7 @@ export default async function TrainingPage() {
                 {s.status === "OVERDUE" && `Expired ${formatDate(s.expiresISO!)} (${relativeDays(s.expiresISO!, today)})`}
               </p>
               {actionable && (
-                <p className="mt-2 inline-flex items-center gap-1 text-sm font-bold text-green-text">
+                <p className="mt-2 inline-flex items-center gap-1 text-sm font-bold text-teal group-hover:underline">
                   {online ? <BookOpen className="size-4" aria-hidden /> : <CalendarDays className="size-4" aria-hidden />}
                   {online ? "Complete it online" : "Book a session below"}
                   <ChevronRight className="size-4" aria-hidden />
@@ -102,7 +101,7 @@ export default async function TrainingPage() {
           return (
             <li key={s.module.id}>
               {actionable ? (
-                <Link href={online ? `/app/training/${s.module.code}` : "#sessions"} className="block rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-teal/60">
+                <Link href={online ? `/app/training/${s.module.code}` : "#sessions"} className="group block rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-teal/60">
                   {Inner}
                 </Link>
               ) : (
@@ -116,7 +115,7 @@ export default async function TrainingPage() {
       <section id="sessions" aria-labelledby="sessions-heading" className="scroll-mt-4">
         <h2 id="sessions-heading" className="mb-2 text-xl text-ink">Upcoming sessions</h2>
         {relevantSessions.length === 0 && otherSessions.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">No sessions scheduled right now.</p>
+          <EmptyState icon={CalendarDays} title="No sessions scheduled right now" description="New sessions show up here as soon as they are booked in." className="py-6" />
         ) : (
           <ul className="flex flex-col gap-2.5">
             {[...relevantSessions, ...otherSessions].map((s) => {
@@ -126,7 +125,7 @@ export default async function TrainingPage() {
               return (
                 <li key={s.id} className={cn("rounded-2xl border bg-card p-4 shadow-sm", relevant ? "border-teal/50" : "border-border")}>
                   <p className="font-bold text-ink">{s.module.name}</p>
-                  <p className="mt-0.5 text-sm text-ink-soft tabular">{formatInstant(s.startsAt)} to {formatInstantTime(s.endsAt)}</p>
+                  <p className="mt-0.5 text-sm text-ink-soft tabular">{formatInstantRange(s.startsAt, s.endsAt)}</p>
                   <p className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground">
                     <span className="inline-flex items-center gap-1"><MapPin className="size-4" aria-hidden />{s.location}</span>
                     <span className="inline-flex items-center gap-1 tabular"><Users className="size-4" aria-hidden />{going} of {s.capacity} booked</span>

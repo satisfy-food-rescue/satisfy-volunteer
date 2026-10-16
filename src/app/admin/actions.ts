@@ -139,23 +139,25 @@ const shiftFormSchema = z.object({
   callout: z.boolean(),
 });
 export type ShiftFormInput = z.infer<typeof shiftFormSchema>;
+/** Errors about one field name it, so the form can show them beside it. */
+export type ShiftFormResult = ActionResult & { id?: string; field?: keyof ShiftFormInput };
 
-export async function saveShift(input: ShiftFormInput): Promise<ActionResult & { id?: string }> {
+export async function saveShift(input: ShiftFormInput): Promise<ShiftFormResult> {
   await requireAdmin();
   const parsed = shiftFormSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Please check the shift details." };
   const d = parsed.data;
-  if (d.endTime <= d.startTime) return { ok: false, error: "End time must be after the start time." };
-  if (d.needed > d.capacity) return { ok: false, error: "Pickers needed cannot be more than the maximum." };
-  if (d.date < todayISO()) return { ok: false, error: "The date cannot be in the past." };
+  if (d.endTime <= d.startTime) return { ok: false, error: "End time must be after the start time.", field: "endTime" };
+  if (d.needed > d.capacity) return { ok: false, error: "Pickers needed cannot be more than the maximum.", field: "needed" };
+  if (d.date < todayISO()) return { ok: false, error: "The date cannot be in the past.", field: "date" };
   const template = await db.shiftTemplate.findUnique({ where: { id: d.templateId } });
   if (!template || !template.active) return { ok: false, error: "That shift type is no longer available." };
   // A draft can be rough; a published harvest goes out in a callout.
-  if (d.publish && template.kind === "HARVEST" && (!d.title || !d.location)) return { ok: false, error: "Add what's being picked and where before publishing." };
+  if (d.publish && template.kind === "HARVEST" && (!d.title || !d.location)) return { ok: false, error: "Add what's being picked and where before publishing.", field: !d.title ? "title" : "location" };
   const before = d.id ? await shiftById(d.id, { drafts: true }) : null;
   if (d.id && !before) return { ok: false, error: "That shift no longer exists." };
   if (before?.shift.status === "CANCELLED") return { ok: false, error: "That shift is cancelled." };
-  if (before && d.capacity < before.confirmedCount) return { ok: false, error: `${before.confirmedCount} people are already on it, so the maximum cannot be lower than that.` };
+  if (before && d.capacity < before.confirmedCount) return { ok: false, error: `${before.confirmedCount} people are already on it, so the maximum cannot be lower than that.`, field: "capacity" };
   if (before && before.shift.status === "SCHEDULED" && !d.publish) return { ok: false, error: "A published shift cannot go back to draft. Cancel it instead." };
 
   const publishing = d.publish && before?.shift.status !== "SCHEDULED";
@@ -666,18 +668,25 @@ const newVolunteerSchema = z.object({
   sendInvite: z.boolean(),
 });
 
-export type CreateVolunteerResult = { ok: true; message: string; id: string } | { ok: false; error: string };
+type NewVolunteerField = "firstName" | "lastName" | "email" | "phone" | "roles";
+/** Errors about one field name it, so the form can show them beside it. */
+export type CreateVolunteerResult = { ok: true; message: string; id: string } | { ok: false; error: string; field?: NewVolunteerField };
+const isNewVolunteerField = (k: unknown): k is NewVolunteerField => typeof k === "string" && k in newVolunteerSchema.shape;
 
 /** Adds someone directly, e.g. an existing volunteer who never came through
  *  an application. Optionally emails them a link to set a password. */
 export async function createVolunteer(input: z.infer<typeof newVolunteerSchema>): Promise<CreateVolunteerResult> {
   const admin = await requireAdmin();
   const parsed = newVolunteerSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Please check the form." };
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    const key = issue?.path[0];
+    return { ok: false, error: issue?.message ?? "Please check the form.", field: isNewVolunteerField(key) ? key : undefined };
+  }
   const d = parsed.data;
   const email = normaliseEmail(d.email);
   if (await db.volunteer.findUnique({ where: { email }, select: { id: true } })) {
-    return { ok: false, error: "Someone with that email is already on the system." };
+    return { ok: false, error: "Someone with that email is already on the system.", field: "email" };
   }
   const volunteer = await db.volunteer.create({
     data: { firstName: d.firstName, lastName: d.lastName || null, email, phone: d.phone || null, roles: sortRoles(d.roles) },

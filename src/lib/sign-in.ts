@@ -24,7 +24,10 @@ import { RP_NAME, expectedOrigins, rpID } from "./webauthn";
 // coordinator first.
 
 export type SignedIn = { ok: true; volunteer: Volunteer };
-export type Refused = { ok: false; error: string };
+/** `mismatch` marks a refusal where the email or password itself is wrong,
+ *  so a form can flag its fields, as opposed to a rate limit or an inactive
+ *  account. */
+export type Refused = { ok: false; error: string; mismatch?: boolean };
 
 export const INACTIVE = "This account is no longer active. Contact the volunteer coordinator if that is a mistake.";
 
@@ -39,7 +42,7 @@ export async function checkPassword(emailInput: string, password: string, ip: st
   const volunteer = await db.volunteer.findUnique({ where: { email } });
   const matches = await verifyPassword(password, volunteer?.passwordHash ?? null);
   if (!volunteer || !matches) {
-    return { ok: false, error: "That email and password do not match. Check for typos, or use “Forgot your password?”." };
+    return { ok: false, error: "That email and password do not match. Check for typos, or use “Forgot your password?”.", mismatch: true };
   }
   // Only said once the password is right, so it does not reveal who has an account.
   if (volunteer.status !== "ACTIVE") return { ok: false, error: INACTIVE };

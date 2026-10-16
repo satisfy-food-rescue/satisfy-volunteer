@@ -1,6 +1,5 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft, Clock, MapPin, MessageSquareText, Store, UserRound, Users } from "lucide-react";
+import { Clock, HandHelping, MapPin, MessageSquareText, Store, UserRound, Users, type LucideIcon } from "lucide-react";
 import { requireVolunteer } from "@/lib/session";
 import { formatDayLong, formatTimeRange, relativeDay, todayISO } from "@/lib/dates";
 import { shiftById } from "@/lib/roster";
@@ -9,12 +8,27 @@ import { eligibilityFor } from "@/lib/training";
 import { db } from "@/lib/db";
 import { AvatarBadge } from "@/components/shared/avatar-badge";
 import { Chip } from "@/components/shared/status-chip";
+import { EmptyState } from "@/components/shared/empty-state";
 import { ShiftActions } from "@/components/app/shift-actions";
 import { APP_COLUMN_SIZES, Photo, shiftPhoto } from "@/components/shared/photo";
+import { AppPageHeader, BackLink } from "@/components/app/app-page-header";
 import { fullName } from "@/lib/domain";
-import { HandHelping } from "lucide-react";
 
 export const metadata = { title: "Shift" };
+
+/** One term and its details. The icon stands in for the term, which screen
+ *  readers still hear. */
+function DetailRow({ icon: Icon, term, children }: { icon: LucideIcon; term: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-3">
+      <dt className="flex shrink-0">
+        <Icon className="mt-0.5 size-5 text-sky" aria-hidden />
+        <span className="sr-only">{term}</span>
+      </dt>
+      <dd className="min-w-0 flex-1">{children}</dd>
+    </div>
+  );
+}
 
 export default async function ShiftDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const me = await requireVolunteer();
@@ -33,61 +47,38 @@ export default async function ShiftDetailPage({ params }: { params: Promise<{ id
 
   return (
     <div className="flex flex-col gap-6 px-5 pb-6 pt-3">
-      <Link href={harvest ? "/app/harvest" : "/app/shifts"} className="-ml-2 inline-flex min-h-11 items-center gap-1 self-start pr-2 text-sm font-semibold text-muted-foreground hover:text-ink">
-        <ChevronLeft className="size-5" aria-hidden /> {harvest ? "Harvest" : "Shifts"}
-      </Link>
+      <BackLink href={harvest ? "/app/harvest" : "/app/shifts"} label={harvest ? "Harvest" : "Shifts"} />
 
-      <header className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4">
         <Photo photo={shiftPhoto(view.kind)} sizes={APP_COLUMN_SIZES} preload className="aspect-[16/9] rounded-2xl" />
-        <div className="min-w-0">
-          <p className="eyebrow">{relativeDay(view.iso, today)}</p>
-          <h1 className="mt-1 text-[1.75rem] leading-tight text-ink">{view.name}</h1>
-        </div>
-      </header>
+        <AppPageHeader eyebrow={relativeDay(view.iso, today)} title={view.name} />
+      </div>
 
       <dl className="grid gap-3 rounded-2xl border border-border bg-card p-4">
-        <div className="flex items-start gap-3">
-          <Clock className="mt-0.5 size-5 shrink-0 text-sky" aria-hidden />
-          <div>
-            <dt className="sr-only">When</dt>
-            <dd className="font-bold text-ink">{formatDayLong(view.iso)}</dd>
-            <dd className="text-ink-soft tabular">{formatTimeRange(view.shift.startTime, view.shift.endTime)}</dd>
-          </div>
-        </div>
-        <div className="flex items-start gap-3">
-          <MapPin className="mt-0.5 size-5 shrink-0 text-sky" aria-hidden />
-          <div>
-            <dt className="sr-only">Where</dt>
-            <dd className="text-ink">{view.location}</dd>
-            {view.shift.template.route?.isVolunteerDriven && <dd className="text-sm text-muted-foreground">Fully volunteer-driven route</dd>}
-          </div>
-        </div>
+        <DetailRow icon={Clock} term="When">
+          <p className="font-bold text-ink">{formatDayLong(view.iso)}</p>
+          <p className="text-ink-soft tabular">{formatTimeRange(view.shift.startTime, view.shift.endTime)}</p>
+        </DetailRow>
+        <DetailRow icon={MapPin} term="Where">
+          <p className="text-ink">{view.location}</p>
+          {view.shift.template.route?.isVolunteerDriven && <p className="text-sm text-muted-foreground">Fully volunteer-driven route</p>}
+        </DetailRow>
         {view.shift.template.workingWith && (
-          <div className="flex items-start gap-3">
-            <UserRound className="mt-0.5 size-5 shrink-0 text-sky" aria-hidden />
-            <div>
-              <dt className="sr-only">Working with</dt>
-              <dd className="text-ink">Working with {view.shift.template.workingWith}</dd>
-            </div>
-          </div>
+          <DetailRow icon={UserRound} term="Working with">
+            <p className="text-ink">Working with {view.shift.template.workingWith}</p>
+          </DetailRow>
         )}
         {donors.length > 0 && (
-          <div className="flex items-start gap-3">
-            <Store className="mt-0.5 size-5 shrink-0 text-sky" aria-hidden />
-            <div>
-              <dt className="sr-only">Stops</dt>
-              <dd className="text-ink">{donors.map((d) => d.name).join(", ")}</dd>
-            </div>
-          </div>
+          <DetailRow icon={Store} term="Stops">
+            <p className="text-ink">{donors.map((d) => d.name).join(", ")}</p>
+          </DetailRow>
         )}
-        <div className="flex items-start gap-3">
-          <Users className="mt-0.5 size-5 shrink-0 text-sky" aria-hidden />
+        <DetailRow icon={Users} term="Crew">
           <div className="flex flex-wrap items-center gap-2">
-            <dt className="sr-only">Crew</dt>
-            <dd className="text-ink tabular">{view.confirmedCount} of {view.shift.capacity} places filled</dd>
-            {view.isGap && <Chip tone="bad" icon={HandHelping} size="sm">Needs {view.shortBy} more</Chip>}
+            <span className="text-ink tabular">{view.confirmedCount} of {view.shift.capacity} places filled</span>
+            {view.isGap && <Chip tone="warn" icon={HandHelping} size="sm">Needs {view.shortBy} more</Chip>}
           </div>
-        </div>
+        </DetailRow>
       </dl>
 
       {view.shift.notes && (
@@ -112,17 +103,17 @@ export default async function ShiftDetailPage({ params }: { params: Promise<{ id
       <section aria-labelledby="crew">
         <h2 id="crew" className="mb-2 text-xl text-ink">Who&apos;s on</h2>
         {view.confirmed.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">Nobody yet. Be the first.</p>
+          <EmptyState icon={Users} title="Nobody yet" description="Be the first." className="py-6" />
         ) : (
           <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
             {view.confirmed.map((a) => (
               <li key={a.id} className="flex items-center gap-3 px-4 py-3">
                 <AvatarBadge person={a.volunteer} size="sm" />
-                <span className="flex-1 font-semibold text-ink">
+                <span className="min-w-0 flex-1 truncate font-semibold text-ink">
                   {a.volunteerId === me.id ? "You" : fullName(a.volunteer)}
                 </span>
                 {a.source === "COVER" && <Chip tone="info" size="sm">Covering</Chip>}
-                {a.source === "REGULAR" && <span className="text-xs text-muted-foreground">Regular</span>}
+                {a.source === "REGULAR" && <Chip tone="neutral" size="sm">Regular</Chip>}
               </li>
             ))}
           </ul>

@@ -6,6 +6,7 @@ import { Search, X } from "lucide-react";
 import { Tabs } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { OptionSelect, type Option } from "@/components/shared/option-select";
+import { useDebouncedCallback } from "@/components/admin/use-debounced-callback";
 
 /** Tabs whose selection lives in the URL (?tab=), so links can open a tab with
  *  filters already applied. */
@@ -58,18 +59,20 @@ export function TrainingRecordFilters({ modules }: { modules: Option[] }) {
     if (v && v !== DEFAULTS[k]) next.set(k, v); else next.delete(k);
     router.replace(`${pathname}?${next.toString()}`, { scroll: false });
   };
+  // Typing updates the box at once and the results after a short pause.
+  const search = useDebouncedCallback((value: string) => set("q", value.trim()));
   const filtered = ["module", "status", "expiry", "q"].some((k) => sp.has(k));
   return (
     <div className="flex flex-wrap items-center gap-3">
       <div className="relative min-w-60 flex-1">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-        <Input aria-label="Search by volunteer" placeholder="Search by volunteer" value={q} onChange={(e) => { setQ(e.target.value); set("q", e.target.value.trim()); }} className="h-11 bg-card pl-9 text-base" />
+        <Input aria-label="Search by volunteer" placeholder="Search by volunteer" value={q} onChange={(e) => { setQ(e.target.value); search.run(e.target.value); }} className="h-11 bg-card pl-9 text-base" />
       </div>
       <OptionSelect aria-label="Module" value={sp.get("module") ?? "any"} onValueChange={(v) => set("module", v)} options={[{ value: "any", label: "Any module" }, ...modules]} className="w-auto min-w-52" />
       <OptionSelect aria-label="Status" value={sp.get("status") ?? "attention"} onValueChange={(v) => set("status", v)} options={STATUS_OPTIONS} className="w-auto min-w-44" />
       <OptionSelect aria-label="Expiry" value={sp.get("expiry") ?? "any"} onValueChange={(v) => set("expiry", v)} options={EXPIRY_OPTIONS} className="w-auto min-w-52" />
       {filtered && (
-        <button type="button" onClick={() => { setQ(""); router.replace(`${pathname}?tab=people`, { scroll: false }); }} className="flex h-11 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold text-muted-foreground hover:bg-muted hover:text-ink">
+        <button type="button" onClick={() => { search.cancel(); setQ(""); router.replace(`${pathname}?tab=people`, { scroll: false }); }} className="flex h-11 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold text-muted-foreground hover:bg-muted hover:text-ink">
           <X className="size-4" aria-hidden /> Clear filters
         </button>
       )}

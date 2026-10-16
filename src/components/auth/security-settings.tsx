@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useSyncExternalStore, useTransition } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { browserSupportsWebAuthn, startRegistration, WebAuthnError } from "@simplewebauthn/browser";
 import { Fingerprint, KeyRound, Laptop, Loader2, LogOut, Plus, Trash2 } from "lucide-react";
-import { beginPasskeyRegistration, changePassword, disconnectGoogle, finishPasskeyRegistration, removePasskey, signOutOtherDevices } from "@/app/account/actions";
+import { beginPasskeyRegistration, changePassword, disconnectGoogle, finishPasskeyRegistration, removePasskey, signOutOtherDevices, type PasswordFieldErrors } from "@/app/account/actions";
 import type { ActionResult } from "@/lib/volunteer-actions";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -58,8 +58,19 @@ function useAction() {
 }
 
 function PasswordSection({ hasPassword }: { hasPassword: boolean }) {
-  const [pending, run] = useAction();
+  const [pending, start] = useTransition();
+  const router = useRouter();
   const [key, setKey] = useState(0);
+  const [errors, setErrors] = useState<PasswordFieldErrors>({});
+  const currentRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
+  const confirmRef = useRef<HTMLInputElement>(null);
+  // The pending button is disabled while the form submits, which drops focus.
+  // Put it on the first field that needs fixing.
+  useEffect(() => {
+    const first = errors.current ? currentRef : errors.password ? passwordRef : errors.confirm ? confirmRef : null;
+    first?.current?.focus();
+  }, [errors]);
   return (
     <Section id="pw-h" title="Password" description={hasPassword ? "Change the password you sign in with." : "You sign in without a password at the moment. Add one if you like."}>
       <form
@@ -68,23 +79,39 @@ function PasswordSection({ hasPassword }: { hasPassword: boolean }) {
         onSubmit={(e) => {
           e.preventDefault();
           const f = new FormData(e.currentTarget);
-          run(() => changePassword({ current: String(f.get("current") ?? ""), password: String(f.get("password")), confirm: String(f.get("confirm")) }), () => setKey((k) => k + 1));
+          start(async () => {
+            const r = await changePassword({ current: String(f.get("current") ?? ""), password: String(f.get("password")), confirm: String(f.get("confirm")) });
+            if (r.ok) {
+              toast.success(r.message ?? "Saved");
+              setErrors({});
+              setKey((k) => k + 1);
+              router.refresh();
+            } else if (r.fieldErrors && Object.keys(r.fieldErrors).length > 0) {
+              setErrors(r.fieldErrors);
+            } else {
+              toast.error(r.error);
+            }
+          });
         }}
       >
         {hasPassword && (
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="current" className="text-base">Current password</Label>
-            <PasswordInput id="current" name="current" autoComplete="current-password" required />
+            <PasswordInput ref={currentRef} id="current" name="current" autoComplete="current-password" required aria-invalid={Boolean(errors.current) || undefined} aria-describedby={errors.current ? "current-error" : undefined} />
+            {errors.current && <p id="current-error" className="text-sm text-status-bad">{errors.current}</p>}
           </div>
         )}
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="new-password" className="text-base">New password</Label>
-          <PasswordInput id="new-password" name="password" autoComplete="new-password" required minLength={PASSWORD_MIN} aria-describedby="new-password-help" />
-          <p id="new-password-help" className="text-sm text-muted-foreground">At least {PASSWORD_MIN} characters.</p>
+          <PasswordInput ref={passwordRef} id="new-password" name="password" autoComplete="new-password" required minLength={PASSWORD_MIN} aria-invalid={Boolean(errors.password) || undefined} aria-describedby="new-password-help" />
+          <p id="new-password-help" className={errors.password ? "text-sm text-status-bad" : "text-sm text-muted-foreground"}>
+            {errors.password ?? `At least ${PASSWORD_MIN} characters.`}
+          </p>
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="confirm-password" className="text-base">Type it again</Label>
-          <PasswordInput id="confirm-password" name="confirm" autoComplete="new-password" required />
+          <PasswordInput ref={confirmRef} id="confirm-password" name="confirm" autoComplete="new-password" required aria-invalid={Boolean(errors.confirm) || undefined} aria-describedby={errors.confirm ? "confirm-password-error" : undefined} />
+          {errors.confirm && <p id="confirm-password-error" className="text-sm text-status-bad">{errors.confirm}</p>}
         </div>
         <Button type="submit" size="lg" className="h-12 self-start px-5 text-base" disabled={pending}>
           {pending ? <Loader2 className="size-5 animate-spin" aria-hidden /> : <KeyRound className="size-5" aria-hidden />}

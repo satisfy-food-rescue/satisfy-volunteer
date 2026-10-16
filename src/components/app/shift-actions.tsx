@@ -44,7 +44,7 @@ export function ShiftActions({ state, compact = false }: { state: ShiftActionSta
               Going to be away? Mark me away
             </Button>
           ) : (
-            <ActionButton variant="outline" className="h-12 text-base" action={() => cancelBooking(state.mine!.id)} confirm="Cancel this booking?">
+            <ActionButton variant="outline" className="h-12 text-base" action={() => cancelBooking(state.mine!.id)} confirm={{ title: "Cancel this booking?", description: "Your place opens up for someone else. You can book it again while there is room.", confirmLabel: "Cancel booking", cancelLabel: "Keep booking" }}>
               Cancel my booking
             </ActionButton>
           ))}
@@ -61,7 +61,7 @@ export function ShiftActions({ state, compact = false }: { state: ShiftActionSta
         <Button
           variant="outline"
           size="lg"
-          className="mt-3 h-12 w-full border-status-warn/40 bg-white text-base text-status-warn hover:bg-white"
+          className="mt-3 h-12 w-full border-status-warn/40 bg-card text-base text-status-warn hover:bg-card"
           render={<Link href={state.missingRole ? (state.harvest ? "/app/harvest" : "/app/profile") : state.blockerModuleCode ? `/app/training/${state.blockerModuleCode}` : "/app/training"} />}
         >
           {state.missingRole ? (state.harvest ? "Join the harvest pool" : "Ask to change my roles") : "Go to training"}

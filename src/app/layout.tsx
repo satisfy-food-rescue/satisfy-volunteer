@@ -9,7 +9,7 @@ import "./globals.css";
 // labels and body text share one family.
 const brand = Montserrat({
   variable: "--font-brand",
-  subsets: ["latin"],
+  subsets: ["latin", "latin-ext"],
   display: "swap",
 });
 
@@ -27,6 +27,9 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   themeColor: "#106379",
+  // Lets the volunteer app's bottom bar sit clear of the home indicator
+  // through env(safe-area-inset-*).
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -36,6 +39,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${brand.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
+        <a
+          href="#main"
+          className="sr-only z-[100] rounded-full bg-teal px-4 py-2.5 font-display font-bold text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+        >
+          Skip to content
+        </a>
         <TooltipProvider>{children}</TooltipProvider>
         <Toaster position="top-center" closeButton />
       </body>

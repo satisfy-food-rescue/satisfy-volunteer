@@ -1,12 +1,14 @@
 import Link from "next/link";
-import { CheckCircle2, ChevronRight } from "lucide-react";
+import { CheckCircle2, ChevronRight, Sprout } from "lucide-react";
 import { requireVolunteer } from "@/lib/session";
 import { todayISO } from "@/lib/dates";
 import { loadHarvest } from "@/lib/harvest";
 import { eligibilityFor } from "@/lib/training";
 import { HarvestPoolToggle } from "@/components/app/harvest-controls";
 import { ShiftCard } from "@/components/app/shift-card";
+import { AppPageHeader } from "@/components/app/app-page-header";
 import { TrainingChip } from "@/components/shared/status-chip";
+import { EmptyState } from "@/components/shared/empty-state";
 import { FoodIcon } from "@/components/brand/logo";
 import { APP_COLUMN_SIZES, Photo } from "@/components/shared/photo";
 import { cn } from "@/lib/utils";
@@ -21,11 +23,8 @@ export default async function HarvestPage() {
   const toDo = harvestTraining.filter((s) => s.status === "NOT_STARTED" || s.status === "OVERDUE");
 
   return (
-    <div className="flex flex-col gap-6 px-5 pb-6 pt-5">
-      <div>
-        <p className="eyebrow">Seasonal</p>
-        <h1 className="mt-1 text-3xl text-ink">Harvest</h1>
-      </div>
+    <div className="flex flex-col gap-6 px-5 pb-6 pt-3">
+      <AppPageHeader back={{ href: "/app/profile", label: "Me" }} eyebrow="Seasonal" title="Harvest" />
 
       <section className={cn("overflow-hidden rounded-2xl", inPool ? "bg-green-tint-soft ring-1 ring-green/40" : "bg-card ring-1 ring-border")}>
         <Photo photo="harvest" sizes={APP_COLUMN_SIZES} preload className="aspect-[16/9]" />
@@ -35,7 +34,7 @@ export default async function HarvestPage() {
             <div>
               <p className="font-bold text-ink">{inPool ? "You're in the harvest pool" : "Join the harvest pool"}</p>
               <p className="mt-1 text-sm text-ink-soft">
-                Whenever fruit is ready, we pick it from orchards and backyard trees that would otherwise waste it. When a harvest is on, everyone in the pool gets an email and a notification, and the first to sign up get the places. {poolCount} volunteers are in the pool.
+                Whenever fruit is ready, we pick it from orchards and backyard trees that would otherwise waste it. When a harvest is on, everyone in the pool gets an email and a notification, and the first to sign up get the places. {poolCount === 1 ? "1 volunteer is" : `${poolCount} volunteers are`} in the pool.
               </p>
             </div>
           </div>
@@ -75,7 +74,12 @@ export default async function HarvestPage() {
       <section aria-labelledby="harvests">
         <h2 id="harvests" className="mb-2 text-xl text-ink">Upcoming harvests</h2>
         {harvests.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">No harvests planned right now. {inPool ? "We will email you when the fruit is ready." : "Join the pool to hear when the fruit is ready."}</p>
+          <EmptyState
+            icon={Sprout}
+            title="No harvests planned right now"
+            description={inPool ? "We will email you when the fruit is ready." : "Join the pool to hear when the fruit is ready."}
+            className="py-6"
+          />
         ) : (
           <div className="flex flex-col gap-2.5">
             {/* Outside the pool the join button above says it all; inside, the reason names the module to do. */}

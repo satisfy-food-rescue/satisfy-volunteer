@@ -89,7 +89,7 @@ export function MarkAwayForm({
         <Textarea id="away-note" value={note} onChange={(e) => setNote(e.target.value)} maxLength={200} rows={2} className="text-base" placeholder="e.g. Back on the Monday" />
       </div>
 
-      <div className={cn("rounded-xl px-4 py-3 text-sm", affected.length ? "bg-status-warn-bg text-status-warn" : "bg-muted text-muted-foreground")}>
+      <div aria-live="polite" className={cn("rounded-xl px-4 py-3 text-sm", affected.length ? "bg-status-warn-bg text-status-warn" : "bg-muted text-muted-foreground")}>
         {affected.length === 0 ? (
           <p>No regular shifts fall in this range.</p>
         ) : (

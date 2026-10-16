@@ -1,4 +1,4 @@
-import { Mail, Palette, Plug, ShieldCheck, Type } from "lucide-react";
+import { Clock, Mail, Palette, Plug, ShieldCheck, Type } from "lucide-react";
 import { requireAdmin } from "@/lib/session";
 import { isDemo } from "@/lib/env";
 import { db } from "@/lib/db";
@@ -35,7 +35,7 @@ export default async function SettingsPage() {
     db.email.groupBy({ by: ["kind"], _count: { _all: true } }),
   ]);
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-8">
+    <div className="mx-auto flex max-w-6xl flex-col gap-8">
       <PageHeader eyebrow="Settings" title="Branding, integrations and templates" />
 
       <section className="rounded-2xl border border-border bg-card p-5" aria-labelledby="brand-h">
@@ -47,11 +47,11 @@ export default async function SettingsPage() {
             <p className="mt-2 text-sm text-muted-foreground">File: <code className="rounded bg-muted px-1.5 py-0.5 text-xs">src/app/globals.css</code> · fonts in <code className="rounded bg-muted px-1.5 py-0.5 text-xs">src/app/layout.tsx</code></p>
           </div>
         </div>
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        <div className="mt-5 grid gap-3 @xl/admin:grid-cols-2">
           <div className="flex items-center justify-center rounded-xl bg-teal p-6"><Logo tone="white" className="h-24" /></div>
           <div className="flex items-center justify-center rounded-xl border border-border p-6"><Logo className="h-24" /></div>
         </div>
-        <ul className="mt-3 grid gap-3 sm:grid-cols-2 @4xl/admin:grid-cols-4">
+        <ul className="mt-3 grid gap-3 @xl/admin:grid-cols-2 @4xl/admin:grid-cols-4">
           {SWATCHES.map(([name, v, hex, use]) => (
             <li key={v} className="flex items-center gap-3 rounded-xl border border-border p-3">
               <span className="size-11 shrink-0 rounded-full ring-1 ring-black/10" style={{ background: `var(${v})` }} aria-hidden />
@@ -87,12 +87,12 @@ export default async function SettingsPage() {
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h2 id="inf-h" className="text-2xl text-ink">Infoodle integration</h2>
-              <Chip tone="warn">API: pending confirmation</Chip>
+              <Chip tone="warn" icon={Clock}>API: pending confirmation</Chip>
             </div>
             <p className="mt-1 text-ink-soft">Infoodle stays the system of record for contacts and donations. This app owns rostering, training and absences. Once Infoodle confirms API access, the sync below runs nightly and on demand.</p>
           </div>
         </div>
-        <div className="mt-5 grid gap-4 md:grid-cols-2">
+        <div className="mt-5 grid gap-4 @2xl/admin:grid-cols-2">
           <div className="rounded-xl border border-border p-4">
             <p className="font-display text-xs font-bold uppercase tracking-wide text-teal">Infoodle to this app</p>
             <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-ink">
@@ -124,7 +124,7 @@ export default async function SettingsPage() {
             <p className="mt-1 text-ink-soft">Every template renders with the brand header and a single call to action. Wording lives in one file so the coordinator&apos;s edits are quick to apply. Click a template to see a real example from the Outbox.</p>
           </div>
         </div>
-        <ul className="mt-4 grid gap-2 sm:grid-cols-2 @4xl/admin:grid-cols-3">
+        <ul className="mt-4 grid gap-2 @xl/admin:grid-cols-2 @4xl/admin:grid-cols-3">
           {(Object.keys(EMAIL_KIND_LABEL) as EmailKind[]).map((k) => {
             const count = templates.find((t) => t.kind === k)?._count._all ?? 0;
             return (

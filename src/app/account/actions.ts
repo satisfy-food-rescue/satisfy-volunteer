@@ -27,12 +27,25 @@ const passwordSchema = z
   })
   .refine((d) => d.password === d.confirm, { message: "The two new passwords do not match.", path: ["confirm"] });
 
-export async function changePassword(input: z.infer<typeof passwordSchema>): Promise<ActionResult> {
+export type PasswordFieldErrors = { current?: string; password?: string; confirm?: string };
+/** Like ActionResult, with the message for each field so the form can show it
+ *  next to the field. */
+export type ChangePasswordResult = { ok: true; message?: string } | { ok: false; error: string; fieldErrors?: PasswordFieldErrors };
+
+export async function changePassword(input: z.infer<typeof passwordSchema>): Promise<ChangePasswordResult> {
   const me = await requireVolunteer();
   const parsed = passwordSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Please check the form." };
+  if (!parsed.success) {
+    const fieldErrors: PasswordFieldErrors = {};
+    for (const issue of parsed.error.issues) {
+      const key = issue.path[0];
+      if (key === "current" || key === "password" || key === "confirm") fieldErrors[key] ??= issue.message;
+    }
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Please check the form.", fieldErrors };
+  }
   if (me.passwordHash && !(await verifyPassword(parsed.data.current ?? "", me.passwordHash))) {
-    return { ok: false, error: "Your current password is not right." };
+    const error = "Your current password is not right.";
+    return { ok: false, error, fieldErrors: { current: error } };
   }
   await db.volunteer.update({ where: { id: me.id }, data: { passwordHash: await hashPassword(parsed.data.password) } });
   const others = await destroyOtherSessions(me.id, true);

@@ -9,9 +9,9 @@ export default async function AdminSecurityPage({ searchParams }: { searchParams
   const me = await requireAdmin();
   const props = await securityProps(me, await searchParams, "/admin/security");
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-6">
+    <div className="mx-auto flex max-w-6xl flex-col gap-8">
       <PageHeader eyebrow="Your account" title="Sign-in and security" description={`Signed in as ${me.email}.`} />
-      <SecuritySettings {...props} />
+      <div className="max-w-2xl"><SecuritySettings {...props} /></div>
     </div>
   );
 }
