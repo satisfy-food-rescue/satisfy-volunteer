@@ -42,12 +42,15 @@ describe("links", () => {
     expect(isVideo("https://vimeo.com/123")).toBe(true);
     expect(isVideo(page.url)).toBe(false);
     expect(isVideo("not a url")).toBe(false);
+    expect(isVideo("https://notyoutube.com/watch?v=x")).toBe(false);
+    expect(isVideo("https://youtube.com.example.org/watch?v=x")).toBe(false);
   });
 
   it("labels a link by its kind or site", () => {
     expect(linkKindLabel(video.url)).toBe("YouTube video");
     expect(linkKindLabel(short.url)).toBe("YouTube video");
     expect(linkKindLabel(page.url)).toBe("mpi.govt.nz");
+    expect(linkKindLabel("https://notyoutube.com/x")).toBe("notyoutube.com");
   });
 });
 

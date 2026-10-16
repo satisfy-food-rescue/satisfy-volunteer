@@ -22,28 +22,38 @@ export function completionGate(p: { hasContent: boolean; readToEnd: boolean; lin
   return { ready: steps.every((s) => s.done), steps };
 }
 
-const VIDEO_HOSTS = ["youtube.com", "youtu.be", "vimeo.com"];
+// Exact hosts only: a suffix match would also accept look-alikes such as
+// "notyoutube.com".
+const VIDEO_SITES = new Map([
+  ["youtube.com", "YouTube"],
+  ["youtu.be", "YouTube"],
+  ["youtube-nocookie.com", "YouTube"],
+  ["vimeo.com", "Vimeo"],
+  ["player.vimeo.com", "Vimeo"],
+]);
 
 function host(url: string): string | null {
   try {
-    return new URL(url).hostname.replace(/^www\.|^m\./, "");
+    return new URL(url).hostname.replace(/^(www|m)\./, "");
   } catch {
     return null;
   }
 }
 
-export function isVideo(url: string): boolean {
+function videoSite(url: string): string | null {
   const h = host(url);
-  return h !== null && VIDEO_HOSTS.some((v) => h === v || h.endsWith(`.${v}`));
+  return h === null ? null : (VIDEO_SITES.get(h) ?? null);
+}
+
+export function isVideo(url: string): boolean {
+  return videoSite(url) !== null;
 }
 
 /** "YouTube video", "Vimeo video" or the site, e.g. "mpi.govt.nz". */
 export function linkKindLabel(url: string): string {
-  const h = host(url);
-  if (!h) return "Link";
-  if (h === "youtu.be" || h.endsWith("youtube.com")) return "YouTube video";
-  if (h.endsWith("vimeo.com")) return "Vimeo video";
-  return h;
+  const site = videoSite(url);
+  if (site) return `${site} video`;
+  return host(url) ?? "Link";
 }
 
 /** Module content is paragraphs separated by a blank line, as typed in admin. */
