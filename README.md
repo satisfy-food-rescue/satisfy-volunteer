@@ -50,7 +50,7 @@ Or set `DEMO_MODE=1` in `.env` for the one-click persona picker. Without `RESEND
 
 - **Lint, types and schema**: lint with no warnings, types, `prisma validate` and `format --check`, unit tests.
 - **Integration tests** against a Postgres service, and a check that the migrations produce exactly the schema.
-- **End-to-end and smoke tests**: builds once, runs Playwright with real sign-in, then boots a demo server and runs `pnpm test:smoke`, which renders every page as every persona (pages are found from `src/app`; a new dynamic segment needs a resolver in `scripts/smoke.ts`) and calls every native app endpoint (a new read endpoint needs a line in `mobileApiChecks`).
+- **Build and smoke test**: builds once, runs Playwright with real sign-in, then boots a demo server and runs `pnpm test:smoke`, which renders every page as every persona (pages are found from `src/app`; a new dynamic segment needs a resolver in `scripts/smoke.ts`) and calls every native app endpoint (a new read endpoint needs a line in `mobileApiChecks`).
 - **Docker image**: builds the production image and boots it against an empty Postgres the way a first deploy does: migrations, reference data, the bootstrap admin, then an hourly tick.
 - **Native app**: in `mobile/`, lint, types (with Expo's typed routes), unit tests, `expo install --check` and an `expo export` for iOS and Android.
 
