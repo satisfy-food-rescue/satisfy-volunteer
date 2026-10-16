@@ -140,7 +140,9 @@ export function apiHandler<P = Record<string, never>>(fn: Handler<P>): Handler<P
       return await fn(request, ctx);
     } catch (e) {
       if (e instanceof z.ZodError || e instanceof BadRequest) return failure(400, "Please check the details and try again.");
-      console.error(`${request.method} ${request.nextUrl.pathname} failed`, e);
+      // The path is client-controlled, so it is an argument, never part of
+      // console's format string (a "%s" in it would be interpreted).
+      console.error("%s %s failed", request.method, request.nextUrl.pathname, e);
       return failure(500, "Something went wrong. Please try again.");
     }
   };

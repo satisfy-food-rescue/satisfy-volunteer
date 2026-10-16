@@ -7,7 +7,7 @@ describe("safeNextPath", () => {
     expect(safeNextPath("/admin/roster?week=2026-10-05")).toBe("/admin/roster?week=2026-10-05");
   });
 
-  it.each([null, undefined, "", "app", "https://evil.example", "//evil.example", "/\\evil.example", "/\\/evil.example", "/\t/evil.example", "/\n/evil.example", "/\r//evil.example", "/%2F/evil.example".replace("%2F", "/")])(
+  it.each([null, undefined, "", "app", "https://evil.example", "//evil.example", "/\\evil.example", "/\\/evil.example", "/\t/evil.example", "/\n/evil.example", "/\r//evil.example", "///evil.example"])(
     "rejects %s",
     (next) => {
       expect(safeNextPath(next)).toBeNull();
