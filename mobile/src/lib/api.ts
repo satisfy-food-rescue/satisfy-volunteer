@@ -1,3 +1,5 @@
+import { Platform } from "react-native";
+
 import type { ApiFailure } from "@satisfy/core/api";
 
 import { API_URL } from "./config";
@@ -39,6 +41,8 @@ export async function api<T>(path: string, { method = "GET", body, signal }: Opt
       signal,
       headers: {
         Accept: "application/json",
+        // Lets the server say whether passkeys are set up for this platform.
+        "X-Platform": Platform.OS,
         ...(body !== undefined && { "Content-Type": "application/json" }),
         ...(sentToken && { Authorization: `Bearer ${sentToken}` }),
       },

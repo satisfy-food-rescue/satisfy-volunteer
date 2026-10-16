@@ -1,6 +1,5 @@
 // Training views for the native app, matching src/app/app/training.
 import type { ModuleSummary, TrainingSessionItem } from "@satisfy/core/api";
-import type { Delivery } from "@satisfy/core/domain";
 import type { TrainingModule, TrainingSession, SessionRsvp } from "@/generated/prisma/client";
 import { formatInstant, formatInstantTime } from "../dates";
 import type { ModuleStatus } from "../training";
@@ -11,7 +10,7 @@ export function moduleSummary(s: ModuleStatus): ModuleSummary {
     code: s.module.code,
     name: s.module.name,
     description: s.module.description,
-    delivery: s.module.delivery as Delivery,
+    delivery: s.module.delivery,
     validityMonths: s.module.validityMonths,
     mandatoryBeforeFirstShift: s.module.mandatoryBeforeFirstShift,
     status: s.status,

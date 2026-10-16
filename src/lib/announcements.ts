@@ -5,7 +5,7 @@ import { z } from "zod";
 import type { Volunteer } from "@/generated/prisma/client";
 import { db } from "./db";
 import { formatDay, formatTimeRange } from "./dates";
-import { ROLE_LABEL, VOLUNTEER_ROLES, joinRoles, parseRoles, type VolunteerRole } from "./domain";
+import { ROLE_LABEL, VOLUNTEER_ROLES, sortRoles, type VolunteerRole } from "./domain";
 import { shiftById } from "./roster";
 import { queueEmail } from "./emails";
 import * as T from "./email-templates";
@@ -41,10 +41,10 @@ export async function resolveAudience(target: AudienceInput): Promise<ResolvedAu
   }
   const active = await db.volunteer.findMany({ where: { status: "ACTIVE", role: "VOLUNTEER" }, orderBy: { firstName: "asc" } });
   if (target.audience === "ALL") return { label: "All active volunteers", recipients: active, shiftId: null, roles: [] };
-  const roles = parseRoles(joinRoles(target.roles));
+  const roles = sortRoles(target.roles);
   return {
     label: roles.map((r) => (r === "HARVEST" ? "Harvest pool" : ROLE_LABEL[r])).join(", "),
-    recipients: active.filter((v) => parseRoles(v.roles).some((r) => roles.includes(r))),
+    recipients: active.filter((v) => v.roles.some((r) => roles.includes(r))),
     shiftId: null,
     roles,
   };
@@ -60,7 +60,7 @@ export async function sendAnnouncement(author: Volunteer, input: AnnouncementInp
       subject: input.subject,
       body: input.body,
       audience: input.target.audience,
-      roles: resolved.roles.length ? joinRoles(resolved.roles) : null,
+      roles: resolved.roles,
       shiftId: resolved.shiftId,
       audienceLabel: resolved.label,
       push: input.push,

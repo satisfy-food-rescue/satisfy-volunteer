@@ -2,7 +2,7 @@ import { CalendarCheck } from "lucide-react";
 import { requireVolunteer } from "@/lib/session";
 import { formatDay, formatTimeRange, todayISO, dateToISO, WEEKDAY_LONG } from "@/lib/dates";
 import { myAbsences, myRegularSlots, myUpcomingShifts } from "@/lib/volunteer-data";
-import { ABSENCE_REASON_LABEL, type AbsenceReason } from "@/lib/domain";
+import { ABSENCE_REASON_LABEL } from "@/lib/domain";
 import { MarkAwayForm } from "@/components/app/mark-away-form";
 import { RemoveAbsenceButton } from "@/components/app/remove-absence-button";
 import { Chip } from "@/components/shared/status-chip";
@@ -75,7 +75,7 @@ export default async function SlotPage() {
                     <div>
                       <p className="font-bold text-ink">{s === e ? formatDay(s) : `${formatDay(s)} to ${formatDay(e)}`}</p>
                       <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                        <Chip tone="neutral" size="sm">{ABSENCE_REASON_LABEL[a.reason as AbsenceReason]}</Chip>
+                        <Chip tone="neutral" size="sm">{ABSENCE_REASON_LABEL[a.reason]}</Chip>
                         {a.note && <span>{a.note}</span>}
                       </p>
                       <p className="mt-2 text-sm text-ink-soft">

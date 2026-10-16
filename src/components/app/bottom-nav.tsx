@@ -5,12 +5,15 @@ import { usePathname } from "next/navigation";
 import { CalendarDays, GraduationCap, HandHelping, Home, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const TABS = [
+type Tab = { href: string; label: string; icon: typeof Home; exact?: boolean; /** Other sections that belong to this tab. */ also?: string[] };
+
+const TABS: Tab[] = [
   { href: "/app", label: "Home", icon: Home, exact: true },
   { href: "/app/shifts", label: "Shifts", icon: CalendarDays },
   { href: "/app/gaps", label: "Cover", icon: HandHelping },
   { href: "/app/training", label: "Training", icon: GraduationCap },
-  { href: "/app/profile", label: "Me", icon: UserRound },
+  // Reached from the Me tab, so it stays lit there.
+  { href: "/app/profile", label: "Me", icon: UserRound, also: ["/app/slot", "/app/harvest", "/app/security"] },
 ];
 
 export function BottomNav({ badges = {} }: { badges?: Partial<Record<string, number>> }) {
@@ -22,7 +25,7 @@ export function BottomNav({ badges = {} }: { badges?: Partial<Record<string, num
     >
       <ul className="mx-auto grid w-full max-w-[30rem] grid-cols-5">
         {TABS.map((t) => {
-          const active = t.exact ? pathname === t.href : pathname.startsWith(t.href);
+          const active = t.exact ? pathname === t.href : [t.href, ...(t.also ?? [])].some((p) => pathname.startsWith(p));
           const Icon = t.icon;
           const badge = badges[t.href];
           return (

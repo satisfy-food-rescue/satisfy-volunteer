@@ -2,11 +2,12 @@ import { useQueryClient } from "@tanstack/react-query";
 import * as SecureStore from "expo-secure-store";
 import { createContext, use, useCallback, useEffect, useMemo, useState } from "react";
 
-import type { MutationOk, SignInResult, SignOutInput } from "@satisfy/core/api";
+import type { MutationOk, PasswordSignInInput, SignInResult, SignOutInput } from "@satisfy/core/api";
 
 import { api, setApiToken, setUnauthorizedHandler } from "./api";
 import { forgetPushToken, registerForPush, storedPushToken } from "./push";
 import { keys } from "./queries";
+import { signInWithGoogle, signInWithPasskey, signInWithPassword } from "./sign-in";
 
 const TOKEN_KEY = "satisfy.session-token";
 
@@ -14,6 +15,12 @@ type Status = "loading" | "signedOut" | "signedIn";
 
 type Auth = {
   status: Status;
+  signInWithPassword: (input: PasswordSignInInput) => Promise<void>;
+  /** Throws Cancelled (src/lib/sign-in.ts) if the volunteer backs out. */
+  signInWithGoogle: () => Promise<void>;
+  /** Throws Cancelled if the volunteer backs out. */
+  signInWithPasskey: () => Promise<void>;
+  /** Demo deployment only. */
   signInAsPersona: (personaKey: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
@@ -49,9 +56,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (status === "signedIn") registerForPush({ ask: false }).catch(() => {});
   }, [status]);
 
-  const signInAsPersona = useCallback(
-    async (personaKey: string) => {
-      const result = await api<SignInResult>("/auth/demo", { method: "POST", body: { personaKey } });
+  const finish = useCallback(
+    async (signIn: Promise<SignInResult>) => {
+      const result = await signIn;
       await SecureStore.setItemAsync(TOKEN_KEY, result.token);
       setApiToken(result.token);
       queryClient.clear();
@@ -64,6 +71,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [queryClient],
   );
 
+  const methods = useMemo(
+    () => ({
+      signInWithPassword: (input: PasswordSignInInput) => finish(signInWithPassword(input)),
+      signInWithGoogle: () => finish(signInWithGoogle()),
+      signInWithPasskey: () => finish(signInWithPasskey()),
+      signInAsPersona: (personaKey: string) => finish(api<SignInResult>("/auth/demo", { method: "POST", body: { personaKey } })),
+    }),
+    [finish],
+  );
+
   const signOut = useCallback(async () => {
     const pushToken = await storedPushToken();
     const body: SignOutInput = pushToken ? { pushToken } : {};
@@ -71,7 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await clearLocal();
   }, [clearLocal]);
 
-  const value = useMemo(() => ({ status, signInAsPersona, signOut }), [status, signInAsPersona, signOut]);
+  const value = useMemo(() => ({ status, ...methods, signOut }), [status, methods, signOut]);
   return <AuthContext value={value}>{children}</AuthContext>;
 }
 

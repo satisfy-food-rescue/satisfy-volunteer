@@ -1,19 +1,19 @@
 // Shift views for the native app. The action is worked out here so the app
 // never re-implements the booking rules.
 import type { CrewMember, ShiftAction, ShiftDetail, ShiftSummary } from "@satisfy/core/api";
-import type { AssignmentSource } from "@satisfy/core/domain";
+import type { VolunteerRole } from "@satisfy/core/domain";
 import type { ShiftView } from "../roster";
 import { eligibilityFor, type Eligibility, type ModuleStatus } from "../training";
 
 /** Who is asking, and their training, to work out each shift's action. */
-export type ShiftContext = { me: { id: string; roles: string }; statuses: ModuleStatus[]; today: string };
+export type ShiftContext = { me: { id: string; roles: readonly VolunteerRole[] }; statuses: ModuleStatus[]; today: string };
 
 /** The same decision, in the same order, as src/components/app/shift-actions.tsx. */
 export function shiftAction(view: ShiftView, meId: string, elig: Eligibility, today: string): ShiftAction {
   if (view.iso < today) return { kind: "PAST" };
   if (view.shift.status === "CANCELLED") return { kind: "CANCELLED" };
   const mine = view.confirmed.find((a) => a.volunteerId === meId);
-  if (mine) return { kind: "MINE", assignmentId: mine.id, source: mine.source as AssignmentSource };
+  if (mine) return { kind: "MINE", assignmentId: mine.id, source: mine.source };
   if (!elig.eligible) {
     return { kind: "BLOCKED", reason: elig.reason ?? "You are not eligible for this shift yet.", fix: elig.hasRole ? "training" : view.kind === "HARVEST" ? "harvestPool" : "role", moduleCode: elig.blockers[0]?.module.code ?? null };
   }
@@ -28,7 +28,7 @@ export function shiftSummary(view: ShiftView, ctx: ShiftContext): ShiftSummary {
       volunteerId: a.volunteerId,
       firstName: a.volunteer.firstName,
       lastName: a.volunteer.lastName,
-      source: a.source as AssignmentSource,
+      source: a.source,
       isMe: a.volunteerId === ctx.me.id,
     }),
   );

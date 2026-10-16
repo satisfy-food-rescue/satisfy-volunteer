@@ -13,6 +13,8 @@ type Props = {
   onPress: () => void;
   variant?: ButtonVariant;
   icon?: IconName;
+  /** Artwork in place of an icon, such as a sign-in provider's mark. */
+  leading?: React.ReactNode;
   loading?: boolean;
   disabled?: boolean;
   /** Fills the row; otherwise the button hugs its label. */
@@ -29,7 +31,7 @@ const STYLES: Record<ButtonVariant, { bg: keyof Palette | null; pressed: keyof P
   onHero: { bg: "white", pressed: "tealTint", fg: "teal", border: null },
 };
 
-export function Button({ label, onPress, variant = "primary", icon, loading, disabled, block, size = "lg", accessibilityHint }: Props) {
+export function Button({ label, onPress, variant = "primary", icon, leading, loading, disabled, block, size = "lg", accessibilityHint }: Props) {
   const t = useTheme();
   const s = STYLES[variant];
   const inactive = disabled || loading;
@@ -60,7 +62,7 @@ export function Button({ label, onPress, variant = "primary", icon, loading, dis
       })}
     >
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-        {loading ? <ActivityIndicator color={t[s.fg]} /> : icon && <Icon name={icon} size={18} color={t[s.fg]} />}
+        {loading ? <ActivityIndicator color={t[s.fg]} /> : (leading ?? (icon && <Icon name={icon} size={18} color={t[s.fg]} />))}
         <Text variant={size === "lg" ? "bodyBold" : "smallBold"} tone={s.fg}>
           {label}
         </Text>

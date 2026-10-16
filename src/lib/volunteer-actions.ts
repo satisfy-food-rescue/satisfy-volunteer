@@ -7,7 +7,7 @@ import { z } from "zod";
 import type { Volunteer } from "@/generated/prisma/client";
 import { db } from "./db";
 import { addMonths, daysBetween, isoToDate, todayISO, dateToISO } from "./dates";
-import { ABSENCE_REASON_LABEL, HARVEST_ROLE, fullName, joinRoles, parseRoles, type AbsenceReason, type VolunteerRole } from "./domain";
+import { ABSENCE_REASON_LABEL, HARVEST_ROLE, fullName, sortRoles, type VolunteerRole } from "./domain";
 import { eligibilityFor } from "./training";
 import { shiftById } from "./roster";
 import { afterShiftReleased } from "./cover";
@@ -88,9 +88,9 @@ export async function markAway(me: Volunteer, input: z.infer<typeof awaySchema>)
     where: { id: { in: affected.map((a) => a.id) } },
     data: { status: "RELEASED", absenceId: absence.id },
   });
-  await queueEmail(me, T.absenceConfirmed({ firstName: me.firstName, startISO: startDate, endISO: endDate, reasonLabel: ABSENCE_REASON_LABEL[reason as AbsenceReason], releasedCount: affected.length }));
+  await queueEmail(me, T.absenceConfirmed({ firstName: me.firstName, startISO: startDate, endISO: endDate, reasonLabel: ABSENCE_REASON_LABEL[reason], releasedCount: affected.length }));
   for (const a of affected) {
-    await afterShiftReleased(a.shiftId, `${fullName(me)} marked away (${ABSENCE_REASON_LABEL[reason as AbsenceReason].toLowerCase()})`);
+    await afterShiftReleased(a.shiftId, `${fullName(me)} marked away (${ABSENCE_REASON_LABEL[reason].toLowerCase()})`);
   }
   revalidateAll();
   return { ok: true, message: affected.length === 0 ? "Marked away. No regular shifts fall in that period." : `Marked away. ${affected.length} ${affected.length === 1 ? "shift" : "shifts"} released for cover.` };
@@ -152,11 +152,11 @@ export const harvestPoolSchema = z.object({ inPool: z.boolean() });
  *  themselves. Joining brings in the harvest training; harvest shifts stay
  *  locked until it is done. Leaving keeps any harvests already booked. */
 export async function setHarvestPool(me: Volunteer, inPool: boolean): Promise<ActionResult> {
-  const roles = parseRoles(me.roles);
+  const roles = me.roles;
   const next: VolunteerRole[] = inPool ? [...roles, HARVEST_ROLE] : roles.filter((r) => r !== HARVEST_ROLE);
   if (next.length === 0) return { ok: false, error: "Harvests are your only role, so ask the coordinator if you'd like to stop volunteering." };
-  if (joinRoles(next) !== me.roles) {
-    await db.volunteer.update({ where: { id: me.id }, data: { roles: joinRoles(next) } });
+  if (next.join() !== sortRoles(me.roles).join()) {
+    await db.volunteer.update({ where: { id: me.id }, data: { roles: next } });
     await db.contactLog.create({ data: { volunteerId: me.id, authorId: me.id, kind: "ROLES_CHANGED", summary: inPool ? "Joined the harvest pool." : "Left the harvest pool." } });
   }
   revalidateAll();

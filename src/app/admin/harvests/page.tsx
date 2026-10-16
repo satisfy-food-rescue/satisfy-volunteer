@@ -3,7 +3,7 @@ import { GraduationCap, Plus, Sprout } from "lucide-react";
 import { requireAdmin } from "@/lib/session";
 import { db } from "@/lib/db";
 import { addDays, formatDay, isoToDate, todayISO } from "@/lib/dates";
-import { HARVEST_ROLE, inHarvestPool, parseRoles } from "@/lib/domain";
+import { HARVEST_ROLE, inHarvestPool } from "@/lib/domain";
 import { decorateShift, shiftInclude } from "@/lib/roster";
 import { moduleStatuses, trainingSummary } from "@/lib/training";
 import { PageHeader } from "@/components/shared/page-header";
@@ -22,14 +22,14 @@ export default async function HarvestsAdminPage() {
       include: shiftInclude,
       orderBy: [{ date: "asc" }, { startTime: "asc" }],
     }),
-    db.volunteer.findMany({ where: { status: "ACTIVE", role: "VOLUNTEER", roles: { contains: HARVEST_ROLE } }, include: { trainingRecords: true } }),
+    db.volunteer.findMany({ where: { status: "ACTIVE", role: "VOLUNTEER", roles: { has: HARVEST_ROLE } }, include: { trainingRecords: true } }),
     db.trainingModule.findMany({ orderBy: { order: "asc" } }),
   ]);
   const views = shifts.map(decorateShift);
   const upcoming = views.filter((v) => v.iso >= today);
   const past = views.filter((v) => v.iso < today).reverse();
   const pool = volunteers.filter(inHarvestPool);
-  const harvestModules = modules.filter((m) => parseRoles(m.requiredRoles).includes(HARVEST_ROLE));
+  const harvestModules = modules.filter((m) => m.requiredRoles.includes(HARVEST_ROLE));
   // Ready to pick: every harvest module current. Other roles' training does
   // not count here, so only the harvest modules are checked.
   const ready = pool.filter((v) => trainingSummary(moduleStatuses(v, harvestModules, v.trainingRecords, today)).compliant).length;

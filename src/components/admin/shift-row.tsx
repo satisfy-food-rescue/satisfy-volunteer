@@ -36,9 +36,10 @@ export function ShiftRow({ view, showDate }: { view: ShiftView; showDate?: strin
           {showDate && <span className="mr-2 text-muted-foreground">{showDate}</span>}
           {view.name}
         </span>
-        <span className="block text-xs text-muted-foreground tabular">{formatTimeRange(view.shift.startTime, view.shift.endTime)}</span>
+        <span className="block whitespace-nowrap text-xs text-muted-foreground tabular">{formatTimeRange(view.shift.startTime, view.shift.endTime)}</span>
       </span>
-      <span className="hidden -space-x-1 sm:flex">
+      {/* Sized by the row, not the viewport: the dashboard puts rows in a narrow column. */}
+      <span className="hidden shrink-0 -space-x-1 @lg/row:flex">
         {view.confirmed.slice(0, 5).map((a) => <AvatarBadge key={a.id} person={a.volunteer} size="sm" className="size-7 text-[0.6rem] ring-2 ring-card" />)}
       </span>
       <span className="w-12 text-right text-sm text-ink tabular">{view.confirmedCount}/{view.shift.capacity}</span>

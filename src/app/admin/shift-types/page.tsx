@@ -2,7 +2,7 @@ import { BellRing, Clock, Smartphone, UserRound, Users } from "lucide-react";
 import { requireAdmin } from "@/lib/session";
 import { db } from "@/lib/db";
 import { formatTimeRange, WEEKDAY_SHORT } from "@/lib/dates";
-import { SHIFT_KIND_LABEL, isAdHocKind, type ShiftKind } from "@/lib/domain";
+import { SHIFT_KIND_LABEL, isAdHocKind } from "@/lib/domain";
 import { PageHeader } from "@/components/shared/page-header";
 import { ShiftKindIcon, kindTileClass } from "@/components/app/shift-card";
 import { ShiftTypeEditor } from "@/components/admin/shift-type-editor";
@@ -25,7 +25,7 @@ export default async function ShiftTypesPage() {
         {templates.map((t) => {
           // Ad hoc shifts (harvests) are made one at a time and are never
           // cover gaps, so they have no weekdays and no last-minute rules.
-          const adHoc = isAdHocKind(t.kind as ShiftKind);
+          const adHoc = isAdHocKind(t.kind);
           return (
             <article key={t.id} className="rounded-2xl border border-border bg-card p-4">
               <div className="flex flex-wrap items-start gap-4">
@@ -34,7 +34,7 @@ export default async function ShiftTypesPage() {
                 </span>
                 <div className="min-w-0 flex-1">
                   <h2 className="text-xl text-ink">{t.name}</h2>
-                  <p className="text-sm text-muted-foreground">{adHoc ? "One-off shifts, planned from Harvests. These times and crew sizes are the defaults for a new one." : <>{SHIFT_KIND_LABEL[t.kind as ShiftKind]}{t.route ? ` · ${t.route.name} route` : ""} · {t.weekdays.split(",").map((d) => WEEKDAY_SHORT[Number(d)]).join(", ")}</>}</p>
+                  <p className="text-sm text-muted-foreground">{adHoc ? "One-off shifts, planned from Harvests. These times and crew sizes are the defaults for a new one." : <>{SHIFT_KIND_LABEL[t.kind]}{t.route ? ` · ${t.route.name} route` : ""} · {t.weekdays.map((d) => WEEKDAY_SHORT[d]).join(", ")}</>}</p>
                   <dl className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm text-ink-soft">
                     <div className="inline-flex items-center gap-1.5"><dt className="sr-only">Time</dt><Clock className="size-4 text-sky" aria-hidden /><dd className="tabular">{formatTimeRange(t.startTime, t.endTime)}</dd></div>
                     <div className="inline-flex items-center gap-1.5"><dt className="sr-only">Crew</dt><Users className="size-4 text-sky" aria-hidden /><dd className="tabular">{t.needed === t.capacity ? `${t.needed} needed` : `${t.needed} to ${t.capacity} volunteers`}</dd></div>

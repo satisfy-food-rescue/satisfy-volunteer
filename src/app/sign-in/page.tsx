@@ -1,145 +1,65 @@
 import type { Metadata } from "next";
-import { AlertTriangle, ClipboardList, ShieldCheck, Sprout, Truck, Warehouse, type LucideIcon } from "lucide-react";
-import { BrandFooter, FoodIcon, Logo } from "@/components/brand/logo";
-import { Photo } from "@/components/shared/photo";
-import { db } from "@/lib/db";
-import { todayISO, formatDayLong } from "@/lib/dates";
-import { fullName } from "@/lib/domain";
-import { moduleStatuses, trainingSummary } from "@/lib/training";
-import { IMPACT, compactCount, formatCount } from "@/lib/brand";
-import { PERSONAS, type PersonaKey } from "@/lib/personas";
-import { signInAs } from "./actions";
-import { cn } from "@/lib/utils";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { currentUser } from "@/lib/session";
+import { googleConfigured, isDemo } from "@/lib/env";
+import { postSignInPath, safeNextPath } from "@/lib/auth-shared";
+import { ORG } from "@/lib/brand";
+import { AuthShell } from "@/components/auth/auth-shell";
+import { DemoPersonas } from "@/components/auth/demo-personas";
+import { FormNotice } from "@/components/auth/form-notice";
+import { GoogleButton } from "@/components/auth/google-button";
+import { PasskeySignInButton } from "@/components/auth/passkey-sign-in-button";
+import { SignInForm } from "@/components/auth/sign-in-form";
 
 export const metadata: Metadata = { title: "Sign in" };
 export const dynamic = "force-dynamic";
 
-const PERSONA_ICON: Record<PersonaKey, LucideIcon> = {
-  phillipa: ShieldCheck,
-  margaret: Warehouse,
-  tony: Truck,
-  jess: Sprout,
+const ERRORS: Record<string, (email?: string) => string> = {
+  google_cancelled: () => "Google sign-in was cancelled.",
+  google_failed: () => "Google sign-in did not work just now. Please try again, or use your email and password.",
+  google_unavailable: () => "Google sign-in is not available. Use your email and password instead.",
+  google_unverified: () => "Google has not verified that email address, so we cannot use it to sign you in. Use your email and password instead.",
+  google_unknown: (email) =>
+    `We could not find a volunteer account for ${email ?? "that Google account"}. Try the email address you gave Satisfy, or contact the volunteer coordinator.`,
+  inactive: () => "This account is no longer active. Contact the volunteer coordinator if that is a mistake.",
 };
 
-export default async function SignInPage() {
-  const today = todayISO();
-  const [people, modules] = await Promise.all([
-    db.volunteer.findMany({
-      where: { personaKey: { in: PERSONAS.map((p) => p.key) } },
-      include: { trainingRecords: true, regularSlots: { include: { template: true } } },
-    }),
-    db.trainingModule.findMany(),
-  ]);
-  const byKey = new Map(people.map((p) => [p.personaKey, p]));
+export default async function SignInPage({ searchParams }: { searchParams: Promise<{ next?: string; error?: string; email?: string }> }) {
+  const { next: rawNext, error, email } = await searchParams;
+  const next = safeNextPath(rawNext);
+  const user = await currentUser();
+  if (user) redirect(postSignInPath(user.role, next));
+  if (isDemo()) return <DemoPersonas />;
 
+  const google = googleConfigured();
   return (
-    <main className="flex flex-1 flex-col">
-      <div className="bg-teal text-white">
-        <div className="mx-auto grid w-full max-w-5xl gap-8 px-5 py-10 md:grid-cols-[1fr_19rem] md:items-center md:gap-12 md:px-10 md:py-14">
-          <div>
-            <Logo tone="white" className="h-28 md:h-32" />
-            <h1 className="mt-8 max-w-xl text-4xl text-white md:text-5xl">
-              Volunteer roster, training and cover in one place.
-            </h1>
-            <p className="mt-3 max-w-xl text-lg text-white/85">
-              Demo build for Satisfy Food Rescue. Pick a persona to explore. Nothing here sends real email or touches Infoodle.
-            </p>
-            <dl className="mt-8 grid max-w-xl grid-cols-3 gap-3">
-              {(
-                [
-                  ["broccoli", compactCount(IMPACT.kgRescued), "kg of kai rescued"],
-                  ["carrot", compactCount(IMPACT.meals), "meals shared"],
-                  ["apple", `${formatCount(IMPACT.co2Tonnes)} t`, `CO2e avoided ${IMPACT.co2Period}`],
-                ] as const
-              ).map(([icon, n, l]) => (
-                <div key={l} className="flex flex-col rounded-2xl bg-white/10 px-3 py-3.5 ring-1 ring-white/15">
-                  <FoodIcon kind={icon} className="size-8 rounded-full ring-2 ring-white/80" />
-                  <dd className="mt-3 whitespace-nowrap font-display text-xl font-bold text-white tabular sm:text-2xl">{n}</dd>
-                  <dt className="mt-0.5 text-xs font-semibold leading-snug text-white/80">{l}</dt>
-                </div>
-              ))}
-            </dl>
-          </div>
-          <Photo
-            photo="team"
-            sizes="(min-width: 48rem) 19rem, calc(100vw - 2.5rem)"
-            preload
-            className="aspect-[2/1] rounded-3xl ring-1 ring-white/15 md:aspect-[3/4]"
-          />
+    <AuthShell
+      title="Sign in"
+      description={<>For volunteers and coordinators at {ORG.name}.</>}
+      footer={
+        <>
+          First time here?{" "}
+          <Link href="/forgot-password?first=1" className="font-semibold text-teal underline underline-offset-4">
+            Set up your password
+          </Link>{" "}
+          with the email you volunteer with.
+        </>
+      }
+    >
+      <div className="flex flex-col gap-5">
+        {error && ERRORS[error] && <FormNotice tone="error">{ERRORS[error](email)}</FormNotice>}
+        <SignInForm next={next} />
+        <div className="flex items-center gap-3 text-sm text-muted-foreground" aria-hidden>
+          <span className="h-px flex-1 bg-border" />
+          or
+          <span className="h-px flex-1 bg-border" />
+        </div>
+        <div className="flex flex-col gap-3">
+          {google && <GoogleButton next={next} />}
+          <PasskeySignInButton next={next} />
         </div>
       </div>
-
-      <div className="mx-auto w-full max-w-5xl px-5 py-10 md:px-10">
-        <div className="mb-6 flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-2xl text-ink">Sign in as</h2>
-          <p className="text-sm text-muted-foreground">
-            Demo date: {formatDayLong(today)}. Seed data is generated relative to today.
-          </p>
-        </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {PERSONAS.map((p) => {
-            const person = byKey.get(p.key);
-            if (!person) return null;
-            const summary = trainingSummary(moduleStatuses(person, modules, person.trainingRecords, today));
-            const slot = person.regularSlots[0];
-            const Icon = PERSONA_ICON[p.key];
-            return (
-              <form key={p.key} action={signInAs}>
-                <input type="hidden" name="persona" value={p.key} />
-                <button
-                  type="submit"
-                  className={cn(
-                    "group flex w-full flex-col gap-3 rounded-2xl border border-border bg-card p-5 text-left shadow-sm transition-all",
-                    "hover:-translate-y-0.5 hover:border-teal/60 hover:shadow-md active:translate-y-0",
-                  )}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <span className="flex size-12 items-center justify-center rounded-full bg-teal-tint text-teal transition-colors group-hover:bg-teal group-hover:text-white">
-                      <Icon className="size-6" aria-hidden />
-                    </span>
-                    <span className="font-display rounded-full bg-muted px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                      {p.surface}
-                    </span>
-                  </div>
-                  <div>
-                    <p className="text-xl font-bold text-ink">{fullName(person)}</p>
-                    <p className="text-sm font-semibold text-teal">{p.label}</p>
-                  </div>
-                  <p className="text-base leading-snug text-ink-soft">{p.blurb}</p>
-                  <div className="mt-auto flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                    {slot && (
-                      <span className="inline-flex items-center gap-1.5">
-                        <ClipboardList className="size-4" aria-hidden />
-                        {person.regularSlots.length} regular {person.regularSlots.length === 1 ? "slot" : "slots"}
-                      </span>
-                    )}
-                    {person.role !== "ADMIN" && (
-                      <span className={cn("inline-flex items-center gap-1.5", summary.overdue > 0 && "text-status-bad", summary.notStarted > 0 && summary.overdue === 0 && "text-status-neutral")}>
-                        {summary.overdue > 0 || summary.notStarted > 0 ? (
-                          <AlertTriangle className="size-4" aria-hidden />
-                        ) : (
-                          <ShieldCheck className="size-4" aria-hidden />
-                        )}
-                        {summary.overdue > 0
-                          ? `${summary.overdue} overdue`
-                          : summary.notStarted > 0
-                            ? `${summary.notStarted} modules to complete`
-                            : summary.dueSoon > 0
-                              ? `${summary.dueSoon} due soon`
-                              : "Training current"}
-                      </span>
-                    )}
-                  </div>
-                </button>
-              </form>
-            );
-          })}
-        </div>
-        <p className="mt-8 text-sm text-muted-foreground">
-          Switching persona sets a cookie. There is no real authentication in this demo; the production build uses email sign-in with passkeys, the same as the Fair Food portal.
-        </p>
-      </div>
-      <BrandFooter className="mt-auto pb-6" />
-    </main>
+    </AuthShell>
   );
 }

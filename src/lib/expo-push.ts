@@ -22,14 +22,16 @@ export function chunk<T>(items: readonly T[], size: number): T[][] {
 }
 
 /** Sends one message to every token. Never throws: request and ticket errors
- *  are logged. Returns the tokens Expo accepted and the ones it says belong
- *  to uninstalled apps, which the caller should forget. */
+ *  are logged. Returns the tokens Expo accepted (with their ticket ids) and
+ *  the ones it says belong to uninstalled apps, which the caller should
+ *  forget. */
 export async function sendExpoPush(
   tokens: readonly string[],
   message: PushMessage,
   { fetch: fetchImpl = fetch, accessToken = process.env.EXPO_ACCESS_TOKEN }: { fetch?: typeof fetch; accessToken?: string } = {},
-): Promise<{ delivered: string[]; unregistered: string[] }> {
+): Promise<{ delivered: string[]; ticketIds: string[]; unregistered: string[] }> {
   const delivered: string[] = [];
+  const ticketIds: string[] = [];
   const unregistered: string[] = [];
   const headers: Record<string, string> = { accept: "application/json", "content-type": "application/json" };
   if (accessToken) headers.authorization = `Bearer ${accessToken}`;
@@ -49,7 +51,10 @@ export async function sendExpoPush(
       json.data.forEach((ticket, i) => {
         const token = batch[i];
         if (!token) return;
-        if (ticket.status === "ok") delivered.push(token);
+        if (ticket.status === "ok") {
+          delivered.push(token);
+          ticketIds.push(ticket.id);
+        }
         else if (ticket.details?.error === "DeviceNotRegistered") unregistered.push(token);
         else console.error(`Expo push ticket error for ${token}: ${ticket.message ?? ticket.details?.error ?? "unknown"}`);
       });
@@ -57,5 +62,5 @@ export async function sendExpoPush(
       console.error("Expo push request failed", e);
     }
   }
-  return { delivered, unregistered };
+  return { delivered, ticketIds, unregistered };
 }

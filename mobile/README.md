@@ -18,7 +18,9 @@ cd mobile && pnpm install && pnpm start
 
 Press `i` for the iOS simulator or `a` for an Android emulator, or scan the QR code with Expo Go on a phone on the same network. In development the app finds the API on the machine running Metro, port 3000, so a simulator, an emulator and a real phone all work without configuration (`src/lib/config.ts`). On an Android emulator that cannot reach your LAN address, run `adb reverse tcp:8081 tcp:8081 && adb reverse tcp:3000 tcp:3000` and open `exp://localhost:8081`.
 
-Sign in by picking a volunteer persona. The coordinator persona is web-only.
+Sign in with a demo volunteer's email and the password `kai-rescue-demo` (see the root README), or start the web app with `DEMO_MODE=1` to get the persona picker instead. Coordinators use the website.
+
+Volunteers sign in the same ways as on the website: a password, Google, or a passkey. The app asks the server which are on (`GET /api/mobile/auth/config`) and shows only those. Google opens the website's sign-in in the system browser, which hands back to `satisfy://auth`; in development that only works in a simulator on the machine running the web app, with `APP_URL` matching the address the app uses. Passkeys need a development or release build (`react-native-passkeys` is native, so Expo Go hides the button) and an HTTPS server that vouches for the app (see DEPLOY.md, step 4).
 
 Expo Go runs everything except push on Android, which Expo Go no longer supports; the Me tab says so. Push works on a real iPhone in Expo Go, and on both platforms in development and release builds.
 
@@ -51,7 +53,7 @@ assets/satisfy.icon      iOS 26 Liquid Glass icon (Icon Composer bundle)
 scripts/                 icon generation, route type generation
 src/app                  routes only (Expo Router)
   _layout.tsx            fonts, splash, auth gate, notification taps
-  sign-in.tsx            demo persona picker
+  sign-in.tsx            password, Google and passkey sign-in; the persona picker on the demo
   (tabs)/_layout.tsx     native tab bar with badges
   (tabs)/(home,shifts,cover,training,me)/   one stack per tab, sharing shift/[id], module/[code], slot, harvest
   mark-away.tsx, role-request.tsx           form sheets
@@ -76,7 +78,7 @@ The app is linked to the Expo project `@malinmw/satisfy-volunteers`; its id is i
 Once, before the first preview or production build:
 
 1. Set the API URL (the deployed web app) as an EAS environment variable for each environment you build, for example `npx eas-cli@latest env:create --name EXPO_PUBLIC_API_URL --value https://<host> --environment preview --visibility plaintext`. Builds and updates for `preview` or `production` refuse to run without it, because the app would otherwise talk to `localhost`.
-2. `npx eas-cli@latest credentials` sets up signing and the APNs key for push. It asks for your Apple account.
+2. `npx eas-cli@latest credentials` sets up signing and the APNs key for push. It asks for your Apple account. For passkeys, give the server the Apple team id and the Android signing fingerprints it shows (DEPLOY.md, step 4).
 3. For iPhone test builds, register each test phone with `pnpm devices` (it gives a link to open on the phone). Android test builds install on any phone.
 
 | Script | What it does |

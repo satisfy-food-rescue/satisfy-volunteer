@@ -68,7 +68,7 @@ export default async function ReportsPage() {
         <StatTile label="Month-on-month retention" value={`${retention.filter((r) => !r.na).slice(-1)[0]?.value ?? 0}%`} hint="Of last month's active volunteers, share active again this month" icon={Repeat} tone="neutral" />
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 @4xl/admin:grid-cols-2">
         <section className="rounded-2xl border border-border bg-card p-5">
           <h2 className="text-xl text-ink">Volunteer hours per month</h2>
           <p className="mb-4 text-sm text-muted-foreground">Attended shift hours. The current month is partial.</p>

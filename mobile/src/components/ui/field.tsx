@@ -4,7 +4,7 @@ import { font, radius, useTheme } from "@/theme";
 
 import { Text } from "./text";
 
-type Props = TextInputProps & { label: string; hint?: string; optional?: boolean };
+type Props = TextInputProps & { label: string; hint?: string; optional?: boolean; ref?: React.Ref<TextInput> };
 
 /** A labelled text input. Readonly fields show as muted, not disabled grey. */
 export function Field({ label, hint, optional, multiline, editable = true, style, ...rest }: Props) {

@@ -1,4 +1,3 @@
-import type { AbsenceReason } from "@satisfy/core/domain";
 import type { SlotOverview } from "@satisfy/core/api";
 import { dateToISO, todayISO } from "@/lib/dates";
 import { json, mobileHandler } from "@/lib/mobile-auth";
@@ -18,7 +17,7 @@ export const GET = mobileHandler(async (me) => {
         id: a.id,
         startISO,
         endISO: dateToISO(a.endDate),
-        reason: a.reason as AbsenceReason,
+        reason: a.reason,
         note: a.note,
         releasedCount: a.releasedAssignments.filter((r) => r.status === "RELEASED").length,
         removable: startISO >= today,

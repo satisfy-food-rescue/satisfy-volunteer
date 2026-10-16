@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { TrainingModule } from "@/generated/prisma/client";
+import type { VolunteerRole } from "@/lib/domain";
 import { decorateShift, type ShiftFull } from "@/lib/roster";
 import { eligibilityFor, moduleStatuses } from "@/lib/training";
 import * as T from "@/lib/email-templates";
@@ -24,8 +25,8 @@ function shift(kind: string, over: Partial<ShiftFull> = {}): ShiftFull {
   } as unknown as ShiftFull;
 }
 
-const trainingModule = (code: string, requiredRoles: string) => ({ id: code, code, name: code, requiredRoles, order: 1, validityMonths: 12, mandatoryBeforeFirstShift: false }) as TrainingModule;
-const modules = [trainingModule("MANUAL_HANDLING", "WAREHOUSE,HARVEST"), trainingModule("INITIAL_VISIT", "WAREHOUSE")];
+const trainingModule = (code: string, requiredRoles: VolunteerRole[]) => ({ id: code, code, name: code, requiredRoles, order: 1, validityMonths: 12, mandatoryBeforeFirstShift: false }) as unknown as TrainingModule;
+const modules = [trainingModule("MANUAL_HANDLING", ["WAREHOUSE", "HARVEST"]), trainingModule("INITIAL_VISIT", ["WAREHOUSE"])];
 
 describe("harvest shifts", () => {
   it("are never cover gaps, however short", () => {
@@ -53,12 +54,12 @@ describe("harvest shifts", () => {
 
 describe("the harvest training gate", () => {
   it("asks volunteers outside the pool to join it", () => {
-    const me = { roles: "WAREHOUSE" };
+    const me = { roles: ["WAREHOUSE" as const] };
     expect(eligibilityFor(me, "HARVEST", moduleStatuses(me, modules, [], TODAY)).reason).toBe("Join the harvest pool to sign up for harvests.");
   });
 
   it("needs the harvest modules but not the warehouse initial visit", () => {
-    const me = { roles: "HARVEST" };
+    const me = { roles: ["HARVEST" as const] };
     const elig = eligibilityFor(me, "HARVEST", moduleStatuses(me, modules, [], TODAY));
     expect(elig.eligible).toBe(false);
     expect(elig.blockers.map((b) => b.module.code)).toEqual(["MANUAL_HANDLING"]);

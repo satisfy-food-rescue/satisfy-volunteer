@@ -4,6 +4,7 @@ import * as Haptics from "expo-haptics";
 import { useCallback, useRef } from "react";
 
 import type {
+  AuthConfig,
   AwayInput,
   CoverList,
   HarvestOverview,
@@ -11,6 +12,7 @@ import type {
   MobileSession,
   MutationOk,
   ProfileInput,
+  SecurityOverview,
   ShiftDetail,
   ShiftsWeek,
   SlotOverview,
@@ -31,6 +33,8 @@ export const keys = {
   module: (code: string) => ["module", code],
   slot: ["slot"],
   harvest: ["harvest"],
+  authConfig: ["auth-config"],
+  security: ["security"],
 } as const;
 
 export const useSession = () => useQuery({ queryKey: keys.session, queryFn: () => api<MobileSession>("/session") });
@@ -47,6 +51,9 @@ export const useTraining = () => useQuery({ queryKey: keys.training, queryFn: ()
 export const useModule = (code: string) => useQuery({ queryKey: keys.module(code), queryFn: () => api<TrainingModuleDetail>(`/training/modules/${encodeURIComponent(code)}`) });
 export const useSlot = () => useQuery({ queryKey: keys.slot, queryFn: () => api<SlotOverview>("/slot") });
 export const useHarvest = () => useQuery({ queryKey: keys.harvest, queryFn: () => api<HarvestOverview>("/harvest") });
+/** Which sign-in methods the server offers. Read before signing in. */
+export const useAuthConfig = () => useQuery({ queryKey: keys.authConfig, queryFn: () => api<AuthConfig>("/auth/config"), staleTime: 5 * 60_000 });
+export const useSecurity = () => useQuery({ queryKey: keys.security, queryFn: () => api<SecurityOverview>("/security") });
 
 /** Screens in a tab stay mounted, so refetch stale data when one comes back
  *  into view (e.g. after booking a shift from another tab). */
@@ -79,6 +86,8 @@ export function useAction<TInput = void>(run: (input: TInput) => Promise<Mutatio
       options.onSuccess?.();
     },
     onError: (error) => {
+      // Backing out of a system prompt (a passkey, say) is not an error.
+      if (error.name === "Cancelled") return;
       if (process.env.EXPO_OS === "ios") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       toast.show(error.message, "error");
     },
@@ -95,4 +104,6 @@ export const actions = {
   setHarvestPool: (inPool: boolean) => api<MutationOk>("/harvest/pool", { method: "PUT", body: { inPool } }),
   updateProfile: (input: ProfileInput) => api<MutationOk>("/profile", { method: "PATCH", body: input }),
   requestRoleChange: (message: string) => api<MutationOk>("/profile/role-request", { method: "POST", body: { message } }),
+  removePasskey: (id: string) => api<MutationOk>(`/passkeys/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  requestSignInLink: (email: string) => api<MutationOk>("/auth/link", { method: "POST", body: { email } }),
 };
