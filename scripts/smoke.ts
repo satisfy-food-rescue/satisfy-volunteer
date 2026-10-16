@@ -19,18 +19,20 @@ const db = new PrismaClient({ adapter: new PrismaBetterSqlite3({ url }) });
 type Check = { path: string; persona: string | null; cookie?: string; expect: number; location?: string };
 
 // Values to try for each dynamic route. Shifts are limited to a fortnight
-// around today, which covers past, current, cancelled and upcoming shifts.
+// around today, which covers past, current, cancelled and upcoming shifts,
+// plus every harvest. Volunteers never see drafts (they 404), coordinators do.
 async function resolvers(): Promise<Record<string, string[]>> {
   const today = todayISO();
   const shifts = await db.shift.findMany({
-    where: { date: { gte: isoToDate(addDays(today, -7)), lte: isoToDate(addDays(today, 7)) } },
-    select: { id: true },
+    where: { OR: [{ date: { gte: isoToDate(addDays(today, -7)), lte: isoToDate(addDays(today, 7)) } }, { template: { kind: "HARVEST" } }] },
+    select: { id: true, status: true },
   });
   const ids = (rows: { id: string }[]) => rows.map((r) => r.id);
   return {
-    "/app/shifts/[id]": ids(shifts),
+    "/app/shifts/[id]": ids(shifts.filter((s) => s.status !== "DRAFT")),
     "/app/training/[code]": (await db.trainingModule.findMany({ select: { code: true } })).map((m) => m.code),
     "/admin/roster/[id]": ids(shifts),
+    "/admin/roster/[id]/edit": ids(shifts),
     "/admin/volunteers/[id]": ids(await db.volunteer.findMany({ select: { id: true } })),
     "/admin/outbox/[id]": ids(await db.email.findMany({ select: { id: true } })),
     "/admin/training/sessions/[id]": ids(await db.trainingSession.findMany({ select: { id: true } })),
@@ -156,9 +158,9 @@ async function mobileApiChecks(admins: Volunteer[], volunteers: Volunteer[], val
       for (const id of shiftIds) await get<Api.ShiftDetail>(`/shifts/${id}`, (b) => b.id === id && shiftOk(b) && isArr(b.stops));
       await get<Api.CoverList>("/cover", (b) => b.shifts.every((s) => shiftOk(s) && s.isGap));
       await get<Api.TrainingOverview>("/training", (b) => b.required.length > 0 && isNum(b.summary.current) && isArr(b.sessions));
-      for (const code of moduleCodes) await get<Api.TrainingModuleDetail>(`/training/modules/${code}`, (b) => b.module.code === code && isArr(b.paragraphs));
+      for (const code of moduleCodes) await get<Api.TrainingModuleDetail>(`/training/modules/${code}`, (b) => b.module.code === code && isArr(b.paragraphs) && isArr(b.links));
       await get<Api.SlotOverview>("/slot", (b) => isArr(b.slots) && isArr(b.absences) && isArr(b.upcoming));
-      await get<Api.HarvestOverview>("/harvest", (b) => isArr(b.callouts) && isNum(b.poolCount));
+      await get<Api.HarvestOverview>("/harvest", (b) => isNum(b.poolCount) && b.training.length > 0 && b.harvests.every((s) => shiftOk(s) && s.kind === "HARVEST"));
       const profile: Api.ProfileInput = { phone: v.phone ?? "", suburb: v.suburb ?? "", emergencyName: v.emergencyName ?? "", emergencyPhone: v.emergencyPhone ?? "", availabilityNote: v.availabilityNote ?? "", lastMinuteOk: v.lastMinuteOk };
       await call<Api.MutationOk>(who, "PATCH", "/profile", { token, body: profile, check: (b) => isStr(b.message) });
       await call<Api.MutationOk>(who, "DELETE", "/auth/session", { token, body: {}, check: (b) => isStr(b.message) });

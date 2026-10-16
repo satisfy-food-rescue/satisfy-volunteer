@@ -1,4 +1,4 @@
-# Demo walkthrough (about 12 minutes)
+# Demo walkthrough (about 15 minutes)
 
 Start with `pnpm dev` and open http://localhost:3000. Have the browser at desktop width for admin and use responsive mode at 375px (or a phone) for the volunteer app. Everything below is seeded relative to today, so the dates you see will match the calendar.
 
@@ -17,7 +17,7 @@ Switch persona (sidebar footer icon) and sign in as **Tony Ratana**. Narrow the 
 
 - Home: the red banner says one refresher is overdue and route shifts are blocked.
 - Tap **Cover** (bottom bar). Route shifts need driver help. The cards are locked: "Complete the Manual Handling refresher to book driver help shifts". Tap **Go to training**.
-- Tap **Manual Handling**, scroll the four points, tick the confirmation box, **Confirm and record completion**. The chip flips to Complete with a new expiry 12 months out.
+- Tap **Manual Handling**. The confirmation box is locked: under it, "Read to the end" and "Open the video" are both unticked. Scroll through the five points (the first ticks), open the two-minute video (the second ticks), then tick the box and **Record completion**. The chip flips to Complete with a new expiry 12 months out.
 - Back to **Cover**: the lock is gone. Tap **I can cover this**. Tony is now on the shift; the Outbox has his confirmation email.
 
 ## 3. Marking away creates a gap, admin covers it - 2 min
@@ -48,7 +48,19 @@ Still as Tony:
 - **Training > Modules**: click a count such as "1 overdue" under a module. The **People** tab opens filtered to exactly those volunteers. Filter by module, status, expiry window or name, and sort by any column.
 - **Shift types**: names, times, crew sizes, who volunteers work with, and per-type last-minute thresholds. Route shifts push to last-minute volunteers 3 days out and alert the coordinator at 36 hours; the warehouse sort uses 2 days and 1 day.
 
-## 7. Rebrand-ready and Infoodle - 1 min
+## 7. Harvests and announcements - 3 min
+
+As **Phillipa**:
+
+- **Harvests** in the sidebar: pool size, how many have finished harvest training, a published lemon and grapefruit harvest with three pickers, and a rhubarb harvest still in **Draft** (only coordinators see drafts). Open the draft: **Publish** offers to send the callout to the whole harvest pool by email and push notification.
+- **Plan a harvest** opens the one-off shift form: what's being picked, where, pickers needed and details for volunteers. **Save as draft** or **Publish and send callout**. The same form (**New shift** on the Roster) adds a one-off sorting morning.
+- On a published harvest, **Message crew** opens **Announcements** with that crew picked. Announcements also go to everyone or to chosen roles, with a live recipient count and an email preview.
+- **Add** someone to a shift and they get an email and a push notification saying who added them (Outbox, **Added to a shift**).
+- **Training > Modules > Edit module**: content and video links are edited here, and **Add a module** creates new ones (ladders, sun safety) as the SOPs arrive.
+
+Switch to **Margaret** at phone width: **Me > Harvest**, **Count me in for harvests**. Her Manual Handling and Slips, Trips and Falls are current, so the harvests open straight away: tap one and **Sign me up**. Jess or Emma would see the two modules to finish first.
+
+## 8. Rebrand-ready and Infoodle - 1 min
 
 - **Settings**. First card: the logo, colours, tints, footer and font from the 2026 brand refresh, all theme tokens in one file. Second card: the Infoodle panel with "API: pending confirmation" and what would sync in each direction. Third: the email templates.
 

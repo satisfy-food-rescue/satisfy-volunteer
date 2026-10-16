@@ -242,7 +242,7 @@ export function applicationApproved(p: {
       p.inductionAt
         ? `Your first step is your initial visit to the warehouse on ${formatInstant(p.inductionAt)} at ${p.inductionLocation ?? "the Rangiora warehouse"}. We have pencilled you in; please confirm from the Training tab.`
         : `Your first step is your initial visit to the warehouse. Our volunteer coordinator will give you a call to find a time that suits, or you can book one from the Training tab.`,
-      `Once your in-person training is complete you can book shifts, choose a regular weekly slot, and opt in to seasonal harvest callouts.`,
+      `Once your in-person training is complete you can book shifts, choose a regular weekly slot, and join the harvest pool for seasonal picking.`,
       SIGN_OFF,
     ),
     ctaLabel: "Open the volunteer app",
@@ -297,28 +297,129 @@ export function sessionConfirmed(p: {
   };
 }
 
-export function harvestCallout(p: {
+type ShiftCalloutParams = {
   firstName: string;
-  title: string;
+  /** "Harvest" for the harvest pool, else the shift type, e.g. "Driver help". */
+  kindLabel: string;
+  harvest: boolean;
+  name: string;
   dateISO: string;
   start: string;
   end: string;
   location: string;
-  partner: string;
-}): EmailDraft {
+  notes: string | null;
+  spotsLeft: number;
+  shiftId: string;
+};
+
+/** Sent when a coordinator publishes a one-off shift and asks for a callout:
+ *  to every active volunteer who holds the role (for a harvest, the whole
+ *  harvest pool, trained or not, since the email says how to get ready). */
+export function shiftCallout(p: ShiftCalloutParams): EmailDraft {
+  const when = `${formatDayLong(p.dateISO)}, ${formatTimeRange(p.start, p.end)}`;
   return {
-    kind: "HARVEST_CALLOUT",
-    subject: `Harvest callout: ${p.title}, ${formatDay(p.dateISO)}`,
-    preview: `${formatTimeRange(p.start, p.end)} at ${p.location}.`,
+    kind: p.harvest ? "HARVEST_CALLOUT" : "SHIFT_PUBLISHED",
+    subject: `${p.harvest ? "Harvest" : "New shift"}: ${p.name}, ${formatDay(p.dateISO)}`,
+    preview: `${formatTimeRange(p.start, p.end)} at ${p.location}. ${p.spotsLeft} ${p.spotsLeft === 1 ? "place" : "places"} to fill.`,
     body: paragraphs(
       `Kia ora ${p.firstName},`,
-      `We have a harvest on. ${p.title} at ${p.location}, ${formatDayLong(p.dateISO)}, ${formatTimeRange(p.start, p.end)}, with ${p.partner}.`,
-      `Bring a hat, sunscreen and water. Ladders and picking bags are provided. Let us know in the app if you can come.`,
+      p.harvest
+        ? `We have a harvest on and would love your help: ${p.name} on ${when}, at ${p.location}.`
+        : `A new ${p.kindLabel.toLowerCase()} shift is up: ${p.name} on ${when}, at ${p.location}.`,
+      p.notes ? sentence(p.notes) : "",
+      p.harvest
+        ? `Bring a hat, sunscreen and water. If it is your first harvest, we will run through a short induction on the day. Harvest training needs to be done in the app before you can sign up.`
+        : "",
+      `Places go to whoever signs up first. If it is not for you this time, no need to reply.`,
       SIGN_OFF,
     ),
-    ctaLabel: "Respond to the callout",
-    ctaHref: "/app/harvest",
+    ctaLabel: "Sign up",
+    ctaHref: `/app/shifts/${p.shiftId}`,
   };
+}
+
+export function shiftCalloutPush(p: ShiftCalloutParams): EmailDraft {
+  return {
+    kind: p.harvest ? "HARVEST_CALLOUT" : "SHIFT_PUBLISHED",
+    channel: "PUSH",
+    subject: `${p.harvest ? "Harvest" : "New shift"}: ${formatDay(p.dateISO)}`,
+    preview: `${p.name}, ${formatTimeRange(p.start, p.end)} at ${p.location}. Tap to sign up.`,
+    body: `${p.name} on ${formatDayLong(p.dateISO)}, ${formatTimeRange(p.start, p.end)} at ${p.location}. Tap to sign up.`,
+    ctaLabel: "Open the shift",
+    ctaHref: `/app/shifts/${p.shiftId}`,
+  };
+}
+
+type ShiftAddedParams = {
+  firstName: string;
+  shiftName: string;
+  dateISO: string;
+  start: string;
+  end: string;
+  location: string;
+  shiftId: string;
+  /** The coordinator's first name. */
+  addedBy: string;
+  /** Filling a gap rather than an open place. */
+  covering: boolean;
+};
+
+/** Sent when a coordinator puts a volunteer on a shift, usually after a phone
+ *  call, so the booking is in writing and on their phone. */
+export function shiftAdded(p: ShiftAddedParams): EmailDraft {
+  return {
+    kind: p.covering ? "COVER_CONFIRMED" : "SHIFT_ADDED",
+    subject: `You're on ${p.shiftName}, ${formatDay(p.dateISO)}`,
+    preview: `${p.addedBy} added you: ${formatTimeRange(p.start, p.end)} at ${p.location}.`,
+    body: paragraphs(
+      `Kia ora ${p.firstName},`,
+      `${p.addedBy} has added you to ${p.shiftName} on ${formatDayLong(p.dateISO)}, ${formatTimeRange(p.start, p.end)}, at ${p.location}.`,
+      p.covering ? `You are covering for someone who is away. Stepping in is what keeps the kai moving, thank you.` : "",
+      `If you can no longer make it, cancel it in the app or reply to this email so we can find someone else.`,
+      SIGN_OFF,
+    ),
+    ctaLabel: "View shift",
+    ctaHref: `/app/shifts/${p.shiftId}`,
+  };
+}
+
+export function shiftAddedPush(p: ShiftAddedParams): EmailDraft {
+  return {
+    kind: p.covering ? "COVER_CONFIRMED" : "SHIFT_ADDED",
+    channel: "PUSH",
+    subject: `You're on ${formatDay(p.dateISO)}`,
+    preview: `${p.addedBy} added you to ${p.shiftName}, ${formatTimeRange(p.start, p.end)}.`,
+    body: `${p.addedBy} added you to ${p.shiftName} on ${formatDayLong(p.dateISO)}, ${formatTimeRange(p.start, p.end)}, at ${p.location}.`,
+    ctaLabel: "Open the shift",
+    ctaHref: `/app/shifts/${p.shiftId}`,
+  };
+}
+
+type AnnouncementParams = {
+  firstName: string;
+  subject: string;
+  /** Paragraphs separated by a blank line, as the coordinator typed them. */
+  body: string;
+  /** The coordinator's first name. */
+  from: string;
+  /** Set when it is about one shift, so the button opens it. */
+  shiftId?: string;
+};
+
+export function announcement(p: AnnouncementParams): EmailDraft {
+  const firstLine = p.body.split("\n").find((l) => l.trim()) ?? "";
+  return {
+    kind: "ANNOUNCEMENT",
+    subject: p.subject,
+    preview: firstLine.length > 120 ? `${firstLine.slice(0, 117).trimEnd()}...` : firstLine,
+    body: paragraphs(`Kia ora ${p.firstName},`, p.body.trim(), `Ngā mihi nui,\n${p.from} and the Satisfy volunteer team`),
+    ...(p.shiftId ? { ctaLabel: "View shift", ctaHref: `/app/shifts/${p.shiftId}` } : {}),
+  };
+}
+
+export function announcementPush(p: AnnouncementParams): EmailDraft {
+  const email = announcement(p);
+  return { ...email, channel: "PUSH", body: p.body.trim(), ctaLabel: p.shiftId ? "Open the shift" : undefined, ctaHref: p.shiftId ? `/app/shifts/${p.shiftId}` : undefined };
 }
 
 export function welcome(p: { firstName: string }): EmailDraft {

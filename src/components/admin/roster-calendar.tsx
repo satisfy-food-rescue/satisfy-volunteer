@@ -31,6 +31,7 @@ export function WeekView({ monday, shifts, today }: { monday: string; shifts: Sh
 
 function CompactShift({ view }: { view: ShiftView }) {
   const cancelled = view.shift.status === "CANCELLED";
+  const draft = view.isDraft;
   const fill = Math.min(100, Math.round((view.confirmedCount / Math.max(1, view.shift.capacity)) * 100));
   return (
     <Link
@@ -39,7 +40,9 @@ function CompactShift({ view }: { view: ShiftView }) {
         "@container flex flex-col gap-1.5 rounded-xl p-2.5 shadow-sm transition-colors",
         cancelled
           ? "border border-dashed border-border bg-card/60"
-          : view.isGap
+          : draft
+            ? "border border-dashed border-teal/60 bg-teal-tint-soft hover:border-teal"
+            : view.isGap
             ? "bg-orange-tint/40 ring-1 ring-orange/50 hover:ring-orange"
             : "bg-card ring-1 ring-border hover:ring-teal/60",
       )}
@@ -48,16 +51,18 @@ function CompactShift({ view }: { view: ShiftView }) {
           badge drops under the name instead of overflowing the card. */}
       <span className="flex flex-col items-start gap-1 @[9.5rem]:flex-row @[9.5rem]:justify-between @[9.5rem]:gap-2">
         <span className={cn("min-w-0 text-sm font-bold leading-tight text-ink", cancelled && "text-muted-foreground line-through")}>
-          {view.shift.template.name.replace("Volunteer driver: ", "Driver: ")}
+          {view.name.replace("Volunteer driver: ", "Driver: ")}
         </span>
         <span
           className={cn(
             "inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 font-display text-[0.7rem] font-bold leading-none tabular",
-            cancelled ? "bg-muted text-muted-foreground" : view.isGap ? "bg-orange-tint text-orange-text" : "bg-green-tint-soft text-green-text",
+            cancelled ? "bg-muted text-muted-foreground" : draft ? "bg-teal-tint text-teal-deep" : view.isGap ? "bg-orange-tint text-orange-text" : "bg-green-tint-soft text-green-text",
           )}
         >
           {cancelled ? (
             "Cancelled"
+          ) : draft ? (
+            "Draft"
           ) : view.isGap ? (
             <>
               <AlertTriangle className="size-3" aria-hidden />
@@ -70,7 +75,7 @@ function CompactShift({ view }: { view: ShiftView }) {
       </span>
       <span className="flex min-w-0 items-baseline gap-1.5 text-xs text-muted-foreground">
         <span className="shrink-0 tabular">{view.shift.startTime}</span>
-        {!cancelled && (
+        {!cancelled && !draft && (
           <span className="line-clamp-1 text-ink-soft">
             {view.isGap && <span className="tabular">{view.confirmedCount}/{view.shift.needed} · </span>}
             {view.confirmed.map((a) => a.volunteer.firstName).join(", ") || "Nobody rostered"}
@@ -79,7 +84,7 @@ function CompactShift({ view }: { view: ShiftView }) {
       </span>
       {/* Fill level of the shift, in place of a coloured edge. */}
       <span className="mt-0.5 block h-1 overflow-hidden rounded-full bg-muted" aria-hidden>
-        {!cancelled && <span className={cn("block h-full rounded-full", view.isGap ? "bg-orange" : "bg-green")} style={{ width: `${fill}%` }} />}
+        {!cancelled && !draft && <span className={cn("block h-full rounded-full", view.isGap ? "bg-orange" : "bg-green")} style={{ width: `${fill}%` }} />}
       </span>
     </Link>
   );
@@ -117,7 +122,7 @@ export function MonthView({ anchor, shifts, today }: { anchor: string; shifts: S
                 )}
                 {gaps.slice(0, 2).map((g) => (
                   <Link key={g.shift.id} href={`/admin/roster/${g.shift.id}`} className="mt-1 block truncate rounded bg-orange-tint px-1.5 py-0.5 text-[0.7rem] font-semibold text-orange-text hover:underline">
-                    {g.shift.template.name}
+                    {g.name}
                   </Link>
                 ))}
               </div>

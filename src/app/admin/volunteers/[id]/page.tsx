@@ -2,9 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CalendarCheck, CalendarClock, CheckCircle2, ChevronLeft, Mail, MapPin, Phone, PhoneCall, RefreshCw, Sprout, XCircle, Zap } from "lucide-react";
 import { requireAdmin } from "@/lib/session";
+import { shiftName } from "@/lib/roster";
 import { db } from "@/lib/db";
 import { addDays, dateToISO, formatDate, isWeekday, formatDay, formatDayRange, formatInstant, formatInstantTime, formatTimeRange, todayISO, WEEKDAY_LONG } from "@/lib/dates";
-import { ABSENCE_REASON_LABEL, DELIVERY_LABEL, INITIAL_VISIT_CODE, fullName, parseRoles, type AbsenceReason, type Delivery } from "@/lib/domain";
+import { ABSENCE_REASON_LABEL, DELIVERY_LABEL, INITIAL_VISIT_CODE, fullName, inHarvestPool, parseRoles, type AbsenceReason, type Delivery } from "@/lib/domain";
 import { moduleStatuses, trainingSummary } from "@/lib/training";
 import { AvatarBadge } from "@/components/shared/avatar-badge";
 import { Chip, TrainingChip } from "@/components/shared/status-chip";
@@ -75,7 +76,7 @@ export default async function VolunteerProfilePage({ params, searchParams }: { p
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
             <TrainingChip status={summary.worst} size="sm" />
             {v.isRegular && <Chip tone="good" size="sm" icon={CalendarCheck}>Regular</Chip>}
-            {v.inHarvestPool && <Chip tone="info" size="sm" icon={Sprout}>Harvest pool</Chip>}
+            {inHarvestPool(v) && <Chip tone="info" size="sm" icon={Sprout}>Harvest pool</Chip>}
             {v.lastMinuteOk && <Chip tone="neutral" size="sm" icon={Zap}>Last-minute OK</Chip>}
             <span className="text-xs text-muted-foreground">Joined {formatDate(dateToISO(v.joinedAt))}</span>
           </div>
@@ -153,7 +154,7 @@ export default async function VolunteerProfilePage({ params, searchParams }: { p
                 {history.slice(0, 12).map((a) => (
                   <li key={a.id} className="flex items-center gap-3 px-4 py-2.5 text-sm">
                     <span className="w-24 shrink-0 text-muted-foreground tabular">{formatDay(dateToISO(a.shift.date))}</span>
-                    <Link href={`/admin/roster/${a.shiftId}`} className="min-w-0 flex-1 truncate font-semibold text-ink hover:underline">{a.shift.template.name}</Link>
+                    <Link href={`/admin/roster/${a.shiftId}`} className="min-w-0 flex-1 truncate font-semibold text-ink hover:underline">{shiftName(a.shift)}</Link>
                     {a.status === "ATTENDED" && <Chip tone="good" size="sm" icon={CheckCircle2}>Attended</Chip>}
                     {a.status === "NO_SHOW" && <Chip tone="bad" size="sm" icon={XCircle}>No-show</Chip>}
                     {a.status === "RELEASED" && <Chip tone="neutral" size="sm">Away</Chip>}
@@ -172,7 +173,7 @@ export default async function VolunteerProfilePage({ params, searchParams }: { p
             <p className="mb-3 mt-1 text-xs text-muted-foreground">Edit while you are on the phone. Changes sync to Infoodle overnight.</p>
             <ProfileEditor
               volunteerId={v.id}
-              initial={{ phone: v.phone ?? "", suburb: v.suburb ?? "", emergencyName: v.emergencyName ?? "", emergencyPhone: v.emergencyPhone ?? "", availabilityNote: v.availabilityNote ?? "", lastMinuteOk: v.lastMinuteOk, inHarvestPool: v.inHarvestPool }}
+              initial={{ phone: v.phone ?? "", suburb: v.suburb ?? "", emergencyName: v.emergencyName ?? "", emergencyPhone: v.emergencyPhone ?? "", availabilityNote: v.availabilityNote ?? "", lastMinuteOk: v.lastMinuteOk }}
             >
               <dl className="grid grid-cols-[7.5rem_1fr] gap-x-3 gap-y-2 text-sm">
                 <dt className="font-semibold text-muted-foreground">Mobile</dt><dd className="text-ink tabular">{v.phone ?? <span className="text-muted-foreground">Not provided</span>}</dd>
@@ -181,14 +182,13 @@ export default async function VolunteerProfilePage({ params, searchParams }: { p
                 <dd className="text-ink">{v.emergencyName ?? <span className="text-status-warn">Not provided</span>}{v.emergencyPhone && <span className="block text-ink-soft tabular">{v.emergencyPhone}</span>}</dd>
                 <dt className="font-semibold text-muted-foreground">Availability</dt><dd className="text-ink-soft">{v.availabilityNote ?? <span className="text-muted-foreground">Not provided</span>}</dd>
                 <dt className="font-semibold text-muted-foreground">Last-minute</dt><dd className="text-ink">{v.lastMinuteOk ? "Yes, send notifications" : "No"}</dd>
-                <dt className="font-semibold text-muted-foreground">Harvest pool</dt><dd className="text-ink">{v.inHarvestPool ? "Yes" : "No"}</dd>
               </dl>
             </ProfileEditor>
           </section>
 
           <section className="rounded-2xl border border-border bg-card p-4" aria-labelledby="roles-h">
             <h2 id="roles-h" className="text-xl text-ink">Roles</h2>
-            <p className="mb-3 mt-1 text-xs text-muted-foreground">Roles decide which shift types and training modules apply.</p>
+            <p className="mb-3 mt-1 text-xs text-muted-foreground">Roles decide which shift types and training modules apply. Volunteers can join or leave the harvest pool themselves.</p>
             <RolesEditor volunteerId={v.id} initial={parseRoles(v.roles)} />
           </section>
 
@@ -202,7 +202,7 @@ export default async function VolunteerProfilePage({ params, searchParams }: { p
             {upcoming.length > 0 && (
               <>
                 <p className="font-display mt-3 text-xs font-bold uppercase tracking-wide text-muted-foreground">Next up</p>
-                <ul className="mt-1 text-sm text-ink-soft">{upcoming.map((a) => <li key={a.id} className="tabular">{formatDay(dateToISO(a.shift.date))} · {a.shift.template.kind === "WAREHOUSE" ? "Warehouse" : a.shift.template.name.split(": ")[1]}</li>)}</ul>
+                <ul className="mt-1 text-sm text-ink-soft">{upcoming.map((a) => <li key={a.id} className="tabular">{formatDay(dateToISO(a.shift.date))} · {a.shift.template.kind === "WAREHOUSE" ? "Warehouse" : a.shift.template.kind === "HARVEST" ? shiftName(a.shift) : a.shift.template.name.split(": ")[1]}</li>)}</ul>
               </>
             )}
           </section>

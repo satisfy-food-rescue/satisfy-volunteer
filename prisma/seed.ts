@@ -63,7 +63,6 @@ type VolSpec = {
   born: number;
   roles: VolunteerRole[];
   slots?: { template: string; weekday: number }[];
-  harvest?: boolean;
   lastMinute?: boolean;
   admin?: boolean;
   joinedYearsAgo?: number;
@@ -76,6 +75,7 @@ const DA_RK = "da-rangiora-kaiapoi";
 const DA_CN = "da-chch-north";
 const DA_HU = "da-hurunui";
 const VD_HU = "vd-hurunui";
+const HV = "harvest";
 
 const VOLUNTEERS: VolSpec[] = [
   { key: "phillipa", first: "Phillipa", last: null, born: 1978, roles: ["WAREHOUSE"], admin: true, joinedYearsAgo: 3 },
@@ -96,14 +96,14 @@ const VOLUNTEERS: VolSpec[] = [
   // Wednesday warehouse
   { first: "Colin", last: "Baxter", born: 1951, roles: ["WAREHOUSE"], slots: [{ template: W, weekday: 3 }], joinedYearsAgo: 9 },
   { first: "Kathy", last: "Moriarty", born: 1960, roles: ["WAREHOUSE"], slots: [{ template: W, weekday: 3 }], joinedYearsAgo: 2 },
-  { first: "Te Aroha", last: "Waaka", lastMinute: true, born: 1975, roles: ["WAREHOUSE"], slots: [{ template: W, weekday: 3 }], harvest: true, joinedYearsAgo: 1 },
+  { first: "Te Aroha", last: "Waaka", lastMinute: true, born: 1975, roles: ["WAREHOUSE", "HARVEST"], slots: [{ template: W, weekday: 3 }], joinedYearsAgo: 1 },
   { first: "Dennis", last: "Ford", born: 1953, roles: ["WAREHOUSE"], slots: [{ template: W, weekday: 3 }], joinedYearsAgo: 5 },
   { first: "Pauline", last: "Hewitt", born: 1956, roles: ["WAREHOUSE"], slots: [{ template: W, weekday: 3 }], joinedYearsAgo: 7 },
   // Thursday warehouse
   { first: "Barbara", last: "Kemp", born: 1954, roles: ["WAREHOUSE"], slots: [{ template: W, weekday: 4 }], joinedYearsAgo: 6 },
   { first: "Mike", last: "Sutherland", born: 1949, roles: ["WAREHOUSE"], slots: [{ template: W, weekday: 4 }], joinedYearsAgo: 10 },
   { first: "Anne", last: "Whitfield", born: 1962, roles: ["WAREHOUSE"], slots: [{ template: W, weekday: 4 }], joinedYearsAgo: 3 },
-  { first: "Sione", last: "Tuilagi", lastMinute: true, born: 1980, roles: ["WAREHOUSE"], slots: [{ template: W, weekday: 4 }], harvest: true, joinedYearsAgo: 1 },
+  { first: "Sione", last: "Tuilagi", lastMinute: true, born: 1980, roles: ["WAREHOUSE", "HARVEST"], slots: [{ template: W, weekday: 4 }], joinedYearsAgo: 1 },
   // Friday warehouse
   { first: "Ngaire", last: "Puketapu", born: 1957, roles: ["WAREHOUSE"], slots: [{ template: W, weekday: 5 }], joinedYearsAgo: 4 },
   { first: "Frank", last: "Doyle", born: 1948, roles: ["WAREHOUSE"], slots: [{ template: W, weekday: 5 }], joinedYearsAgo: 9 },
@@ -129,10 +129,10 @@ const VOLUNTEERS: VolSpec[] = [
   { first: "Pat", last: "Whyte", born: 1951, roles: ["WAREHOUSE", "DRIVERS_ASSISTANT"], slots: [{ template: DA_HU, weekday: 2 }], joinedYearsAgo: 5 },
   { first: "Mere", last: "Tainui", born: 1960, roles: ["WAREHOUSE", "DRIVERS_ASSISTANT"], slots: [{ template: DA_HU, weekday: 4 }], joinedYearsAgo: 3 },
   // Harvest pool only
-  { first: "Emma", last: "Whitcombe", lastMinute: true, born: 1992, roles: ["WAREHOUSE"], harvest: true, joinedYearsAgo: 1, availability: "Weekends and school holidays for harvests." },
-  { first: "Josh", last: "Tairoa", lastMinute: true, born: 1988, roles: ["WAREHOUSE"], harvest: true, joinedYearsAgo: 2 },
-  { first: "Fiona", last: "Grant", lastMinute: true, born: 1971, roles: ["WAREHOUSE"], harvest: true, joinedYearsAgo: 4 },
-  { first: "Ravi", last: "Naidoo", lastMinute: true, born: 1979, roles: ["WAREHOUSE"], harvest: true, joinedYearsAgo: 1 },
+  { first: "Emma", last: "Whitcombe", born: 1992, roles: ["HARVEST"], joinedYearsAgo: 1, availability: "Weekends and school holidays for harvests." },
+  { first: "Josh", last: "Tairoa", born: 1988, roles: ["HARVEST"], joinedYearsAgo: 2, availability: "Saturdays." },
+  { first: "Fiona", last: "Grant", lastMinute: true, born: 1971, roles: ["WAREHOUSE", "HARVEST"], joinedYearsAgo: 4 },
+  { first: "Ravi", last: "Naidoo", lastMinute: true, born: 1979, roles: ["WAREHOUSE", "HARVEST"], joinedYearsAgo: 1 },
   // Brand-new volunteer, approved from Infoodle two days ago, no training yet
   { key: "jess", first: "Jess", last: "Moorhouse", born: 2001, roles: ["WAREHOUSE"], joinedYearsAgo: 0, availability: "Tuesday and Thursday mornings during uni term." },
 ];
@@ -151,8 +151,7 @@ async function main() {
   // Wipe in dependency order.
   await db.email.deleteMany();
   await db.contactLog.deleteMany();
-  await db.harvestRsvp.deleteMany();
-  await db.harvestCallout.deleteMany();
+  await db.announcement.deleteMany();
   await db.sessionRsvp.deleteMany();
   await db.trainingRecord.deleteMany();
   await db.trainingSession.deleteMany();
@@ -211,31 +210,35 @@ async function main() {
     { key: DA_CN, kind: "DRIVERS_ASSISTANT", name: "Driver help: Christchurch North", routeId: routeCN.id, workingWith: "Sam (staff driver)", lastMinuteHours: 72, escalateHours: 36, start: "08:30", end: "12:00", capacity: 1, needed: 1, weekdays: "1,2,3,4,5", order: 3 },
     { key: DA_HU, kind: "DRIVERS_ASSISTANT", name: "Driver help: Hurunui", routeId: routeHU.id, workingWith: "the volunteer driver on the day", lastMinuteHours: 72, escalateHours: 36, start: "08:00", end: "12:30", capacity: 1, needed: 1, weekdays: "2,4", order: 4 },
     { key: VD_HU, kind: "VOLUNTEER_DRIVER", name: "Volunteer driver: Hurunui", routeId: routeHU.id, workingWith: "a driver help volunteer", lastMinuteHours: 72, escalateHours: 48, start: "08:00", end: "12:30", capacity: 1, needed: 1, weekdays: "2,4", order: 5 },
+    // Ad hoc: no weekdays. Each harvest is created one at a time.
+    { key: HV, kind: "HARVEST", name: "Harvest", routeId: null, workingWith: "a Satisfy harvest lead", lastMinuteHours: 48, escalateHours: 24, start: "09:00", end: "12:00", capacity: 8, needed: 5, weekdays: "", order: 6 },
   ] as const;
   const templates = new Map<string, { id: string; kind: string; name: string; start: string; end: string; capacity: number; needed: number; weekdays: number[] }>();
   for (const t of templateSpecs) {
     const row = await db.shiftTemplate.create({
       data: { kind: t.kind, name: t.name, routeId: t.routeId, workingWith: t.workingWith, lastMinuteHours: t.lastMinuteHours, escalateHours: t.escalateHours, startTime: t.start, endTime: t.end, capacity: t.capacity, needed: t.needed, weekdays: t.weekdays, order: t.order },
     });
-    templates.set(t.key, { id: row.id, kind: t.kind, name: t.name, start: t.start, end: t.end, capacity: t.capacity, needed: t.needed, weekdays: t.weekdays.split(",").map(Number) });
+    templates.set(t.key, { id: row.id, kind: t.kind, name: t.name, start: t.start, end: t.end, capacity: t.capacity, needed: t.needed, weekdays: t.weekdays.split(",").filter(Boolean).map(Number) });
   }
 
   // Training modules ---------------------------------------------------------
   const moduleSpecs = [
     { code: INITIAL_VISIT_CODE, name: "Initial Visit", description: "Your first visit to the warehouse, arranged one-to-one with the coordinator: orientation, emergency procedures, PPE, and how a sorting morning runs. Required before your first shift.", validityMonths: null, requiredRoles: "WAREHOUSE,DRIVERS_ASSISTANT,VOLUNTEER_DRIVER", mandatory: true, delivery: "IN_PERSON", order: 1 },
-    { code: "MANUAL_HANDLING", name: "Manual Handling", description: "Safe lifting and carrying of crates and boxes. Refreshed every 12 months.", validityMonths: 12, requiredRoles: "WAREHOUSE,DRIVERS_ASSISTANT,VOLUNTEER_DRIVER", mandatory: false, delivery: "ONLINE_CONFIRM", order: 2, content: [
-      "Plan the lift. Check the weight of a crate before you commit; if it is heavier than a full bag of groceries, get a second person or use the trolley.",
-      "Keep the load close to your body, feet shoulder-width apart, and lift with your legs rather than your back. Avoid twisting while carrying; turn with your feet.",
-      "Stack crates no higher than shoulder height. Heavier crates go on the bottom and middle shelves, lighter on top.",
-      "Take breaks. Sorting is repetitive; swap stations every 45 minutes and say something if you feel a strain.",
-    ] },
+    // Content and video follow Satisfy's current Manual Handling training form.
+    { code: "MANUAL_HANDLING", name: "Manual Handling", description: "Safe lifting and carrying of crates, boxes and picking bags. Refreshed every 12 months.", validityMonths: 12, requiredRoles: "WAREHOUSE,DRIVERS_ASSISTANT,VOLUNTEER_DRIVER,HARVEST", mandatory: false, delivery: "ONLINE_CONFIRM", order: 2, content: [
+      "How people get hurt: loads that are heavy, awkward or too big to see over, a lot of effort at once, bending and twisting, and reaching above shoulder height.",
+      "What can happen: back injuries, strains and sprains, longer-term muscle and joint problems, and slips, trips and falls while carrying.",
+      "Think LITE before every lift: the Load (weight, size, grip), the Individual (are you fit and able today?), the Task (how far, how often, how high) and the Environment (floor, space, light, weather).",
+      "Anything over 15 kg is a team lift. Keep your back upright, bend your knees, keep the load close and lift with your legs. Turn with your feet rather than twisting.",
+      "Use the trolleys and the conveyor whenever you can, and say something straight away if you feel a strain.",
+    ], links: [{ label: "Manual handling: how to lift safely (2 min)", url: "https://www.youtube.com/watch?v=Dcf9bT9DK94" }] },
     { code: "FOOD_SAFETY", name: "Food Safety and Hygiene", description: "Handling rescued kai safely: temperature checks, use-by rules, allergen separation, and hand hygiene.", validityMonths: 12, requiredRoles: "WAREHOUSE", mandatory: false, delivery: "ONLINE_CONFIRM", order: 3, content: [
       "Wash hands on arrival, after breaks, and after handling raw or spoiled produce. Gloves are available at each station.",
       "Chilled kai must stay below 5 degrees. Anything that arrives warm or has been out of the chiller for more than two hours goes to compost, not to a recipient.",
       "Best-before dates are guidance and use-by dates are rules. We can pass on kai past its best-before if it looks and smells fine. We never pass on kai past its use-by.",
       "Keep allergen groups separate on the sorting table and label any repacked bags with their contents.",
     ] },
-    { code: "SLIPS_TRIPS_FALLS", name: "Slips, Trips and Falls", description: "Keeping floors, ramps and the loading bay clear and dry. Refreshed every 12 months.", validityMonths: 12, requiredRoles: "WAREHOUSE,DRIVERS_ASSISTANT,VOLUNTEER_DRIVER", mandatory: false, delivery: "ONLINE_CONFIRM", order: 4, content: [
+    { code: "SLIPS_TRIPS_FALLS", name: "Slips, Trips and Falls", description: "Keeping floors, ramps, the loading bay and orchard ground safe underfoot. Refreshed every 12 months.", validityMonths: 12, requiredRoles: "WAREHOUSE,DRIVERS_ASSISTANT,VOLUNTEER_DRIVER,HARVEST", mandatory: false, delivery: "ONLINE_CONFIRM", order: 4, content: [
       "Closed-toe shoes with grip every shift. No jandals, no slip-ons.",
       "Spills get dealt with immediately: cone it, mop it, dry it. The mop station is by the chiller door.",
       "Keep walkways clear. Empty crates go straight to the stack, not on the floor beside you.",
@@ -247,7 +250,11 @@ async function main() {
   const modules = new Map<string, { id: string; name: string; validityMonths: number | null; requiredRoles: string[]; delivery: string }>();
   for (const m of moduleSpecs) {
     const row = await db.trainingModule.create({
-      data: { code: m.code, name: m.name, description: m.description, validityMonths: m.validityMonths, requiredRoles: m.requiredRoles, mandatoryBeforeFirstShift: m.mandatory, delivery: m.delivery, order: m.order, content: "content" in m && m.content ? m.content.join("\n\n") : null },
+      data: {
+        code: m.code, name: m.name, description: m.description, validityMonths: m.validityMonths, requiredRoles: m.requiredRoles, mandatoryBeforeFirstShift: m.mandatory, delivery: m.delivery, order: m.order,
+        content: "content" in m && m.content ? m.content.join("\n\n") : null,
+        links: { create: "links" in m && m.links ? m.links.map((l, order) => ({ ...l, order })) : [] },
+      },
     });
     modules.set(m.code, { id: row.id, name: m.name, validityMonths: m.validityMonths, requiredRoles: m.requiredRoles.split(","), delivery: m.delivery });
   }
@@ -272,7 +279,6 @@ async function main() {
         role: v.admin ? "ADMIN" : "VOLUNTEER",
         roles: v.roles.join(","),
         isRegular: (v.slots?.length ?? 0) > 0,
-        inHarvestPool: v.harvest ?? false,
         lastMinuteOk: v.lastMinute ?? false,
         emergencyName: v.admin ? null : pick(["Partner", "Daughter", "Son", "Neighbour", "Sister", "Brother"]) + " - " + pick(["Chris", "Sam", "Jo", "Alex", "Pat", "Kim", "Nikau", "Mel"]),
         emergencyPhone: v.admin ? null : phone(),
@@ -462,24 +468,38 @@ async function main() {
     await db.sessionRsvp.create({ data: { sessionId: sessionRVS.id, volunteerId: a.id, status: "GOING" } });
   }
 
-  // Harvest callout ----------------------------------------------------------
-  const harvestISO = nextWeekday(addDays(TODAY, 10));
-  const callout = await db.harvestCallout.create({
+  // Harvests -------------------------------------------------------------------
+  // October in Canterbury is citrus season. One published with a callout and
+  // three pickers, one still a draft, and one last week that happened.
+  const hv = templates.get(HV)!;
+  const nextSaturday = (from: string) => { let d = from; while (weekdayOf(d) !== 6) d = addDays(d, 1); return d; };
+  const harvestISO = nextSaturday(addDays(TODAY, 7));
+  const harvest = await db.shift.create({
     data: {
-      title: "Apple picking at a Loburn orchard",
-      date: isoToDate(harvestISO),
-      startTime: "09:00",
-      endTime: "12:30",
-      location: "Loburn, 15 minutes north of Rangiora",
-      partner: "Food Secure North Canterbury",
-      description: "A home orchard with more apples than the family can use. We expect around 400 kg. Ladders, picking bags and crates provided. Wear sturdy shoes and bring a hat.",
-      needed: 8,
+      templateId: hv.id, date: isoToDate(harvestISO), startTime: "09:00", endTime: "12:30", capacity: 8, needed: 6, status: "SCHEDULED", publishedAt: nzInstant(addDays(TODAY, -2), "12:00"),
+      title: "Lemon and grapefruit picking",
+      location: "Lifestyle block on Loburn Whiterock Road, 15 minutes north of Rangiora",
+      notes: "Around 300 kg of lemons and grapefruit that the owners cannot use. Park on the grass by the gate. Ladders, picking bags and crates are provided; bring a hat, sunscreen, water and gloves if you have them. Everything goes to the warehouse for Monday's sort.",
     },
   });
-  for (const a of [byName("Emma", "Whitcombe"), byName("Josh", "Tairoa"), byName("Te Aroha", "Waaka")]) {
-    await db.harvestRsvp.create({ data: { calloutId: callout.id, volunteerId: a.id, status: "GOING" } });
+  for (const a of [byName("Josh", "Tairoa"), byName("Te Aroha", "Waaka"), byName("Sione", "Tuilagi")]) {
+    await db.assignment.create({ data: { shiftId: harvest.id, volunteerId: a.id, source: "BOOKED", status: "CONFIRMED", createdAt: nzInstant(addDays(TODAY, -2), "13:30") } });
   }
-  await db.harvestRsvp.create({ data: { calloutId: callout.id, volunteerId: byName("Fiona", "Grant").id, status: "DECLINED" } });
+  await db.shift.create({
+    data: {
+      templateId: hv.id, date: isoToDate(nextWeekday(addDays(TODAY, 17))), startTime: "13:00", endTime: "15:30", capacity: 5, needed: 3, status: "DRAFT",
+      title: "Rhubarb harvest",
+      location: "Market garden on Tram Road, Ohoka",
+      notes: "Waiting to confirm the date with the grower. Short afternoon pick; knives and crates provided.",
+    },
+  });
+  const lastHarvestISO = addDays(TODAY, -9);
+  const lastHarvest = await db.shift.create({
+    data: { templateId: hv.id, date: isoToDate(lastHarvestISO), startTime: "10:00", endTime: "12:00", capacity: 6, needed: 4, status: "SCHEDULED", publishedAt: nzInstant(addDays(TODAY, -16), "09:00"), title: "Backyard lemon tree", location: "Williams Street, Kaiapoi" },
+  });
+  for (const a of [byName("Josh", "Tairoa"), byName("Fiona", "Grant"), byName("Ravi", "Naidoo"), byName("Te Aroha", "Waaka")]) {
+    await db.assignment.create({ data: { shiftId: lastHarvest.id, volunteerId: a.id, source: "BOOKED", status: "ATTENDED", createdAt: nzInstant(addDays(TODAY, -15), "18:00") } });
+  }
 
   // Applications -------------------------------------------------------------
   await db.application.createMany({
@@ -539,10 +559,23 @@ async function main() {
   // Jess has not had her welcome call yet, so no initial visit is booked.
   push({ id: jess.id, first: jess.first, last: jess.last, email: jess.email }, nzInstant(addDays(TODAY, -2), "09:10"), T.applicationApproved({ firstName: "Jess" }));
   push({ id: jess.id, first: jess.first, last: jess.last, email: jess.email }, nzInstant(addDays(TODAY, -2), "09:11"), T.welcome({ firstName: "Jess" }));
-  // Harvest callout to the pool
-  for (const v of vols.values()) {
-    if (!v.spec.harvest) continue;
-    push({ id: v.id, first: v.first, last: v.last, email: v.email }, nzInstant(addDays(TODAY, -2), "12:00"), T.harvestCallout({ firstName: v.first, title: callout.title, dateISO: harvestISO, start: callout.startTime, end: callout.endTime, location: callout.location, partner: callout.partner }));
+  // Harvest callout to the pool, and the season announcement before it.
+  const pool = [...vols.values()].filter((v) => v.roles.includes("HARVEST"));
+  const season = await db.announcement.create({
+    data: {
+      subject: "Harvest season is starting",
+      body: "The citrus is ready, so harvests start next week. When one is on you will get an email and a notification with a Sign up button; the first to sign up get the places.\n\nBefore your first harvest, please do the two short online modules in the app: Manual Handling and Slips, Trips and Falls. We will run a quick in-person induction on the day.",
+      audience: "ROLES", roles: "HARVEST", audienceLabel: "Harvest pool", push: true, recipientCount: pool.length, authorId: phillipa.id, createdAt: nzInstant(addDays(TODAY, -5), "16:30"),
+    },
+  });
+  for (const v of pool) {
+    const to = { id: v.id, first: v.first, last: v.last, email: v.email };
+    const ap = { firstName: v.first, subject: season.subject, body: season.body, from: "Phillipa" };
+    push(to, nzInstant(addDays(TODAY, -5), "16:30"), T.announcement(ap), `announcement:${season.id}:${v.id}`);
+    push(to, nzInstant(addDays(TODAY, -5), "16:30"), T.announcementPush(ap), `announcement:${season.id}:${v.id}`);
+    const cp = { firstName: v.first, kindLabel: "Harvest", harvest: true, name: harvest.title!, dateISO: harvestISO, start: harvest.startTime, end: harvest.endTime, location: harvest.location!, notes: harvest.notes, spotsLeft: 8, shiftId: harvest.id };
+    push(to, nzInstant(addDays(TODAY, -2), "12:00"), T.shiftCallout(cp), `callout:${harvest.id}:${v.id}`);
+    push(to, nzInstant(addDays(TODAY, -2), "12:00"), T.shiftCalloutPush(cp), `callout:${harvest.id}:${v.id}`);
   }
   // Session confirmations
   for (const a of [byName("Graham", "Lister"), byName("Gary", "Pemberton")]) {
@@ -550,7 +583,7 @@ async function main() {
   }
 
   await db.email.createMany({
-    data: emails.map((e) => ({ volunteerId: e.volunteerId, toName: e.toName, toEmail: e.toEmail, createdAt: e.createdAt, kind: e.draft.kind, subject: e.draft.subject, preview: e.draft.preview, body: e.draft.body, ctaLabel: e.draft.ctaLabel ?? null, ctaHref: e.draft.ctaHref ?? null, ref: e.ref ?? null })),
+    data: emails.map((e) => ({ volunteerId: e.volunteerId, channel: e.draft.channel ?? "EMAIL", toName: e.toName, toEmail: e.toEmail, createdAt: e.createdAt, kind: e.draft.kind, subject: e.draft.subject, preview: e.draft.preview, body: e.draft.body, ctaLabel: e.draft.ctaLabel ?? null, ctaHref: e.draft.ctaHref ?? null, ref: e.ref ?? null })),
   });
 
   // Coordinator contact history ------------------------------------------------

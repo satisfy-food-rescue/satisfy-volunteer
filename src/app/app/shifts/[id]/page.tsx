@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft, Clock, MapPin, Store, UserRound, Users } from "lucide-react";
+import { ChevronLeft, Clock, MapPin, MessageSquareText, Store, UserRound, Users } from "lucide-react";
 import { requireVolunteer } from "@/lib/session";
 import { formatDayLong, formatTimeRange, relativeDay, todayISO } from "@/lib/dates";
 import { shiftById } from "@/lib/roster";
@@ -29,18 +29,19 @@ export default async function ShiftDetailPage({ params }: { params: Promise<{ id
     : [];
   const mine = view.confirmed.find((a) => a.volunteerId === me.id) ?? null;
   const blocker = elig.blockers[0]?.module.code ?? null;
+  const harvest = view.kind === "HARVEST";
 
   return (
     <div className="flex flex-col gap-6 px-5 pb-6 pt-3">
-      <Link href="/app/shifts" className="-ml-2 inline-flex min-h-11 items-center gap-1 self-start pr-2 text-sm font-semibold text-muted-foreground hover:text-ink">
-        <ChevronLeft className="size-5" aria-hidden /> Shifts
+      <Link href={harvest ? "/app/harvest" : "/app/shifts"} className="-ml-2 inline-flex min-h-11 items-center gap-1 self-start pr-2 text-sm font-semibold text-muted-foreground hover:text-ink">
+        <ChevronLeft className="size-5" aria-hidden /> {harvest ? "Harvest" : "Shifts"}
       </Link>
 
       <header className="flex flex-col gap-4">
         <Photo photo={shiftPhoto(view.kind)} sizes={APP_COLUMN_SIZES} preload className="aspect-[16/9] rounded-2xl" />
         <div className="min-w-0">
           <p className="eyebrow">{relativeDay(view.iso, today)}</p>
-          <h1 className="mt-1 text-[1.75rem] leading-tight text-ink">{view.shift.template.name}</h1>
+          <h1 className="mt-1 text-[1.75rem] leading-tight text-ink">{view.name}</h1>
         </div>
       </header>
 
@@ -89,6 +90,15 @@ export default async function ShiftDetailPage({ params }: { params: Promise<{ id
         </div>
       </dl>
 
+      {view.shift.notes && (
+        <section aria-labelledby="notes-h" className="rounded-2xl bg-teal-tint-soft p-4">
+          <h2 id="notes-h" className="flex items-center gap-2 font-display text-sm font-bold uppercase tracking-wide text-teal-deep">
+            <MessageSquareText className="size-4" aria-hidden /> From the coordinator
+          </h2>
+          <p className="mt-2 whitespace-pre-line text-ink">{view.shift.notes}</p>
+        </section>
+      )}
+
       {view.isGap && view.causes.length > 0 && (
         <p className="rounded-xl bg-orange-tint px-4 py-3 text-sm font-semibold text-orange-text">
           {view.causes.join(". ")}.
@@ -96,7 +106,7 @@ export default async function ShiftDetailPage({ params }: { params: Promise<{ id
       )}
 
       <ShiftActions
-        state={{ shiftId: view.shift.id, mine: mine ? { id: mine.id, source: mine.source } : null, isPast: view.iso < today, isCancelled: view.shift.status === "CANCELLED", isFull: view.isFull, isGap: view.isGap, eligible: elig.eligible, reason: elig.reason, blockerModuleCode: blocker, missingRole: !elig.hasRole }}
+        state={{ shiftId: view.shift.id, mine: mine ? { id: mine.id, source: mine.source } : null, isPast: view.iso < today, isCancelled: view.shift.status === "CANCELLED", isFull: view.isFull, isGap: view.isGap, eligible: elig.eligible, reason: elig.reason, blockerModuleCode: blocker, missingRole: !elig.hasRole, harvest }}
       />
 
       <section aria-labelledby="crew">

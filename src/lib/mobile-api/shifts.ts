@@ -15,7 +15,7 @@ export function shiftAction(view: ShiftView, meId: string, elig: Eligibility, to
   const mine = view.confirmed.find((a) => a.volunteerId === meId);
   if (mine) return { kind: "MINE", assignmentId: mine.id, source: mine.source as AssignmentSource };
   if (!elig.eligible) {
-    return { kind: "BLOCKED", reason: elig.reason ?? "You are not eligible for this shift yet.", fix: elig.hasRole ? "training" : "role", moduleCode: elig.blockers[0]?.module.code ?? null };
+    return { kind: "BLOCKED", reason: elig.reason ?? "You are not eligible for this shift yet.", fix: elig.hasRole ? "training" : view.kind === "HARVEST" ? "harvestPool" : "role", moduleCode: elig.blockers[0]?.module.code ?? null };
   }
   if (view.isFull) return { kind: "FULL" };
   return { kind: "BOOK", cover: view.isGap };
@@ -36,7 +36,7 @@ export function shiftSummary(view: ShiftView, ctx: ShiftContext): ShiftSummary {
     id: view.shift.id,
     iso: view.iso,
     kind: view.kind,
-    name: view.shift.template.name,
+    name: view.name,
     startTime: view.shift.startTime,
     endTime: view.shift.endTime,
     location: view.location,
@@ -56,6 +56,7 @@ export function shiftSummary(view: ShiftView, ctx: ShiftContext): ShiftSummary {
 export function shiftDetail(view: ShiftView, ctx: ShiftContext, stops: string[]): ShiftDetail {
   return {
     ...shiftSummary(view, ctx),
+    notes: view.shift.notes,
     workingWith: view.shift.template.workingWith,
     volunteerDriven: view.shift.template.route?.isVolunteerDriven ?? false,
     stops,

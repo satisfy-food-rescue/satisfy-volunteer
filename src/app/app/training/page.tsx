@@ -93,7 +93,7 @@ export default async function TrainingPage() {
               {actionable && (
                 <p className="mt-2 inline-flex items-center gap-1 text-sm font-bold text-green-text">
                   {online ? <BookOpen className="size-4" aria-hidden /> : <CalendarDays className="size-4" aria-hidden />}
-                  {online ? "Read and confirm online" : "Book a session below"}
+                  {online ? "Complete it online" : "Book a session below"}
                   <ChevronRight className="size-4" aria-hidden />
                 </p>
               )}

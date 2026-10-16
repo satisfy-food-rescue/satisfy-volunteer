@@ -1,13 +1,21 @@
 import Link from "next/link";
-import { Ban, CheckCircle2, ChevronRight, HandHelping, Lock, Users } from "lucide-react";
+import { Ban, CheckCircle2, ChevronRight, HandHelping, Lock, MapPin, Sprout, Users } from "lucide-react";
 import type { ShiftView } from "@/lib/roster";
-import { formatTimeRange } from "@/lib/dates";
+import { formatDay, formatTimeRange } from "@/lib/dates";
+import { isAdHocKind } from "@/lib/domain";
 import { Chip } from "@/components/shared/status-chip";
 import { AvatarBadge } from "@/components/shared/avatar-badge";
 import { cn } from "@/lib/utils";
 
+/** Tile colours per kind: green for the warehouse and harvests (food), light
+ *  blue for anything on the road. */
+export function kindTileClass(kind: string) {
+  return kind === "WAREHOUSE" || kind === "HARVEST" ? "bg-green-tint text-green-deep" : "bg-sky-tint text-sky-text";
+}
+
 export function ShiftKindIcon({ kind, className }: { kind: string; className?: string }) {
   const cls = cn("size-5", className);
+  if (kind === "HARVEST") return <Sprout className={cls} aria-hidden />;
   if (kind === "WAREHOUSE") {
     return (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={cls} aria-hidden>
@@ -28,6 +36,7 @@ export function ShiftCard({
   eligible,
   needsRole,
   reason,
+  showDate = false,
 }: {
   view: ShiftView;
   meId: string;
@@ -35,6 +44,8 @@ export function ShiftCard({
   /** Blocked by a missing role rather than lapsed training. */
   needsRole: boolean;
   reason: string | null;
+  /** For lists that span days rather than sitting under a day heading. */
+  showDate?: boolean;
 }) {
   const mine = view.confirmed.find((a) => a.volunteerId === meId);
   const cancelled = view.shift.status === "CANCELLED";
@@ -48,19 +59,23 @@ export function ShiftCard({
         view.isGap && !mine && "border-orange/60",
       )}
     >
-      <span
-        className={cn(
-          "flex w-11 shrink-0 items-center justify-center rounded-xl",
-          view.kind === "WAREHOUSE" ? "bg-green-tint text-green-deep" : "bg-sky-tint text-sky-text",
-        )}
-      >
+      <span className={cn("flex w-11 shrink-0 items-center justify-center rounded-xl", kindTileClass(view.kind))}>
         <ShiftKindIcon kind={view.kind} className="size-6" />
       </span>
       <span className="flex min-w-0 flex-1 flex-col gap-1.5">
         <span className="flex items-start justify-between gap-2">
           <span className="min-w-0">
-            <span className="block truncate font-bold text-ink">{view.shift.template.name}</span>
-            <span className="block text-sm text-muted-foreground tabular">{formatTimeRange(view.shift.startTime, view.shift.endTime)}</span>
+            <span className="line-clamp-2 font-bold text-ink">{view.name}</span>
+            <span className="block text-sm text-muted-foreground tabular">
+              {showDate && `${formatDay(view.iso)}, `}
+              {formatTimeRange(view.shift.startTime, view.shift.endTime)}
+            </span>
+            {isAdHocKind(view.kind) && (
+              <span className="mt-0.5 flex items-start gap-1 text-sm text-muted-foreground">
+                <MapPin className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+                <span className="line-clamp-1">{view.location}</span>
+              </span>
+            )}
           </span>
           <ChevronRight className="mt-1 size-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" aria-hidden />
         </span>
@@ -73,8 +88,10 @@ export function ShiftCard({
             <Chip tone="bad" icon={HandHelping} size="sm">Needs cover</Chip>
           ) : view.isFull ? (
             <Chip tone="neutral" size="sm">Full</Chip>
+          ) : isAdHocKind(view.kind) && eligible ? (
+            <Chip tone="info" size="sm">{view.spotsLeft} {view.spotsLeft === 1 ? "place" : "places"} left</Chip>
           ) : null}
-          {!cancelled && !mine && !eligible && <Chip tone="warn" icon={Lock} size="sm">{needsRole ? "Role needed" : "Training needed"}</Chip>}
+          {!cancelled && !mine && !eligible && <Chip tone="warn" icon={Lock} size="sm">{needsRole ? (view.kind === "HARVEST" ? "Join the pool" : "Role needed") : "Training needed"}</Chip>}
           <span className="ml-auto inline-flex items-center gap-1.5 text-sm text-muted-foreground tabular">
             <Users className="size-4" aria-hidden />
             {view.confirmedCount}/{view.shift.capacity}

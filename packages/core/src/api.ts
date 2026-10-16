@@ -12,6 +12,7 @@
 //   success; any failure is a non-2xx status with ApiFailure, whose `error`
 //   is written for the volunteer and shown as is.
 
+import type { ModuleLink } from "./training";
 import type {
   AbsenceReason,
   AssignmentSource,
@@ -96,9 +97,10 @@ export type ShiftAction =
   /** The coordinator cancelled it; nobody should turn up. */
   | { kind: "CANCELLED" }
   | { kind: "MINE"; assignmentId: string; source: AssignmentSource }
-  /** `fix` says what unblocks it: current training, or a role the
-   *  volunteer does not hold yet (only a coordinator can add one). */
-  | { kind: "BLOCKED"; reason: string; fix: "training" | "role"; moduleCode: string | null }
+  /** `fix` says what unblocks it: current training, a role the volunteer
+   *  does not hold yet (only a coordinator can add one), or for a harvest,
+   *  joining the harvest pool (which they do themselves). */
+  | { kind: "BLOCKED"; reason: string; fix: "training" | "role" | "harvestPool"; moduleCode: string | null }
   | { kind: "FULL" }
   | { kind: "BOOK"; cover: boolean };
 
@@ -125,6 +127,8 @@ export type ShiftSummary = {
 };
 
 export type ShiftDetail = ShiftSummary & {
+  /** Details from the coordinator, e.g. where to park at the orchard. */
+  notes: string | null;
   workingWith: string | null;
   volunteerDriven: boolean;
   /** Donor stops for route shifts. */
@@ -164,6 +168,8 @@ export type Home = {
   empty: { text: string; cta: string; target: "training" | "shifts" };
   alert: HomeAlert | null;
   cover: { count: number; next: { iso: string; name: string } | null };
+  /** For harvest pool members: the next harvest they are on, else the
+   *  soonest with a place left. `id` is the shift id. */
   harvest: { id: string; title: string; iso: string; going: boolean } | null;
   impact: {
     kgRescued: number;
@@ -226,11 +232,15 @@ export type TrainingOverview = {
   sessions: TrainingSessionItem[];
 };
 
-/** GET /api/mobile/training/modules/:code */
+/** GET /api/mobile/training/modules/:code. For an online module, the app
+ *  locks the confirmation until `paragraphs` are read to the end and every
+ *  link is opened (completionGate in @satisfy/core/training). */
 export type TrainingModuleDetail = {
   today: string;
   module: ModuleSummary;
   paragraphs: string[];
+  /** Videos (usually YouTube) or pages such as an MPI course, in order. */
+  links: ModuleLink[];
 };
 
 /** POST /api/mobile/training/modules/:id/complete returns MutationOk.
@@ -267,28 +277,24 @@ export type AwayInput = {
 
 // Harvest -------------------------------------------------------------------
 
-/** GET /api/mobile/harvest */
+/** GET /api/mobile/harvest. Harvests are ordinary shifts of kind HARVEST:
+ *  book and cancel them with the shift endpoints. Joining the pool (the
+ *  HARVEST role) brings in the harvest training, and harvest shifts stay
+ *  BLOCKED until it is done. */
 export type HarvestOverview = {
   today: string;
   inPool: boolean;
   poolCount: number;
-  callouts: {
-    id: string;
-    title: string;
-    iso: string;
-    startTime: string;
-    endTime: string;
-    location: string;
-    partner: string;
-    description: string;
-    needed: number;
-    going: { volunteerId: string; firstName: string; lastName: string | null }[];
-    mine: "GOING" | "DECLINED" | null;
-  }[];
+  /** Modules harvests need, with this volunteer's status as if in the pool,
+   *  so someone thinking of joining sees what it involves. */
+  training: ModuleSummary[];
+  /** Every harvest training module is Complete or Due soon. */
+  trained: boolean;
+  /** Published harvests from today on, soonest first. */
+  harvests: ShiftSummary[];
 };
 
-/** PUT /api/mobile/harvest/pool with HarvestPoolInput returns MutationOk.
- *  POST /api/mobile/harvest/callouts/:id/rsvp with RsvpInput returns MutationOk. */
+/** PUT /api/mobile/harvest/pool with HarvestPoolInput returns MutationOk. */
 export type HarvestPoolInput = { inPool: boolean };
 
 // Profile -------------------------------------------------------------------

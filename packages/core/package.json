@@ -2,12 +2,13 @@
   "name": "@satisfy/core",
   "version": "0.1.0",
   "private": true,
-  "description": "Pure TypeScript shared by the web app and the native app: dates, domain labels, photo metadata and the mobile API contract. No runtime dependencies.",
+  "description": "Pure TypeScript shared by the web app and the native app: dates, domain labels, photo metadata, the online training gate and the mobile API contract. No runtime dependencies.",
   "type": "module",
   "exports": {
     "./dates": "./src/dates.ts",
     "./domain": "./src/domain.ts",
     "./api": "./src/api.ts",
-    "./photos": "./src/photos.ts"
+    "./photos": "./src/photos.ts",
+    "./training": "./src/training.ts"
   }
 }

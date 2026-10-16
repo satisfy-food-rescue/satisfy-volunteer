@@ -42,6 +42,7 @@ export const SHIFT_KIND_PHOTO: Record<ShiftKind, PhotoKey> = {
   WAREHOUSE: "warehouse",
   DRIVERS_ASSISTANT: "driverHelp",
   VOLUNTEER_DRIVER: "driver",
+  HARVEST: "harvest",
 };
 
 /** The crop anchor as a CSS object-position value, such as "50% 40%". */

@@ -43,6 +43,8 @@ const ICONS = {
   cancelled: ["nosign", "block"],
   shield: ["checkmark.shield.fill", "verified_user"],
   wifiOff: ["wifi.exclamationmark", "cloud_off"],
+  play: ["play.circle.fill", "play_circle"],
+  external: ["arrow.up.right.square", "open_in_new"],
 } as const satisfies Record<string, readonly [SFSymbol, AndroidSymbol]>;
 
 export type IconName = keyof typeof ICONS;

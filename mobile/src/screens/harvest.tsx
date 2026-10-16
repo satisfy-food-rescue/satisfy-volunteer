@@ -1,19 +1,20 @@
-import { View } from "react-native";
+import { router } from "expo-router";
+import { Alert, Pressable, View } from "react-native";
 
-import type { HarvestOverview } from "@satisfy/core/api";
-import { formatDayLong, formatTimeRange } from "@satisfy/core/dates";
+import type { HarvestOverview, ModuleSummary } from "@satisfy/core/api";
 import { FoodIcon } from "@/components/brand/logo";
 import { Photo } from "@/components/photo";
 import { QueryScreen } from "@/components/screen";
-import { AvatarStack } from "@/components/ui/avatar";
+import { ShiftCard } from "@/components/shift/shift-card";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { TrainingChip } from "@/components/ui/chip";
 import { Icon } from "@/components/ui/icon";
 import { Section } from "@/components/ui/section";
 import { EmptyLine } from "@/components/ui/states";
 import { Text } from "@/components/ui/text";
 import { actions, useAction, useHarvest } from "@/lib/queries";
-import { radius, useTheme } from "@/theme";
+import { useTheme } from "@/theme";
 
 export function HarvestScreen() {
   const query = useHarvest();
@@ -25,11 +26,13 @@ export function HarvestScreen() {
             Seasonal
           </Text>
           <Pool harvest={harvest} />
-          <Section title="Callouts">
-            {harvest.callouts.length === 0 ? (
-              <EmptyLine text="No harvests planned right now. We will send a callout when the fruit is ready." />
+          {harvest.training.length > 0 && <Training harvest={harvest} />}
+          <Section title="Upcoming harvests">
+            {harvest.harvests.length === 0 ? (
+              <EmptyLine text={`No harvests planned right now. ${harvest.inPool ? "We will let you know when the fruit is ready." : "Join the pool to hear when the fruit is ready."}`} />
             ) : (
-              harvest.callouts.map((c) => <Callout key={c.id} callout={c} inPool={harvest.inPool} />)
+              // Outside the pool the join button above says it all.
+              harvest.harvests.map((s) => <ShiftCard key={s.id} shift={s} showDate hideReason={!harvest.inPool} />)
             )}
           </Section>
         </>
@@ -40,6 +43,13 @@ export function HarvestScreen() {
 
 function Pool({ harvest }: { harvest: HarvestOverview }) {
   const toggle = useAction(actions.setHarvestPool);
+  const onPress = () => {
+    if (!harvest.inPool) return toggle.mutate(true);
+    Alert.alert("Leave the harvest pool?", "Harvests you are already booked on stay booked.", [
+      { text: "Stay in", style: "cancel" },
+      { text: "Leave", style: "destructive", onPress: () => toggle.mutate(false) },
+    ]);
+  };
   return (
     <Card border={harvest.inPool ? "green50" : "border"} background={harvest.inPool ? "greenTintSoft" : "card"} padded={false}>
       <Photo photo="harvest" style={{ aspectRatio: 16 / 9 }} />
@@ -47,9 +57,9 @@ function Pool({ harvest }: { harvest: HarvestOverview }) {
         <View style={{ flexDirection: "row", gap: 12 }}>
           <FoodIcon kind="broccoli" size={48} />
           <View style={{ flex: 1, gap: 4 }}>
-            <Text variant="bodyBold">{harvest.inPool ? "You're in the pool" : "Join the harvest pool"}</Text>
+            <Text variant="bodyBold">{harvest.inPool ? "You're in the harvest pool" : "Join the harvest pool"}</Text>
             <Text variant="small" tone="inkSoft">
-              In summer and autumn we pick fruit from orchards and backyard trees with Food Secure North Canterbury. Pool members get a callout with the details and reply in the app. {harvest.poolCount} volunteers are in the pool.
+              Whenever fruit is ready, we pick it from orchards and backyard trees that would otherwise waste it. When a harvest is on, everyone in the pool gets an email and a notification, and the first to sign up get the places. {harvest.poolCount} volunteers are in the pool.
             </Text>
           </View>
         </View>
@@ -58,73 +68,57 @@ function Pool({ harvest }: { harvest: HarvestOverview }) {
           variant={harvest.inPool ? "outline" : "primary"}
           block
           loading={toggle.isPending}
-          onPress={() => toggle.mutate(!harvest.inPool)}
+          onPress={onPress}
         />
       </View>
     </Card>
   );
 }
 
-function Callout({ callout: c, inPool }: { callout: HarvestOverview["callouts"][number]; inPool: boolean }) {
+function Training({ harvest }: { harvest: HarvestOverview }) {
   const t = useTheme();
-  const rsvp = useAction(actions.rsvpHarvest);
+  const toDo = harvest.training.filter((m) => m.status === "NOT_STARTED" || m.status === "OVERDUE").length;
   return (
-    <Card padded={false}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 12, backgroundColor: t.hero }}>
-        <View style={{ width: 40, height: 40, borderRadius: 20, borderWidth: 2, borderColor: "rgba(255,255,255,0.8)", alignItems: "center", justifyContent: "center" }}>
-          <FoodIcon kind="apple" size={36} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text variant="bodyBold" tone="white">
-            {c.title}
-          </Text>
-          <Text variant="small" tone="white" tabular style={{ opacity: 0.85 }}>
-            {formatDayLong(c.iso)}, {formatTimeRange(c.startTime, c.endTime)}
-          </Text>
-        </View>
-      </View>
-      <View style={{ padding: 16, gap: 12 }}>
-        <View style={{ flexDirection: "row", gap: 6 }}>
-          <View style={{ paddingTop: 2 }}>
-            <Icon name="pin" size={14} color={t.lightBlue} />
-          </View>
-          <Text variant="small" tone="inkSoft" style={{ flex: 1 }}>
-            {c.location} · with {c.partner}
-          </Text>
-        </View>
-        <Text variant="body">{c.description}</Text>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <Icon name="people" size={15} color={t.mutedText} />
-          <Text variant="small" tone="mutedText" tabular>
-            {c.going.length} of {c.needed} pickers so far
-          </Text>
-          <AvatarStack people={c.going} max={5} />
-        </View>
-        {!inPool ? (
-          <View style={{ padding: 14, borderRadius: radius.lg, borderCurve: "continuous", backgroundColor: t.muted }}>
-            <Text variant="small" tone="mutedText">
-              Join the pool above to respond to this callout.
+    <Section
+      title="Harvest training"
+      aside={
+        harvest.trained ? (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+            <Icon name="checkCircle" size={15} color={t.greenText} />
+            <Text variant="smallBold" tone="greenText">
+              All done
             </Text>
           </View>
-        ) : c.mine === "GOING" ? (
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-              <Icon name="check" size={18} color={t.greenText} />
-              <Text variant="bodySemibold" tone="greenText">
-                You&apos;re going
-              </Text>
-            </View>
-            <Button label="Can't make it" variant="ghost" size="md" loading={rsvp.isPending} onPress={() => rsvp.mutate({ id: c.id, going: false })} />
-          </View>
-        ) : (
-          <View style={{ flexDirection: "row", gap: 8 }}>
-            <Button label="I can come" icon="check" size="md" block disabled={rsvp.isPending} loading={rsvp.isPending && rsvp.variables?.going === true} onPress={() => rsvp.mutate({ id: c.id, going: true })} />
-            {c.mine !== "DECLINED" && (
-              <Button label="Not this time" variant="outline" size="md" disabled={rsvp.isPending} loading={rsvp.isPending && rsvp.variables?.going === false} onPress={() => rsvp.mutate({ id: c.id, going: false })} />
-            )}
-          </View>
-        )}
-      </View>
-    </Card>
+        ) : undefined
+      }
+    >
+      <Text variant="small" tone="inkSoft">
+        {harvest.trained
+          ? harvest.inPool
+            ? "You can sign up for any harvest with a place left. We run a short in-person induction at your first harvest."
+            : "Your training already covers harvests, so once you join you can sign up straight away."
+          : `Complete ${toDo === 1 ? "this module" : "these modules"} online before your first harvest. The in-person induction happens on the day.`}
+      </Text>
+      {harvest.training.map((m) => (
+        <ModuleLine key={m.id} module={m} />
+      ))}
+    </Section>
+  );
+}
+
+function ModuleLine({ module: m }: { module: ModuleSummary }) {
+  const t = useTheme();
+  return (
+    <Pressable onPress={() => router.push({ pathname: "/module/[code]", params: { code: m.code } })} accessibilityRole="button" accessibilityLabel={`${m.name}, ${m.status.toLowerCase().replace("_", " ")}`}>
+      {({ pressed }) => (
+        <Card border={pressed ? "tealText" : "border"} style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 56 }}>
+          <Text variant="bodySemibold" style={{ flex: 1 }}>
+            {m.name}
+          </Text>
+          <TrainingChip status={m.status} small />
+          <Icon name="chevronRight" size={14} color={t.mutedText} />
+        </Card>
+      )}
+    </Pressable>
   );
 }

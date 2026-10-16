@@ -2,7 +2,8 @@ import { router } from "expo-router";
 import { Pressable, View } from "react-native";
 
 import type { ShiftSummary } from "@satisfy/core/api";
-import { formatTimeRange } from "@satisfy/core/dates";
+import { formatDay, formatTimeRange } from "@satisfy/core/dates";
+import { isAdHocKind } from "@satisfy/core/domain";
 import { Chip } from "@/components/ui/chip";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
@@ -11,8 +12,10 @@ import { radius, useTheme } from "@/theme";
 import { CrewLine } from "./crew-line";
 import { KindTile } from "./kind-tile";
 
-/** A shift in a list: what, when, my status and who else is on. */
-export function ShiftCard({ shift }: { shift: ShiftSummary }) {
+/** A shift in a list: what, when, my status and who else is on. `showDate`
+ *  is for lists that span days rather than sitting under a day heading. */
+export function ShiftCard({ shift, showDate = false, hideReason = false }: { shift: ShiftSummary; showDate?: boolean; hideReason?: boolean }) {
+  const when = `${showDate ? `${formatDay(shift.iso)}, ` : ""}${formatTimeRange(shift.startTime, shift.endTime)}`;
   const t = useTheme();
   const a = shift.action;
   const mine = a.kind === "MINE";
@@ -21,7 +24,7 @@ export function ShiftCard({ shift }: { shift: ShiftSummary }) {
   return (
     <Pressable onPress={() => router.push({ pathname: "/shift/[id]", params: { id: shift.id } })}
         accessibilityRole="button"
-        accessibilityLabel={`${shift.name}, ${formatTimeRange(shift.startTime, shift.endTime)}`}
+        accessibilityLabel={`${shift.name}, ${when}`}
         style={({ pressed }) => ({
           flexDirection: "row",
           gap: 12,
@@ -41,8 +44,13 @@ export function ShiftCard({ shift }: { shift: ShiftSummary }) {
                 {shift.name}
               </Text>
               <Text variant="small" tone="mutedText" tabular>
-                {formatTimeRange(shift.startTime, shift.endTime)}
+                {when}
               </Text>
+              {isAdHocKind(shift.kind) && (
+                <Text variant="small" tone="mutedText" numberOfLines={1}>
+                  {shift.location}
+                </Text>
+              )}
             </View>
             <Icon name="chevronRight" size={16} color={t.mutedText} />
           </View>
@@ -55,8 +63,10 @@ export function ShiftCard({ shift }: { shift: ShiftSummary }) {
               <Chip tone="bad" icon="cover" small label="Needs cover" />
             ) : shift.isFull ? (
               <Chip tone="neutral" small label="Full" />
+            ) : isAdHocKind(shift.kind) && a.kind === "BOOK" ? (
+              <Chip tone="info" small label={`${shift.spotsLeft} ${shift.spotsLeft === 1 ? "place" : "places"} left`} />
             ) : null}
-            {blocked && <Chip tone="warn" icon="lock" small label={a.fix === "role" ? "Role needed" : "Training needed"} />}
+            {blocked && <Chip tone="warn" icon="lock" small label={a.fix === "harvestPool" ? "Join the pool" : a.fix === "role" ? "Role needed" : "Training needed"} />}
             <View style={{ marginLeft: "auto", flexDirection: "row", alignItems: "center", gap: 4 }}>
               <Icon name="people" size={14} color={t.mutedText} />
               <Text variant="small" tone="mutedText" tabular accessibilityLabel={`${shift.confirmedCount} of ${shift.capacity} places filled`}>
@@ -65,7 +75,7 @@ export function ShiftCard({ shift }: { shift: ShiftSummary }) {
             </View>
           </View>
           <CrewLine crew={shift.crew} />
-          {blocked && (
+          {blocked && !hideReason && (
             <Text variant="small" tone="orangeText">
               {a.reason}
             </Text>

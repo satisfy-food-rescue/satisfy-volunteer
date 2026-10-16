@@ -39,11 +39,6 @@ function Profile({ session }: { session: MobileSession }) {
           <Text variant="small" tone="mutedText">
             Volunteer since {formatDate(me.joinedISO)}
           </Text>
-          {me.inHarvestPool && (
-            <View style={{ marginTop: 4 }}>
-              <Chip tone="info" icon="leaf" small label="Harvest pool" />
-            </View>
-          )}
         </View>
       </View>
       <Roles me={me} />
@@ -92,7 +87,7 @@ function Infoodle({ infoodle }: { infoodle: NonNullable<Me["infoodle"]> }) {
 
 const LINKS: { href: Href; label: string; icon: IconName }[] = [
   { href: "/slot", label: "My regular slot and absences", icon: "calendarCheck" },
-  { href: "/harvest", label: "Harvest pool", icon: "leaf" },
+  { href: "/harvest", label: "Harvest", icon: "leaf" },
 ];
 
 function Links() {

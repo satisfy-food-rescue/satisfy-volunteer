@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft, ShieldCheck } from "lucide-react";
+import { moduleParagraphs } from "@satisfy/core/training";
 import { requireVolunteer } from "@/lib/session";
 import { db } from "@/lib/db";
 import { todayISO, formatDate } from "@/lib/dates";
 import { trainingContext } from "@/lib/volunteer-data";
 import { TrainingChip } from "@/components/shared/status-chip";
-import { ConfirmModuleForm } from "@/components/app/confirm-module-form";
+import { OnlineModule } from "@/components/app/online-module";
 import { Button } from "@/components/ui/button";
 
 export const metadata = { title: "Training module" };
@@ -14,11 +15,11 @@ export const metadata = { title: "Training module" };
 export default async function ModulePage({ params }: { params: Promise<{ code: string }> }) {
   const me = await requireVolunteer();
   const { code } = await params;
-  const mod = await db.trainingModule.findUnique({ where: { code } });
+  const mod = await db.trainingModule.findUnique({ where: { code }, include: { links: { orderBy: { order: "asc" } } } });
   if (!mod) notFound();
   const { statuses } = await trainingContext(me, todayISO());
   const st = statuses.find((s) => s.module.id === mod.id)!;
-  const paragraphs = (mod.content ?? "").split("\n\n").filter(Boolean);
+  const paragraphs = moduleParagraphs(mod.content);
 
   return (
     <div className="flex flex-col gap-6 px-5 pb-6 pt-3">
@@ -27,7 +28,7 @@ export default async function ModulePage({ params }: { params: Promise<{ code: s
       </Link>
       <header>
         <div className="flex flex-wrap items-center gap-2">
-          <p className="eyebrow">{mod.delivery === "ONLINE_CONFIRM" ? "Online: read and confirm" : "In-person session"}</p>
+          <p className="eyebrow">{mod.delivery === "ONLINE_CONFIRM" ? (mod.links.length ? "Online: read, watch and confirm" : "Online: read and confirm") : "In-person session"}</p>
           <TrainingChip status={st.status} size="sm" />
         </div>
         <h1 className="mt-1 text-[1.9rem] leading-tight text-ink">{mod.name}</h1>
@@ -41,19 +42,11 @@ export default async function ModulePage({ params }: { params: Promise<{ code: s
 
       {mod.delivery === "ONLINE_CONFIRM" ? (
         <>
-          <ol className="flex flex-col gap-3">
-            {paragraphs.map((p, i) => (
-              <li key={i} className="flex gap-3 rounded-2xl border border-border bg-card p-4">
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-teal-tint font-display font-bold text-teal-deep">{i + 1}</span>
-                <p className="text-base leading-relaxed text-ink">{p}</p>
-              </li>
-            ))}
-          </ol>
+          <OnlineModule moduleId={mod.id} moduleName={mod.name} paragraphs={paragraphs} links={mod.links.map((l) => ({ id: l.id, label: l.label, url: l.url }))} />
           <div className="flex items-start gap-2 text-sm text-muted-foreground">
             <ShieldCheck className="mt-0.5 size-4 shrink-0" aria-hidden />
             <p>Confirming records the date against your name and lifts any booking block straight away. The coordinator can see who has completed what.</p>
           </div>
-          <ConfirmModuleForm moduleId={mod.id} moduleName={mod.name} />
         </>
       ) : (
         <div className="rounded-2xl border border-border bg-card p-5">

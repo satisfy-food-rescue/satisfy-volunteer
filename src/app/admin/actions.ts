@@ -3,10 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { moduleParagraphs } from "@satisfy/core/training";
 import { requireAdmin } from "@/lib/session";
 import { addDays, addMonths, dateToISO, isoToDate, isWeekday, nzInstant, todayISO, weekdayOf, formatDay, formatInstant, formatTimeRange } from "@/lib/dates";
-import { ABSENCE_REASON_LABEL, INITIAL_VISIT_CODE, ROLE_LABEL, VOLUNTEER_ROLES, fullName, parseRoles, type AbsenceReason } from "@/lib/domain";
-import { decorateShift, shiftById, shiftInclude } from "@/lib/roster";
+import { ABSENCE_REASON_LABEL, INITIAL_VISIT_CODE, ROLE_LABEL, VOLUNTEER_ROLES, fullName, isAdHocKind, joinRoles, parseRoles, type AbsenceReason, type ShiftKind } from "@/lib/domain";
+import { shiftById } from "@/lib/roster";
+import { sendShiftCallout } from "@/lib/callouts";
+import { announcementSchema, audienceSchema, resolveAudience, sendAnnouncement, type AnnouncementInput, type AudienceInput } from "@/lib/announcements";
 import { moduleStatuses } from "@/lib/training";
 import { runReminders } from "@/lib/reminders";
 import { afterShiftReleased, runCoverChecks } from "@/lib/cover";
@@ -42,7 +45,9 @@ export async function bulkSchedule(input: z.infer<typeof bulkSchema>): Promise<B
   const { templateIds, startDate, endDate, weekdays, assignRegulars, dryRun } = parsed.data;
   if (endDate < startDate) return { ok: false, error: "End date must be after the start date." };
   if (isoToDate(endDate).getTime() - isoToDate(startDate).getTime() > 120 * 86_400_000) return { ok: false, error: "Schedule at most four months at a time." };
-  const templates = await db.shiftTemplate.findMany({ where: { id: { in: templateIds }, active: true }, include: { regularSlots: true } });
+  // Ad hoc kinds (harvests) are created one at a time, never in bulk.
+  const templates = (await db.shiftTemplate.findMany({ where: { id: { in: templateIds }, active: true }, include: { regularSlots: true } })).filter((t) => !isAdHocKind(t.kind as ShiftKind));
+  if (templates.length === 0) return { ok: false, error: "Pick at least one weekly shift type." };
   const existing = await db.shift.findMany({
     where: { templateId: { in: templateIds }, date: { gte: isoToDate(startDate), lte: isoToDate(endDate) } },
     select: { templateId: true, date: true },
@@ -65,7 +70,7 @@ export async function bulkSchedule(input: z.infer<typeof bulkSchema>): Promise<B
   let createdAssignments = 0;
   for (const r of toCreate) {
     const t = templates.find((x) => x.id === r.templateId)!;
-    const shift = await db.shift.create({ data: { templateId: t.id, date: isoToDate(r.iso), startTime: t.startTime, endTime: t.endTime, capacity: t.capacity, needed: t.needed } });
+    const shift = await db.shift.create({ data: { templateId: t.id, date: isoToDate(r.iso), startTime: t.startTime, endTime: t.endTime, capacity: t.capacity, needed: t.needed, publishedAt: new Date() } });
     created++;
     if (assignRegulars) {
       const wd = weekdayOf(r.iso);
@@ -96,20 +101,137 @@ export async function removeFromShift(assignmentId: string): Promise<ActionResul
   return { ok: true, message: "Removed from shift." };
 }
 
+/** The volunteer gets an email and a push, so a booking made over the phone
+ *  is in writing and on their phone. */
 export async function addToShift(shiftId: string, volunteerId: string): Promise<ActionResult> {
-  await requireAdmin();
-  const shift = await db.shift.findUnique({ where: { id: shiftId }, include: shiftInclude });
-  const volunteer = await db.volunteer.findUnique({ where: { id: volunteerId } });
-  if (!shift || !volunteer) return { ok: false, error: "Not found." };
-  const view = decorateShift(shift);
+  const admin = await requireAdmin();
+  const [view, volunteer] = await Promise.all([shiftById(shiftId), db.volunteer.findUnique({ where: { id: volunteerId } })]);
+  if (!view || !volunteer) return { ok: false, error: "Not found." };
+  if (view.shift.status !== "SCHEDULED") return { ok: false, error: "That shift is cancelled." };
   if (view.confirmed.some((a) => a.volunteerId === volunteerId)) return { ok: false, error: "Already on this shift." };
   const covering = view.isGap;
-  await db.assignment.create({ data: { shiftId, volunteerId, source: covering ? "COVER" : "ADMIN", status: "CONFIRMED" } });
-  if (covering) {
-    await queueEmail(volunteer, T.coverConfirmed({ firstName: volunteer.firstName, shiftName: shift.template.name, dateISO: view.iso, start: shift.startTime, end: shift.endTime, shiftId }));
+  const a = await db.assignment.create({ data: { shiftId, volunteerId, source: covering ? "COVER" : "ADMIN", status: "CONFIRMED" } });
+  const p = { firstName: volunteer.firstName, shiftName: view.name, dateISO: view.iso, start: view.shift.startTime, end: view.shift.endTime, location: view.location, shiftId, addedBy: admin.firstName, covering };
+  await queueEmail(volunteer, T.shiftAdded(p), `added:${a.id}`);
+  await queueEmail(volunteer, T.shiftAddedPush(p), `added:${a.id}`);
+  revalidateAll();
+  return { ok: true, message: `${volunteer.firstName} added${covering ? " and the gap is covered" : ""}. They have been emailed and sent a push notification.` };
+}
+
+// --- One-off shifts: harvests, extra sorting mornings. Draft first if needed ---
+const time = z.string().regex(/^\d{2}:\d{2}$/);
+const shiftFormSchema = z.object({
+  /** Set when editing. */
+  id: z.string().optional(),
+  templateId: z.string().min(1),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  startTime: time,
+  endTime: time,
+  title: z.string().trim().max(80),
+  location: z.string().trim().max(160),
+  notes: z.string().trim().max(1000),
+  capacity: z.number().int().min(1).max(60),
+  needed: z.number().int().min(1).max(60),
+  /** Save as a draft (false) or make it visible and bookable (true). */
+  publish: z.boolean(),
+  /** On publishing, email and push everyone who holds the role. */
+  callout: z.boolean(),
+});
+export type ShiftFormInput = z.infer<typeof shiftFormSchema>;
+
+export async function saveShift(input: ShiftFormInput): Promise<ActionResult & { id?: string }> {
+  await requireAdmin();
+  const parsed = shiftFormSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Please check the shift details." };
+  const d = parsed.data;
+  if (d.endTime <= d.startTime) return { ok: false, error: "End time must be after the start time." };
+  if (d.needed > d.capacity) return { ok: false, error: "Pickers needed cannot be more than the maximum." };
+  if (d.date < todayISO()) return { ok: false, error: "The date cannot be in the past." };
+  const template = await db.shiftTemplate.findUnique({ where: { id: d.templateId } });
+  if (!template || !template.active) return { ok: false, error: "That shift type is no longer available." };
+  // A draft can be rough; a published harvest goes out in a callout.
+  if (d.publish && template.kind === "HARVEST" && (!d.title || !d.location)) return { ok: false, error: "Add what's being picked and where before publishing." };
+  const before = d.id ? await shiftById(d.id, { drafts: true }) : null;
+  if (d.id && !before) return { ok: false, error: "That shift no longer exists." };
+  if (before?.shift.status === "CANCELLED") return { ok: false, error: "That shift is cancelled." };
+  if (before && d.capacity < before.confirmedCount) return { ok: false, error: `${before.confirmedCount} people are already on it, so the maximum cannot be lower than that.` };
+  if (before && before.shift.status === "SCHEDULED" && !d.publish) return { ok: false, error: "A published shift cannot go back to draft. Cancel it instead." };
+
+  const publishing = d.publish && before?.shift.status !== "SCHEDULED";
+  const data = {
+    templateId: d.templateId,
+    date: isoToDate(d.date),
+    startTime: d.startTime,
+    endTime: d.endTime,
+    title: d.title || null,
+    location: d.location || null,
+    notes: d.notes || null,
+    capacity: d.capacity,
+    needed: d.needed,
+    status: d.publish ? "SCHEDULED" : "DRAFT",
+    ...(publishing ? { publishedAt: new Date() } : {}),
+  };
+  const shift = before ? await db.shift.update({ where: { id: before.shift.id }, data }) : await db.shift.create({ data });
+  let told = 0;
+  if (publishing && d.callout) {
+    const view = await shiftById(shift.id);
+    if (view) told = await sendShiftCallout(view);
   }
   revalidateAll();
-  return { ok: true, message: `${volunteer.firstName} added${covering ? " and the gap is covered" : ""}.` };
+  const message = !d.publish
+    ? "Saved as a draft. Only coordinators can see it."
+    : publishing
+      ? `Published.${d.callout ? ` ${told} ${told === 1 ? "volunteer has" : "volunteers have"} been emailed and sent a push notification.` : " Volunteers can now see and book it."}`
+      : before && before.confirmedCount > 0
+        ? "Saved. Use Message crew to tell the people booked on it what changed."
+        : "Saved.";
+  return { ok: true, message, id: shift.id };
+}
+
+/** Publishes a draft as it stands, from the shift page. */
+export async function publishShift(shiftId: string, callout: boolean): Promise<ActionResult> {
+  await requireAdmin();
+  const view = await shiftById(shiftId, { drafts: true });
+  if (!view) return { ok: false, error: "That shift no longer exists." };
+  if (!view.isDraft) return { ok: false, error: "That shift is already published." };
+  if (view.iso < todayISO()) return { ok: false, error: "That date has passed. Edit the draft to move it first." };
+  const { count } = await db.shift.updateMany({ where: { id: shiftId, status: "DRAFT" }, data: { status: "SCHEDULED", publishedAt: new Date() } });
+  if (count === 0) return { ok: false, error: "That shift is already published." };
+  let told = 0;
+  if (callout) {
+    const published = await shiftById(shiftId);
+    if (published) told = await sendShiftCallout(published);
+  }
+  revalidateAll();
+  return { ok: true, message: callout ? `Published. ${told} ${told === 1 ? "volunteer has" : "volunteers have"} been emailed and sent a push notification.` : "Published. Volunteers can now see and book it." };
+}
+
+export async function deleteDraftShift(shiftId: string): Promise<ActionResult> {
+  await requireAdmin();
+  const { count } = await db.shift.deleteMany({ where: { id: shiftId, status: "DRAFT" } });
+  if (count === 0) return { ok: false, error: "Only drafts can be deleted. Cancel a published shift instead." };
+  revalidateAll();
+  return { ok: true, message: "Draft deleted." };
+}
+
+// --- Announcements ---
+export async function previewAudience(target: AudienceInput): Promise<{ ok: true; label: string; count: number; names: string[] } | { ok: false; error: string }> {
+  await requireAdmin();
+  const parsed = audienceSchema.safeParse(target);
+  if (!parsed.success) return { ok: false, error: "Pick who it goes to." };
+  const r = await resolveAudience(parsed.data);
+  if (!r) return { ok: false, error: "That shift no longer exists." };
+  return { ok: true, label: r.label, count: r.recipients.length, names: r.recipients.slice(0, 8).map((v) => fullName(v)) };
+}
+
+export async function sendAnnouncementAction(input: AnnouncementInput): Promise<ActionResult> {
+  const admin = await requireAdmin();
+  const parsed = announcementSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Add a subject and a message of at least a sentence." };
+  const r = await sendAnnouncement(admin, parsed.data);
+  if (!r.ok) return r;
+  revalidateAll();
+  return { ok: true, message: `Sent to ${r.count} ${r.count === 1 ? "volunteer" : "volunteers"}${parsed.data.push ? ", by email and push notification" : " by email"}.` };
 }
 
 const cancelSchema = z.object({
@@ -126,8 +248,9 @@ export async function cancelShift(input: z.infer<typeof cancelSchema>): Promise<
   if (!parsed.success) return { ok: false, error: "Keep the reason under 200 characters." };
   const { shiftId } = parsed.data;
   const reason = parsed.data.reason || undefined;
-  const view = await shiftById(shiftId);
+  const view = await shiftById(shiftId, { drafts: true });
   if (!view) return { ok: false, error: "Shift not found." };
+  if (view.isDraft) return { ok: false, error: "Drafts are deleted, not cancelled." };
   if (view.iso < todayISO()) return { ok: false, error: "That shift has already happened." };
   // Conditional so two coordinators cancelling at once notify volunteers once.
   const { count } = await db.shift.updateMany({ where: { id: shiftId, status: "SCHEDULED" }, data: { status: "CANCELLED" } });
@@ -141,10 +264,10 @@ export async function cancelShift(input: z.infer<typeof cancelSchema>): Promise<
   for (const a of booked) {
     const ref = `shift-cancelled:${shiftId}:${a.volunteerId}`;
     if (already.has(ref)) continue;
-    const p = { firstName: a.volunteer.firstName, shiftName: view.shift.template.name, dateISO: view.iso, start: view.shift.startTime, end: view.shift.endTime, shiftId, regular: a.source === "REGULAR", cancelledBy: admin.firstName, reason };
+    const p = { firstName: a.volunteer.firstName, shiftName: view.name, dateISO: view.iso, start: view.shift.startTime, end: view.shift.endTime, shiftId, regular: a.source === "REGULAR", cancelledBy: admin.firstName, reason };
     await queueEmail(a.volunteer, T.shiftCancelled(p), ref);
     await queueEmail(a.volunteer, T.shiftCancelledPush(p), ref);
-    await db.contactLog.create({ data: { volunteerId: a.volunteerId, authorId: admin.id, kind: "SHIFT_CANCELLED", summary: `${view.shift.template.name}, ${when}.${reason ? ` Reason: ${T.sentence(reason)}` : ""}` } });
+    await db.contactLog.create({ data: { volunteerId: a.volunteerId, authorId: admin.id, kind: "SHIFT_CANCELLED", summary: `${view.name}, ${when}.${reason ? ` Reason: ${T.sentence(reason)}` : ""}` } });
   }
   revalidateAll();
   const n = booked.length;
@@ -219,23 +342,67 @@ export async function createSession(input: z.infer<typeof sessionSchema>): Promi
   return { ok: true, message: "Session scheduled." };
 }
 
-const moduleSchema = z.object({
-  id: z.string(),
-  name: z.string().trim().min(2).max(80),
-  validityMonths: z.number().int().min(1).max(60).nullable(),
-  requiredRoles: z.array(z.enum(["WAREHOUSE", "DRIVERS_ASSISTANT", "VOLUNTEER_DRIVER"])).min(1),
-  mandatoryBeforeFirstShift: z.boolean(),
-  delivery: z.enum(["IN_PERSON", "ONLINE_CONFIRM"]),
+const linkSchema = z.object({
+  label: z.string().trim().min(2).max(100),
+  url: z.url({ protocol: /^https$/, error: "Links must start with https://" }).max(500),
 });
 
-export async function updateModule(input: z.infer<typeof moduleSchema>): Promise<ActionResult> {
+const moduleSchema = z.object({
+  /** Null creates a new module. */
+  id: z.string().nullable(),
+  name: z.string().trim().min(2).max(80),
+  description: z.string().trim().min(2).max(300),
+  validityMonths: z.number().int().min(1).max(60).nullable(),
+  requiredRoles: z.array(z.enum(VOLUNTEER_ROLES)).min(1),
+  mandatoryBeforeFirstShift: z.boolean(),
+  delivery: z.enum(["IN_PERSON", "ONLINE_CONFIRM"]),
+  /** Paragraphs separated by a blank line. Online modules only. */
+  content: z.string().trim().max(10000),
+  links: z.array(linkSchema).max(10),
+});
+export type ModuleInput = z.infer<typeof moduleSchema>;
+
+function moduleCode(name: string) {
+  return name.toUpperCase().replace(/[^A-Z0-9]+/g, "_").replace(/^_|_$/g, "").slice(0, 40) || "MODULE";
+}
+
+/** Content and links are what volunteers read and watch before they can tick
+ *  an online module off, so they are edited here as the SOPs change. */
+export async function saveModule(input: ModuleInput): Promise<ActionResult> {
   await requireAdmin();
   const parsed = moduleSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: "Please check the module settings." };
+  if (!parsed.success) {
+    const linkIssue = parsed.error.issues.find((i) => i.path[0] === "links");
+    return { ok: false, error: linkIssue ? `Check the links: each needs a label and an https:// address.` : "Please check the module settings." };
+  }
   const d = parsed.data;
-  await db.trainingModule.update({ where: { id: d.id }, data: { name: d.name, validityMonths: d.validityMonths, requiredRoles: d.requiredRoles.join(","), mandatoryBeforeFirstShift: d.mandatoryBeforeFirstShift, delivery: d.delivery } });
+  const online = d.delivery === "ONLINE_CONFIRM";
+  if (online && moduleParagraphs(d.content).length === 0) return { ok: false, error: "Online modules need some content to read." };
+  const data = {
+    name: d.name,
+    description: d.description,
+    validityMonths: d.validityMonths,
+    requiredRoles: joinRoles(d.requiredRoles),
+    mandatoryBeforeFirstShift: d.mandatoryBeforeFirstShift,
+    delivery: d.delivery,
+    content: online ? d.content : null,
+  };
+  const links = online ? d.links.map((l, order) => ({ label: l.label, url: l.url, order })) : [];
+  if (d.id) {
+    await db.$transaction([
+      db.trainingModule.update({ where: { id: d.id }, data }),
+      db.trainingLink.deleteMany({ where: { moduleId: d.id } }),
+      db.trainingLink.createMany({ data: links.map((l) => ({ ...l, moduleId: d.id! })) }),
+    ]);
+  } else {
+    const base = moduleCode(d.name);
+    let code = base;
+    for (let n = 2; await db.trainingModule.findUnique({ where: { code } }); n++) code = `${base}_${n}`;
+    const last = await db.trainingModule.findFirst({ orderBy: { order: "desc" }, select: { order: true } });
+    await db.trainingModule.create({ data: { ...data, code, order: (last?.order ?? 0) + 1, links: { create: links } } });
+  }
   revalidateAll();
-  return { ok: true, message: "Module saved." };
+  return { ok: true, message: d.id ? "Module saved." : "Module added. Volunteers with those roles now see it on their training list." };
 }
 
 const completionSchema = z.object({
@@ -323,7 +490,6 @@ const profileSchema = z.object({
   emergencyPhone: z.string().trim().max(30),
   availabilityNote: z.string().trim().max(300),
   lastMinuteOk: z.boolean(),
-  inHarvestPool: z.boolean(),
 });
 
 const PROFILE_FIELD_LABEL = {
@@ -333,7 +499,6 @@ const PROFILE_FIELD_LABEL = {
   emergencyPhone: "emergency contact phone",
   availabilityNote: "availability",
   lastMinuteOk: "last-minute cover",
-  inHarvestPool: "harvest pool",
 } as const;
 
 export async function updateVolunteerProfile(input: z.infer<typeof profileSchema>): Promise<ActionResult> {
@@ -350,7 +515,6 @@ export async function updateVolunteerProfile(input: z.infer<typeof profileSchema
     emergencyPhone: d.emergencyPhone || null,
     availabilityNote: d.availabilityNote || null,
     lastMinuteOk: d.lastMinuteOk,
-    inHarvestPool: d.inHarvestPool,
   };
   const changed = (Object.keys(data) as (keyof typeof data)[]).filter((k) => before[k] !== data[k]);
   if (changed.length === 0) return { ok: true, message: "Nothing changed." };

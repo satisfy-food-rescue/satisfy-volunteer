@@ -1,15 +1,16 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft, Clock, HandHelping, Mail, MapPin, Smartphone, Store, UserRound, Users, CheckCircle2, XCircle } from "lucide-react";
+import { ChevronLeft, Clock, HandHelping, Mail, MapPin, Megaphone, MessageSquareText, Pencil, PencilLine, Smartphone, Store, UserRound, Users, CheckCircle2, XCircle } from "lucide-react";
 import { requireAdmin } from "@/lib/session";
 import { db } from "@/lib/db";
 import { formatDay, formatDayLong, formatInstant, formatTimeRange, relativeDay, todayISO, dateToISO, formatDayRange } from "@/lib/dates";
 import { availableForShift, shiftById } from "@/lib/roster";
-import { ABSENCE_REASON_LABEL, fullName, type AbsenceReason } from "@/lib/domain";
+import { ABSENCE_REASON_LABEL, ROLE_LABEL, fullName, isAdHocKind, parseRoles, type AbsenceReason } from "@/lib/domain";
+import { Button } from "@/components/ui/button";
 import { AvatarBadge } from "@/components/shared/avatar-badge";
 import { Chip } from "@/components/shared/status-chip";
-import { ShiftKindIcon } from "@/components/app/shift-card";
-import { AddVolunteerPanel, AttendanceControls, CancelShiftButton, SourceChip } from "@/components/admin/shift-admin-controls";
+import { ShiftKindIcon, kindTileClass } from "@/components/app/shift-card";
+import { AddVolunteerPanel, AttendanceControls, CancelShiftButton, DeleteDraftButton, PublishShiftButton, SourceChip } from "@/components/admin/shift-admin-controls";
 import { cn } from "@/lib/utils";
 
 export const metadata = { title: "Shift" };
@@ -17,36 +18,50 @@ export const metadata = { title: "Shift" };
 export default async function AdminShiftPage({ params }: { params: Promise<{ id: string }> }) {
   await requireAdmin();
   const { id } = await params;
-  const view = await shiftById(id);
+  const view = await shiftById(id, { drafts: true });
   if (!view) notFound();
   const today = todayISO();
   const isPast = view.iso < today;
   const cancelled = view.shift.status === "CANCELLED";
-  const [candidates, donors, pushes, cancelNotices] = await Promise.all([
+  const draft = view.isDraft;
+  const adHoc = isAdHocKind(view.kind);
+  const harvest = view.kind === "HARVEST";
+  const back = harvest ? { href: "/admin/harvests", label: "Harvests" } : { href: "/admin/roster", label: "Roster" };
+  const [candidates, donors, pushes, cancelNotices, callouts, roleHolders] = await Promise.all([
     view.shift.status === "SCHEDULED" && !isPast ? availableForShift(view) : Promise.resolve([]),
     view.shift.template.routeId ? db.donor.findMany({ where: { routeId: view.shift.template.routeId } }) : Promise.resolve([]),
     db.email.findMany({ where: { ref: { startsWith: `last-minute:${id}:` } }, include: { volunteer: { select: { firstName: true, lastName: true } } }, orderBy: { createdAt: "asc" } }),
     cancelled
       ? db.email.findMany({ where: { ref: { startsWith: `shift-cancelled:${id}:` }, channel: "EMAIL" }, include: { volunteer: { select: { firstName: true, lastName: true } } }, orderBy: { createdAt: "asc" } })
       : Promise.resolve([]),
+    db.email.findMany({ where: { ref: { startsWith: `callout:${id}:` }, channel: "EMAIL" }, select: { createdAt: true }, orderBy: { createdAt: "asc" } }),
+    draft ? db.volunteer.findMany({ where: { status: "ACTIVE", role: "VOLUNTEER", roles: { contains: view.kind } }, select: { roles: true } }) : Promise.resolve([]),
   ]);
+  const holders = roleHolders.filter((v) => parseRoles(v.roles).includes(view.kind)).length;
   const pushedTo = pushes.flatMap((p) => (p.volunteer ? [fullName(p.volunteer)] : []));
   const toldOfCancellation = cancelNotices.flatMap((e) => (e.volunteer ? [fullName(e.volunteer)] : []));
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-6">
-      <Link href="/admin/roster" className="-ml-1 inline-flex min-h-11 items-center gap-1 self-start pr-2 text-sm font-semibold text-muted-foreground hover:text-ink">
-        <ChevronLeft className="size-5" aria-hidden /> Roster
+      <Link href={back.href} className="-ml-1 inline-flex min-h-11 items-center gap-1 self-start pr-2 text-sm font-semibold text-muted-foreground hover:text-ink">
+        <ChevronLeft className="size-5" aria-hidden /> {back.label}
       </Link>
+
+      {draft && (
+        <p className="flex items-start gap-2 rounded-2xl border border-dashed border-teal/60 bg-teal-tint-soft px-4 py-3 text-ink">
+          <PencilLine className="mt-0.5 size-5 shrink-0 text-teal" aria-hidden />
+          <span><span className="font-bold">Draft.</span> Only coordinators can see this shift. Publish it to open it for bookings{harvest ? " and send the callout to the harvest pool" : ""}.</span>
+        </p>
+      )}
 
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-start gap-4">
-          <span className={cn("flex size-14 shrink-0 items-center justify-center rounded-2xl", view.kind === "WAREHOUSE" ? "bg-green-tint text-green-deep" : "bg-sky-tint text-sky-text")}>
+          <span className={cn("flex size-14 shrink-0 items-center justify-center rounded-2xl", kindTileClass(view.kind))}>
             <ShiftKindIcon kind={view.kind} className="size-7" />
           </span>
           <div>
             <p className="eyebrow">{relativeDay(view.iso, today)}</p>
-            <h1 className="mt-1 text-3xl text-ink">{view.shift.template.name}</h1>
+            <h1 className="mt-1 text-3xl text-ink">{view.name}</h1>
             <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-ink-soft">
               <span className="inline-flex items-center gap-1.5"><Clock className="size-4 text-sky" aria-hidden />{formatDayLong(view.iso)}, <span className="tabular">{formatTimeRange(view.shift.startTime, view.shift.endTime)}</span></span>
               <span className="inline-flex items-center gap-1.5"><MapPin className="size-4 text-sky" aria-hidden />{view.location}</span>
@@ -55,19 +70,54 @@ export default async function AdminShiftPage({ params }: { params: Promise<{ id:
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {cancelled ? (
             <Chip tone="neutral">Cancelled</Chip>
+          ) : draft ? (
+            <Chip tone="info" icon={PencilLine}>Draft</Chip>
           ) : view.isGap ? (
             <Chip tone="bad" icon={HandHelping}>Needs {view.shortBy} more</Chip>
+          ) : adHoc && view.shortBy > 0 ? (
+            <Chip tone="warn" icon={Users}>{view.shortBy} to fill</Chip>
           ) : (
-            <Chip tone="good" icon={CheckCircle2}>Covered</Chip>
+            <Chip tone="good" icon={CheckCircle2}>{adHoc ? "Filled" : "Covered"}</Chip>
           )}
+          {draft && !isPast && <PublishShiftButton shiftId={view.shift.id} label={`${view.name} on ${formatDay(view.iso)}`} holders={holders} roleLabel={ROLE_LABEL[view.kind]} harvest={harvest} />}
+          {!isPast && !cancelled && (
+            <Button variant="outline" size="sm" className="h-10" render={<Link href={`/admin/roster/${view.shift.id}/edit`} />}>
+              <Pencil className="size-4" /> Edit
+            </Button>
+          )}
+          {!draft && !cancelled && view.confirmedCount > 0 && (
+            <Button variant="outline" size="sm" className="h-10" render={<Link href={`/admin/announcements?shift=${view.shift.id}`} />}>
+              <Megaphone className="size-4" /> Message crew
+            </Button>
+          )}
+          {draft && <DeleteDraftButton shiftId={view.shift.id} back={back.href} />}
           {!isPast && view.shift.status === "SCHEDULED" && (
-            <CancelShiftButton shiftId={view.shift.id} label={`${view.shift.template.name} on ${formatDay(view.iso)}`} booked={view.shift.assignments.filter((a) => a.status === "CONFIRMED").length} />
+            <CancelShiftButton shiftId={view.shift.id} label={`${view.name} on ${formatDay(view.iso)}`} booked={view.shift.assignments.filter((a) => a.status === "CONFIRMED").length} />
           )}
         </div>
       </header>
+
+      {(view.shift.notes || callouts.length > 0) && (
+        <div className="flex flex-col gap-3">
+          {view.shift.notes && (
+            <section aria-labelledby="notes-h" className="rounded-2xl border border-border bg-card p-4">
+              <h2 id="notes-h" className="flex items-center gap-2 font-display text-sm font-bold uppercase tracking-wide text-muted-foreground">
+                <MessageSquareText className="size-4" aria-hidden /> Details for volunteers
+              </h2>
+              <p className="mt-2 whitespace-pre-line text-ink">{view.shift.notes}</p>
+            </section>
+          )}
+          {callouts.length > 0 && (
+            <p className="flex items-start gap-2 text-sm text-muted-foreground">
+              <Megaphone className="mt-0.5 size-4 shrink-0" aria-hidden />
+              <span>Callout emailed and sent as a push notification to {callouts.length} {callouts.length === 1 ? "volunteer" : "volunteers"}, {formatInstant(callouts[0].createdAt)}.</span>
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
         <section className="flex flex-col gap-3 lg:col-span-3" aria-labelledby="assigned-h">
@@ -117,6 +167,9 @@ export default async function AdminShiftPage({ params }: { params: Promise<{ id:
 
         <aside className="flex flex-col gap-3 lg:col-span-2" aria-labelledby="add-h">
           <h2 id="add-h" className="text-2xl text-ink">{cancelled ? "Cancellation" : view.isGap ? "Find cover" : "Add a volunteer"}</h2>
+          {draft && (
+            <p className="rounded-2xl border border-dashed border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">Publish the shift first, then add volunteers or let them sign up.</p>
+          )}
           {pushedTo.length > 0 && !cancelled && (
             <p className="flex items-start gap-2 rounded-xl bg-orange-tint/60 px-3 py-2.5 text-sm text-ink">
               <Smartphone className="mt-0.5 size-4 shrink-0 text-orange-text" aria-hidden />
@@ -128,7 +181,7 @@ export default async function AdminShiftPage({ params }: { params: Promise<{ id:
               <Mail className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
               <span>Emailed and sent a push notification {formatInstant(cancelNotices[0].createdAt)}: {toldOfCancellation.join(", ")}.</span>
             </p>
-          ) : isPast || cancelled ? (
+          ) : draft ? null : isPast || cancelled ? (
             <p className="rounded-2xl border border-dashed border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">This shift is {cancelled ? "cancelled" : "in the past"}.</p>
           ) : (
             <>

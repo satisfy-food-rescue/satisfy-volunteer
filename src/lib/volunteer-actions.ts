@@ -7,7 +7,7 @@ import { z } from "zod";
 import type { Volunteer } from "@/generated/prisma/client";
 import { db } from "./db";
 import { addMonths, daysBetween, isoToDate, todayISO, dateToISO } from "./dates";
-import { ABSENCE_REASON_LABEL, fullName, type AbsenceReason } from "./domain";
+import { ABSENCE_REASON_LABEL, HARVEST_ROLE, fullName, joinRoles, parseRoles, type AbsenceReason, type VolunteerRole } from "./domain";
 import { eligibilityFor } from "./training";
 import { shiftById } from "./roster";
 import { afterShiftReleased } from "./cover";
@@ -44,10 +44,10 @@ export async function bookShift(me: Volunteer, shiftId: string): Promise<ActionR
     data: { shiftId, volunteerId: me.id, source: covering ? "COVER" : "BOOKED", status: "CONFIRMED" },
   });
   if (covering) {
-    await queueEmail(me, T.coverConfirmed({ firstName: me.firstName, shiftName: view.shift.template.name, dateISO: view.iso, start: view.shift.startTime, end: view.shift.endTime, shiftId }));
+    await queueEmail(me, T.coverConfirmed({ firstName: me.firstName, shiftName: view.name, dateISO: view.iso, start: view.shift.startTime, end: view.shift.endTime, shiftId }));
   }
   revalidateAll();
-  return { ok: true, message: covering ? "Ka pai, you're covering this shift." : "You're booked on." };
+  return { ok: true, message: covering ? "Ka pai, you're covering this shift." : view.kind === "HARVEST" ? "You're on. See you at the harvest." : "You're booked on." };
 }
 
 export async function cancelBooking(me: Volunteer, assignmentId: string): Promise<ActionResult> {
@@ -148,25 +148,19 @@ export async function rsvpSession(me: Volunteer, sessionId: string, going: boole
 
 export const harvestPoolSchema = z.object({ inPool: z.boolean() });
 
+/** The harvest pool is the HARVEST role, the one role volunteers manage
+ *  themselves. Joining brings in the harvest training; harvest shifts stay
+ *  locked until it is done. Leaving keeps any harvests already booked. */
 export async function setHarvestPool(me: Volunteer, inPool: boolean): Promise<ActionResult> {
-  await db.volunteer.update({ where: { id: me.id }, data: { inHarvestPool: inPool } });
+  const roles = parseRoles(me.roles);
+  const next: VolunteerRole[] = inPool ? [...roles, HARVEST_ROLE] : roles.filter((r) => r !== HARVEST_ROLE);
+  if (next.length === 0) return { ok: false, error: "Harvests are your only role, so ask the coordinator if you'd like to stop volunteering." };
+  if (joinRoles(next) !== me.roles) {
+    await db.volunteer.update({ where: { id: me.id }, data: { roles: joinRoles(next) } });
+    await db.contactLog.create({ data: { volunteerId: me.id, authorId: me.id, kind: "ROLES_CHANGED", summary: inPool ? "Joined the harvest pool." : "Left the harvest pool." } });
+  }
   revalidateAll();
   return { ok: true, message: inPool ? "You're in the harvest pool." : "You've left the harvest pool." };
-}
-
-export async function rsvpHarvest(me: Volunteer, calloutId: string, going: boolean): Promise<ActionResult> {
-  // Callouts go to the pool, so only pool members can answer them. The web
-  // hides the buttons; this is the rule the API relies on.
-  if (!me.inHarvestPool) return { ok: false, error: "Join the harvest pool to respond to callouts." };
-  const callout = await db.harvestCallout.findUnique({ where: { id: calloutId }, select: { id: true } });
-  if (!callout) return { ok: false, error: "Callout not found.", notFound: true };
-  await db.harvestRsvp.upsert({
-    where: { calloutId_volunteerId: { calloutId, volunteerId: me.id } },
-    create: { calloutId, volunteerId: me.id, status: going ? "GOING" : "DECLINED" },
-    update: { status: going ? "GOING" : "DECLINED" },
-  });
-  revalidateAll();
-  return { ok: true, message: going ? "See you at the harvest." : "No worries, maybe next time." };
 }
 
 export const profileSchema = z.object({

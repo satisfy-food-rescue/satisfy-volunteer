@@ -18,6 +18,8 @@ export type ShiftActionState = {
   blockerModuleCode: string | null;
   /** Blocked because the volunteer lacks the role, which training cannot fix. */
   missingRole: boolean;
+  /** A harvest: the missing role is the harvest pool, which they join themselves. */
+  harvest: boolean;
 };
 
 export function ShiftActions({ state, compact = false }: { state: ShiftActionState; compact?: boolean }) {
@@ -60,9 +62,9 @@ export function ShiftActions({ state, compact = false }: { state: ShiftActionSta
           variant="outline"
           size="lg"
           className="mt-3 h-12 w-full border-status-warn/40 bg-white text-base text-status-warn hover:bg-white"
-          render={<Link href={state.missingRole ? "/app/profile" : state.blockerModuleCode ? `/app/training/${state.blockerModuleCode}` : "/app/training"} />}
+          render={<Link href={state.missingRole ? (state.harvest ? "/app/harvest" : "/app/profile") : state.blockerModuleCode ? `/app/training/${state.blockerModuleCode}` : "/app/training"} />}
         >
-          {state.missingRole ? "Ask to change my roles" : "Go to training"}
+          {state.missingRole ? (state.harvest ? "Join the harvest pool" : "Ask to change my roles") : "Go to training"}
         </Button>
       </div>
     );
@@ -76,7 +78,7 @@ export function ShiftActions({ state, compact = false }: { state: ShiftActionSta
       action={() => bookShift(state.shiftId)}
     >
       {state.isGap && <HandHelping className="size-5" aria-hidden />}
-      {state.isGap ? "I can cover this" : "Book this shift"}
+      {state.isGap ? "I can cover this" : state.harvest ? "Sign me up" : "Book this shift"}
     </ActionButton>
   );
 }

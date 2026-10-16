@@ -21,7 +21,6 @@ export default async function ProfilePage() {
         <div className="min-w-0">
           <h1 className="text-[1.75rem] leading-tight text-ink">{fullName(me)}</h1>
           <p className="text-sm text-muted-foreground">Volunteer since {formatDate(dateToISO(me.joinedAt))}</p>
-          {me.inHarvestPool && <div className="mt-1.5"><Chip tone="info" size="sm" icon={Sprout}>Harvest pool</Chip></div>}
         </div>
       </header>
 
@@ -49,7 +48,7 @@ export default async function ProfilePage() {
       <nav aria-label="Profile sections" className="overflow-hidden rounded-2xl border border-border bg-card">
         {[
           { href: "/app/slot", label: "My regular slot and absences", icon: CalendarCheck },
-          { href: "/app/harvest", label: "Harvest pool", icon: Sprout },
+          { href: "/app/harvest", label: "Harvest", icon: Sprout },
         ].map((l) => (
           <Link key={l.href} href={l.href} className="flex min-h-14 items-center gap-3 border-b border-border px-4 last:border-b-0 hover:bg-muted">
             <l.icon className="size-5 text-teal" aria-hidden />

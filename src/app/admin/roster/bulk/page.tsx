@@ -10,8 +10,9 @@ export const metadata = { title: "Bulk schedule" };
 
 export default async function BulkPage() {
   await requireAdmin();
-  const templates = await db.shiftTemplate.findMany({ where: { active: true }, include: { regularSlots: true }, orderBy: { order: "asc" } });
-  const latest = await db.shift.findFirst({ orderBy: { date: "desc" }, select: { date: true } });
+  // Ad hoc kinds (harvests) are created one at a time from New shift.
+  const templates = await db.shiftTemplate.findMany({ where: { active: true, kind: { not: "HARVEST" } }, include: { regularSlots: true }, orderBy: { order: "asc" } });
+  const latest = await db.shift.findFirst({ where: { template: { kind: { not: "HARVEST" } } }, orderBy: { date: "desc" }, select: { date: true } });
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-6">
       <Link href="/admin/roster" className="-ml-1 inline-flex min-h-11 items-center gap-1 self-start pr-2 text-sm font-semibold text-muted-foreground hover:text-ink"><ChevronLeft className="size-5" aria-hidden /> Roster</Link>
