@@ -4,8 +4,8 @@ import { ORG } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 
 /** The frame every signed-out page shares: the blue/teal brand band with the
- *  white logo, content that overlaps it, the privacy and terms links, and the
- *  brand footer. */
+ *  white logo, content that overlaps it, the support, privacy and terms links,
+ *  and the brand footer. */
 export function SignedOutFrame({ children, width = "narrow" }: { children: React.ReactNode; width?: "narrow" | "form" | "wide" }) {
   return (
     <main id="main" className="flex flex-1 flex-col">
@@ -29,15 +29,18 @@ export function SignedOutFrame({ children, width = "narrow" }: { children: React
   );
 }
 
-/** Links to the privacy policy and terms of use. */
+/** Links to the privacy policy, terms of use and support page. */
 export function LegalLinks({ className }: { className?: string }) {
   return (
-    <nav aria-label="Legal" className={cn("flex justify-center gap-6 text-sm", className)}>
+    <nav aria-label="Legal" className={cn("flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm", className)}>
       <Link href="/privacy" className="font-semibold text-ink-soft underline-offset-4 hover:text-teal hover:underline">
         Privacy policy
       </Link>
       <Link href="/terms" className="font-semibold text-ink-soft underline-offset-4 hover:text-teal hover:underline">
         Terms of use
+      </Link>
+      <Link href="/support" className="font-semibold text-ink-soft underline-offset-4 hover:text-teal hover:underline">
+        Support
       </Link>
     </nav>
   );
