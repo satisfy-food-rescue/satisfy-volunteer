@@ -23,14 +23,17 @@ import type {
 } from "./domain";
 
 export type MutationOk = { message: string };
-export type ApiFailure = { error: string };
+/** A 400 from a form can add `fields`, a message per request field, so the
+ *  form can show each beside its field; `error` is then the first of them. */
+export type ApiFailure = { error: string; fields?: Record<string, string> };
 
 // Auth ----------------------------------------------------------------------
 //
 // Volunteers sign in to the app the same ways as the website: password,
 // Google (in the system browser, handed back with a PKCE-bound code) or a
 // passkey (shared with the website: same relying party). Every sign-in
-// returns SignInResult. Accounts are never created from the app.
+// returns SignInResult. Accounts are never created from the app: signing up
+// sends an application, and the coordinator's approval creates the account.
 
 /** GET /api/mobile/auth/config. Which sign-in methods this server offers,
  *  so the app only shows buttons that work. */
@@ -75,6 +78,29 @@ export type PasskeyRegisterInput<R> = { challengeId: string; response: R; name: 
  *  here?". Emails a link to set a password on the website. The reply is the
  *  same whether or not the address has an account. Returns MutationOk. */
 export type SignInLinkInput = { email: string };
+
+/** POST /api/mobile/apply: the sign-up form, the same as /sign-up on the
+ *  website. It sends an application to the coordinator, whose approval
+ *  creates the account and emails an invite to set a password. The reply is
+ *  the same whether or not the address already has an account (that person
+ *  is emailed instead). Returns MutationOk; a 400 has `fields`. */
+export type SignUpInput = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  suburb: string;
+  birthYear: number | null;
+  /** At least one. */
+  interests: VolunteerRole[];
+  availability: string;
+  emergencyName: string;
+  emergencyPhone: string;
+  message: string;
+  /** Has read the privacy policy. Must be true. */
+  privacy: boolean;
+};
+export type SignUpField = keyof SignUpInput;
 
 /** GET /api/mobile/auth/personas (demo only). The volunteer personas a
  *  demo user can sign in as. The coordinator persona is web-only. */

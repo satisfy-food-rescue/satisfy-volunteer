@@ -48,6 +48,7 @@ const ICONS = {
   passkey: ["person.badge.key.fill", "passkey"],
   key: ["key.fill", "key"],
   mail: ["envelope.fill", "mail"],
+  phone: ["phone.fill", "call"],
 } as const satisfies Record<string, readonly [SFSymbol, AndroidSymbol]>;
 
 export type IconName = keyof typeof ICONS;

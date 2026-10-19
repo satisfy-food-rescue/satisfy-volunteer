@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { addDays, formatDay, formatDayLong, formatInstant, isWeekday, isoToDate, relativeDay, todayISO, weekMonday, formatDate } from "@/lib/dates";
 import { decorateShift, shiftInclude, shiftsBetween } from "@/lib/roster";
 import { moduleStatuses, trainingSummary } from "@/lib/training";
-import { fullName } from "@/lib/domain";
+import { applicationSourceLabel, fullName } from "@/lib/domain";
 import { PageHeader } from "@/components/shared/page-header";
 import { CoverageBoard } from "@/components/admin/coverage-board";
 import { ShiftRow } from "@/components/admin/shift-row";
@@ -146,7 +146,7 @@ export default async function AdminDashboard() {
                     <AvatarBadge person={a} size="sm" />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-bold text-ink">{a.firstName} {a.lastName}</span>
-                      <span className="block truncate text-xs text-muted-foreground">{a.suburb} · via Infoodle form · {relativeDay(todayISO(a.submittedAt), today)}</span>
+                      <span className="block truncate text-xs text-muted-foreground">{a.suburb} · {applicationSourceLabel(a.source)} · {relativeDay(todayISO(a.submittedAt), today)}</span>
                     </span>
                     <ArrowRight className="size-4 text-muted-foreground" aria-hidden />
                   </Link>

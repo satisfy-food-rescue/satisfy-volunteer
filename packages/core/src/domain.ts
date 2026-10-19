@@ -24,6 +24,14 @@ export const ROLE_SHORT: Record<VolunteerRole, string> = {
   HARVEST: "Harvest",
 };
 
+/** What each role involves, for someone signing up. */
+export const ROLE_DESCRIPTION: Record<VolunteerRole, string> = {
+  WAREHOUSE: "Sort and pack rescued kai at the warehouse in Rangiora.",
+  DRIVERS_ASSISTANT: "Ride along on a pickup route and help the driver load and deliver.",
+  VOLUNTEER_DRIVER: "Drive a pickup route. Needs a current full driver licence.",
+  HARVEST: "Pick fruit from local trees and orchards when it is in season.",
+};
+
 /** The harvest pool is the HARVEST role. Unlike the other roles, volunteers
  *  join and leave it themselves. */
 export const HARVEST_ROLE: VolunteerRole = "HARVEST";
@@ -90,6 +98,18 @@ export type RsvpStatus = "GOING" | "DECLINED";
 
 export type ApplicationStatus = "PENDING" | "APPROVED" | "DECLINED";
 
+/** Where someone signed up: the website or the app. A plain string column,
+ *  not a Postgres enum. */
+export type ApplicationSource = "WEBSITE" | "APP";
+export const APPLICATION_SOURCE_LABEL: Record<ApplicationSource, string> = {
+  WEBSITE: "Website sign-up",
+  APP: "App sign-up",
+};
+
+export function applicationSourceLabel(source: string): string {
+  return APPLICATION_SOURCE_LABEL[source as ApplicationSource] ?? source;
+}
+
 export type EmailKind =
   | "TRAINING_DUE_SOON"
   | "TRAINING_OVERDUE"
@@ -112,7 +132,10 @@ export type EmailKind =
   | "ANNOUNCEMENT"
   | "ACCOUNT_INVITE"
   | "PASSWORD_RESET"
-  | "ADMIN_ACCESS";
+  | "ADMIN_ACCESS"
+  | "APPLICATION_RECEIVED"
+  | "APPLICATION_NEW"
+  | "ALREADY_REGISTERED";
 
 export const EMAIL_KIND_LABEL: Record<EmailKind, string> = {
   TRAINING_DUE_SOON: "Training due soon",
@@ -137,6 +160,9 @@ export const EMAIL_KIND_LABEL: Record<EmailKind, string> = {
   ACCOUNT_INVITE: "Sign-in invite",
   PASSWORD_RESET: "Password reset",
   ADMIN_ACCESS: "Coordinator access",
+  APPLICATION_RECEIVED: "Application received",
+  APPLICATION_NEW: "New application",
+  ALREADY_REGISTERED: "Already has an account",
 };
 
 export type Channel = "EMAIL" | "PUSH";

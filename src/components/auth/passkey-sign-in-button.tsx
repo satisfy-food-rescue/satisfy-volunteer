@@ -9,8 +9,13 @@ import { FormNotice } from "./form-notice";
 
 const noop = () => () => {};
 
+/** Whether this browser can use passkeys. False while server rendering. */
+export function usePasskeySupport(): boolean {
+  return useSyncExternalStore(noop, browserSupportsWebAuthn, () => false);
+}
+
 export function PasskeySignInButton({ next }: { next: string | null }) {
-  const supported = useSyncExternalStore(noop, browserSupportsWebAuthn, () => false);
+  const supported = usePasskeySupport();
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   if (!supported) return null;

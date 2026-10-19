@@ -271,6 +271,69 @@ export function applicationApproved(p: {
   };
 }
 
+/** Sent to someone who has just signed up to volunteer. They have no account
+ *  until the coordinator approves them. */
+export function applicationReceived(p: { firstName: string }): EmailDraft {
+  return {
+    kind: "APPLICATION_RECEIVED",
+    subject: "Thanks for signing up to volunteer",
+    preview: "We have your application. Here is what happens next.",
+    body: paragraphs(
+      `Kia ora ${p.firstName},`,
+      `Thanks for signing up to volunteer with Satisfy Food Rescue. We have your application, and our volunteer coordinator will be in touch soon.`,
+      `Once you are approved, we will email you a link to set up your account in the Satisfy volunteer app, and give you a call to book your initial visit to the warehouse, where you meet the team and get shown around.`,
+      `If anything changes in the meantime, just reply to this email.`,
+      SIGN_OFF,
+    ),
+  };
+}
+
+/** Tells the coordinator a new application is waiting for review. */
+export function applicationNew(p: {
+  applicationId: string;
+  name: string;
+  source: "website" | "app";
+  suburb: string;
+  interests: string[];
+  availability: string;
+  message: string | null;
+}): EmailDraft {
+  return {
+    kind: "APPLICATION_NEW",
+    subject: `New volunteer application from ${p.name}`,
+    preview: `${p.interests.join(", ")}. ${sentence(p.availability)}`,
+    body: paragraphs(
+      `${p.name} from ${p.suburb} signed up to volunteer on the ${p.source}.`,
+      `Interested in: ${p.interests.join(", ")}.`,
+      `Availability: ${sentence(p.availability)}`,
+      p.message ? `Their message: "${p.message}"` : "",
+      `Approving the application creates their account and emails them an invite to sign in.`,
+      COORDINATOR_SIGN_OFF,
+    ),
+    ctaLabel: "Review the application",
+    ctaHref: `/admin/applications#${p.applicationId}`,
+  };
+}
+
+/** Sent instead of a confirmation when someone signs up with an email address
+ *  that already has an account, so the form never says which addresses do. */
+export function alreadyRegistered(p: { firstName: string }): EmailDraft {
+  return {
+    kind: "ALREADY_REGISTERED",
+    subject: "You already have a Satisfy account",
+    preview: "Sign in with this email address. There is nothing more to fill in.",
+    body: paragraphs(
+      `Kia ora ${p.firstName},`,
+      `Someone, hopefully you, just used the volunteer sign-up form with this email address. You already have a Satisfy account, so there is nothing more to fill in.`,
+      `Sign in with this email address to see your shifts and training. If you have never set a password, or have forgotten it, choose "Forgot your password?" on the sign-in page and we will email you a link.`,
+      `Not you? You can ignore this email.`,
+      SIGN_OFF,
+    ),
+    ctaLabel: "Sign in",
+    ctaHref: "/sign-in",
+  };
+}
+
 export function trainingCompleted(p: {
   firstName: string;
   moduleName: string;
