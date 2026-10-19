@@ -41,6 +41,12 @@ export function HarvestScreen() {
   );
 }
 
+/** "6 volunteers are", as on the web. The no-break space keeps the count with
+ *  its noun when the sentence wraps. */
+function poolSize(count: number): string {
+  return count === 1 ? "1\u00a0volunteer is" : `${count}\u00a0volunteers are`;
+}
+
 function Pool({ harvest }: { harvest: HarvestOverview }) {
   const toggle = useAction(actions.setHarvestPool);
   const onPress = () => {
@@ -59,7 +65,7 @@ function Pool({ harvest }: { harvest: HarvestOverview }) {
           <View style={{ flex: 1, gap: 4 }}>
             <Text variant="bodyBold">{harvest.inPool ? "You're in the harvest pool" : "Join the harvest pool"}</Text>
             <Text variant="small" tone="inkSoft">
-              Whenever fruit is ready, we pick it from orchards and backyard trees that would otherwise waste it. When a harvest is on, everyone in the pool gets an email and a notification, and the first to sign up get the places. {harvest.poolCount} volunteers are in the pool.
+              Whenever fruit is ready, we pick it from orchards and backyard trees that would otherwise waste it. When a harvest is on, everyone in the pool gets an email and a notification, and the first to sign up get the places. {poolSize(harvest.poolCount)} in the pool.
             </Text>
           </View>
         </View>
