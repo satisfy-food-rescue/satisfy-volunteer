@@ -6,10 +6,11 @@ import { sendSignInLinkEmail } from "./emails";
 import { absoluteUrl } from "./env";
 import { hashToken, newToken } from "./session";
 
-// Single-use sign-in links. An invite (sent when an admin creates an account)
-// and a password reset (forgot password, or "first time here?" for someone
-// whose account was imported) both let the holder set a password and sign in.
-// Only the SHA-256 of the token is stored.
+// Single-use sign-in links. An invite (sent when an admin creates an account,
+// worded for the admin when it is a coordinator's) and a password reset
+// (forgot password, or "first time here?" for someone whose account was
+// imported) both let the holder set a password and sign in. Only the SHA-256
+// of the token is stored.
 
 type LinkPurpose = Extract<AuthTokenPurpose, "INVITE" | "PASSWORD_RESET">;
 
@@ -32,7 +33,7 @@ export async function sendSignInLink(volunteer: Volunteer, purpose: LinkPurpose)
   const url = absoluteUrl(`/reset-password?token=${raw}`);
   const draft =
     purpose === "INVITE"
-      ? accountInvite({ firstName: volunteer.firstName, expiresDays: hours / 24 })
+      ? accountInvite({ firstName: volunteer.firstName, expiresDays: hours / 24, coordinator: volunteer.role === "ADMIN" })
       : passwordReset({ firstName: volunteer.firstName, expiresHours: hours, hasPassword: volunteer.passwordHash !== null });
   return sendSignInLinkEmail(volunteer, draft, url);
 }

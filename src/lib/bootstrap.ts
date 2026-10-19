@@ -20,8 +20,9 @@ async function ensureReferenceData() {
 /** While there is no active admin, makes BOOTSTRAP_ADMIN_EMAIL one, so a new
  *  deployment has someone who can sign in (with Google, or by asking for a
  *  link through "First time here?"). Once any admin exists it does nothing,
- *  so demoting or deactivating that person later sticks across restarts. No
- *  password is ever set here. */
+ *  so demoting or deactivating that person later sticks across restarts.
+ *  Further admins are added from Admin > Coordinators. No password is ever
+ *  set here. */
 async function ensureBootstrapAdmin() {
   const { BOOTSTRAP_ADMIN_EMAIL, BOOTSTRAP_ADMIN_NAME } = env();
   if (!BOOTSTRAP_ADMIN_EMAIL) return;

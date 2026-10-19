@@ -20,7 +20,7 @@ import { ROLE_LABEL, VOLUNTEER_ROLES, type VolunteerRole } from "@/lib/domain";
 import { cn } from "@/lib/utils";
 
 /** Runs a server action, toasts the result and refreshes. Resolves true on success. */
-function useAction() {
+export function useAction() {
   const [pending, start] = useTransition();
   const router = useRouter();
   const run = (action: () => Promise<ActionResult>, onOk?: () => void) =>
