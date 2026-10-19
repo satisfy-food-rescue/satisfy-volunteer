@@ -1,6 +1,7 @@
 import { AlertTriangle, ClipboardList, ShieldCheck, Sprout, Truck, Warehouse, type LucideIcon } from "lucide-react";
 import { BrandFooter, FoodIcon, Logo } from "@/components/brand/logo";
 import { Photo } from "@/components/shared/photo";
+import { LegalLinks } from "@/components/auth/auth-shell";
 import { db } from "@/lib/db";
 import { todayISO, formatDayLong } from "@/lib/dates";
 import { fullName } from "@/lib/domain";
@@ -135,6 +136,7 @@ export async function DemoPersonas() {
         <p className="mt-8 text-sm text-muted-foreground">
           Picking a persona signs you straight in. Real volunteers sign in with a password, Google or a passkey.
         </p>
+        <LegalLinks className="mt-8 justify-start" />
       </div>
       <BrandFooter className="mt-auto pb-6" />
     </main>

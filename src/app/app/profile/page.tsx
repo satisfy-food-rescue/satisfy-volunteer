@@ -7,6 +7,7 @@ import { ROLE_LABEL, fullName } from "@/lib/domain";
 import { AvatarBadge } from "@/components/shared/avatar-badge";
 import { Chip } from "@/components/shared/status-chip";
 import { ProfileForm } from "@/components/app/profile-form";
+import { LegalLinks } from "@/components/auth/auth-shell";
 import { RoleChangeRequest } from "@/components/app/role-change-request";
 import { signOut } from "@/app/sign-in/actions";
 import { Button } from "@/components/ui/button";
@@ -76,6 +77,8 @@ export default async function ProfilePage() {
         </Button>
         {demo && <p className="text-center text-xs text-muted-foreground">Demo only: returns to the persona picker.</p>}
       </form>
+
+      <LegalLinks />
     </div>
   );
 }

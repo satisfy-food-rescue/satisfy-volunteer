@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import type { Volunteer } from "@/generated/prisma/client";
 import { db } from "./db";
+import { isDemo } from "./env";
 import { addMonths, daysBetween, isoToDate, todayISO, dateToISO } from "./dates";
 import { ABSENCE_REASON_LABEL, HARVEST_ROLE, fullName, sortRoles, type VolunteerRole } from "./domain";
 import { eligibilityFor } from "./training";
@@ -181,7 +182,8 @@ export async function updateProfile(me: Volunteer, input: z.infer<typeof profile
     data: { phone: d.phone || null, suburb: d.suburb || null, emergencyName: d.emergencyName || null, emergencyPhone: d.emergencyPhone || null, availabilityNote: d.availabilityNote || null, lastMinuteOk: d.lastMinuteOk },
   });
   revalidateAll();
-  return { ok: true, message: "Profile saved. Contact changes sync to Infoodle overnight." };
+  // Infoodle sync only runs in the demo, so production claims nothing about it.
+  return { ok: true, message: isDemo() ? "Profile saved. Contact changes sync to Infoodle overnight." : "Profile saved." };
 }
 
 export const roleRequestSchema = z.object({ message: z.string() });

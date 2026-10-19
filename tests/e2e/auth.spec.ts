@@ -77,3 +77,25 @@ test.describe("sign-in links", () => {
     await expect(page.getByText("Use at least 8 characters.")).toBeVisible();
   });
 });
+
+test.describe("privacy policy and terms of use", () => {
+  test("are open to anyone and linked from sign-in", async ({ page }) => {
+    await page.goto("/sign-in");
+    const legal = page.getByRole("navigation", { name: "Legal" });
+    await legal.getByRole("link", { name: "Privacy policy" }).click();
+    await expect(page).toHaveURL(/\/privacy$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Privacy policy" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "How you sign in" })).toBeVisible();
+
+    await page.getByRole("navigation", { name: "Legal" }).getByRole("link", { name: "Terms of use" }).click();
+    await expect(page).toHaveURL(/\/terms$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Terms of use" })).toBeVisible();
+  });
+
+  test("are linked from a volunteer's profile", async ({ page }) => {
+    await signInAs(page, "margaret");
+    await page.goto("/app/profile");
+    await page.getByRole("navigation", { name: "Legal" }).getByRole("link", { name: "Privacy policy" }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "Privacy policy" })).toBeVisible();
+  });
+});

@@ -16,7 +16,14 @@ New resource > Database > PostgreSQL 17. Keep it on the internal network (no pub
 
 ## 3. Google sign-in (optional)
 
-In Google Cloud Console: APIs & Services > OAuth consent screen (External, app name "Satisfy Volunteers", support email, logo), then Credentials > Create OAuth client ID > Web application. Authorised redirect URI: `https://volunteer.satisfyfoodrescue.org.nz/auth/google/callback`. Copy the client id and secret. Without them the Google button is simply hidden, on the website and in the app.
+In Google Cloud Console > Google Auth Platform:
+
+- **Branding**: app name "Satisfy Volunteers", support email, home page `https://volunteer.satisfyfoodrescue.org.nz`, privacy policy `https://volunteer.satisfyfoodrescue.org.nz/privacy`, terms of service `https://volunteer.satisfyfoodrescue.org.nz/terms`, authorised domain `satisfyfoodrescue.org.nz`. A logo makes Google verify the branding first, which takes a few days.
+- **Audience**: External, then Publish app. While it is in testing only listed test users can sign in.
+- **Data access**: nothing to add. The app asks only for `openid` and `email`, which need no review.
+- **Clients** > Create client > Web application. Authorised redirect URI: `https://volunteer.satisfyfoodrescue.org.nz/auth/google/callback`. Copy the client id and secret straight away: Google shows the secret only once.
+
+Without them the Google button is simply hidden, on the website and in the app. For local development, make a second web client with the redirect URI `http://localhost:3000/auth/google/callback` rather than adding localhost to the production one.
 
 The native app uses this same web client: it opens the website's Google sign-in in the system browser, which hands back to the app. No iOS or Android OAuth clients are needed.
 
