@@ -239,6 +239,12 @@ export default async function VolunteerProfilePage({ params, searchParams }: { p
             <dl className="grid grid-cols-[7.5rem_1fr] gap-x-3 gap-y-2 text-sm">
               <dt className="font-semibold text-muted-foreground">Status</dt>
               <dd className="text-ink">{v.status === "ACTIVE" ? "Active" : "Inactive: cannot sign in"}</dd>
+              {v.role === "ADMIN" && (
+                <>
+                  <dt className="font-semibold text-muted-foreground">Access</dt>
+                  <dd className="text-ink">Coordinator, not rostered. <Link href="/admin/coordinators" className="font-semibold text-teal hover:underline">Manage coordinators</Link></dd>
+                </>
+              )}
               <dt className="font-semibold text-muted-foreground">Last sign-in</dt>
               <dd className="text-ink">{v.lastSignInAt ? formatInstant(v.lastSignInAt) : <span className="text-muted-foreground">Not yet</span>}</dd>
               <dt className="font-semibold text-muted-foreground">Signs in with</dt>

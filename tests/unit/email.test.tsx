@@ -46,6 +46,20 @@ describe("templates", () => {
     for (const d of drafts) expect(EMAIL_KIND_LABEL[d.kind]).toBeTruthy();
   });
 
+  it("word coordinator access for the coordinator admin", () => {
+    expect(T.accountInvite({ firstName: "Aroha", expiresDays: 7, coordinator: true })).toMatchObject({ subject: "Set up your Satisfy coordinator account", body: expect.stringContaining("coordinator admin") });
+    expect(T.accountInvite({ firstName: "Jess", expiresDays: 7 }).subject).toBe("Set up your Satisfy volunteer account");
+
+    const granted = T.adminAccessGranted({ firstName: "Margaret", grantedBy: "Phillipa", releasedShifts: 3, releasedSlots: 1 });
+    expect(granted).toMatchObject({ kind: "ADMIN_ACCESS", ctaHref: "/admin" });
+    expect(granted.body).toContain("taken off your regular slot and 3 upcoming shifts");
+    expect(T.adminAccessGranted({ firstName: "Sam", grantedBy: "Phillipa", releasedShifts: 0, releasedSlots: 0 }).body).not.toContain("taken off");
+
+    const removed = T.adminAccessRemoved({ firstName: "Aroha", removedBy: "Phillipa" });
+    expect(removed).toMatchObject({ kind: "ADMIN_ACCESS", ctaHref: "/app" });
+    expect(EMAIL_KIND_LABEL[removed.kind]).toBe("Coordinator access");
+  });
+
   it("marks last-minute callouts as push notifications", () => {
     expect(T.lastMinuteCallout({ shiftName: "S", dateISO: "2026-10-03", start: "08:00", end: "11:30", shiftId: "s" }).channel).toBe("PUSH");
   });

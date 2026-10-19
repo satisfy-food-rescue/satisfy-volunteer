@@ -444,20 +444,65 @@ export function announcementPush(p: AnnouncementParams): EmailDraft {
 }
 
 /** Sent when an admin creates an account. The button carries a single-use
- *  link that is never stored, so the logged copy has no link. */
-export function accountInvite(p: { firstName: string; expiresDays: number }): EmailDraft {
+ *  link that is never stored, so the logged copy has no link. A coordinator
+ *  account gets its own wording, since it opens the admin, not the app. */
+export function accountInvite(p: { firstName: string; expiresDays: number; coordinator?: boolean }): EmailDraft {
   return {
     kind: "ACCOUNT_INVITE",
-    subject: "Set up your Satisfy volunteer account",
+    subject: p.coordinator ? "Set up your Satisfy coordinator account" : "Set up your Satisfy volunteer account",
     preview: `Choose a password to sign in. The link works for ${p.expiresDays} days.`,
     body: paragraphs(
       `Kia ora ${p.firstName},`,
-      `Your Satisfy volunteer account is ready. Choose a password to sign in and see your training, shifts and regular slot.`,
+      p.coordinator
+        ? `You have been given a coordinator account for the Satisfy volunteer system. Choose a password to sign in to the coordinator admin, where you run the roster, look after volunteers and their training, and send messages.`
+        : `Your Satisfy volunteer account is ready. Choose a password to sign in and see your training, shifts and regular slot.`,
       `The link works once and for ${p.expiresDays} days. If this address is your Google account, you can also just sign in with Google.`,
       `Not expecting this? You can ignore it.`,
       SIGN_OFF,
     ),
     ctaLabel: "Set up my account",
+  };
+}
+
+/** Sent to someone who already signs in when they are made a coordinator.
+ *  A coordinator is not rostered as a volunteer, so any regular slots and
+ *  upcoming shifts they had were released. */
+export function adminAccessGranted(p: { firstName: string; grantedBy: string; releasedShifts: number; releasedSlots: number }): EmailDraft {
+  const released = [
+    p.releasedSlots > 0 && `your regular ${p.releasedSlots === 1 ? "slot" : "slots"}`,
+    p.releasedShifts > 0 && `${p.releasedShifts} upcoming ${p.releasedShifts === 1 ? "shift" : "shifts"}`,
+  ].filter(Boolean);
+  return {
+    kind: "ADMIN_ACCESS",
+    subject: "You are now a Satisfy coordinator",
+    preview: `${p.grantedBy} gave you access to the coordinator admin.`,
+    body: paragraphs(
+      `Kia ora ${p.firstName},`,
+      `${p.grantedBy} has made you a coordinator in the Satisfy volunteer system. Sign in as usual and you will go straight to the coordinator admin, where you run the roster, look after volunteers and their training, and send messages.`,
+      released.length ? `Coordinators are not rostered as volunteers, so you have been taken off ${released.join(" and ")}.` : "",
+      `Not expecting this? Let ${p.grantedBy} know.`,
+      SIGN_OFF,
+    ),
+    ctaLabel: "Open the coordinator admin",
+    ctaHref: "/admin",
+  };
+}
+
+/** Sent when a coordinator's access is removed. The account stays open as a
+ *  volunteer account. */
+export function adminAccessRemoved(p: { firstName: string; removedBy: string }): EmailDraft {
+  return {
+    kind: "ADMIN_ACCESS",
+    subject: "Your Satisfy coordinator access has been removed",
+    preview: `${p.removedBy} removed your access to the coordinator admin.`,
+    body: paragraphs(
+      `Kia ora ${p.firstName},`,
+      `${p.removedBy} has removed your coordinator access to the Satisfy volunteer system. Your account stays open as a volunteer account, so you can still sign in to the volunteer app.`,
+      `Think this is a mistake? Let ${p.removedBy} know.`,
+      SIGN_OFF,
+    ),
+    ctaLabel: "Open the volunteer app",
+    ctaHref: "/app",
   };
 }
 

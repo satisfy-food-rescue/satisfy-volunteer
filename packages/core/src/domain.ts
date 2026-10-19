@@ -111,7 +111,8 @@ export type EmailKind =
   | "SHIFT_PUBLISHED"
   | "ANNOUNCEMENT"
   | "ACCOUNT_INVITE"
-  | "PASSWORD_RESET";
+  | "PASSWORD_RESET"
+  | "ADMIN_ACCESS";
 
 export const EMAIL_KIND_LABEL: Record<EmailKind, string> = {
   TRAINING_DUE_SOON: "Training due soon",
@@ -135,6 +136,7 @@ export const EMAIL_KIND_LABEL: Record<EmailKind, string> = {
   ANNOUNCEMENT: "Announcement",
   ACCOUNT_INVITE: "Sign-in invite",
   PASSWORD_RESET: "Password reset",
+  ADMIN_ACCESS: "Coordinator access",
 };
 
 export type Channel = "EMAIL" | "PUSH";
@@ -161,7 +163,8 @@ export type ContactLogKind =
   | "ROLE_REQUEST"
   | "SHIFT_CANCELLED"
   | "ACCOUNT_CREATED"
-  | "STATUS_CHANGED";
+  | "STATUS_CHANGED"
+  | "ADMIN_ACCESS";
 export const CONTACT_LOG_LABEL: Record<ContactLogKind, string> = {
   CALL: "Phone call",
   NOTE: "Note",
@@ -172,6 +175,7 @@ export const CONTACT_LOG_LABEL: Record<ContactLogKind, string> = {
   SHIFT_CANCELLED: "Shift cancelled",
   ACCOUNT_CREATED: "Account created",
   STATUS_CHANGED: "Status changed",
+  ADMIN_ACCESS: "Coordinator access",
 };
 
 /** The first in-person training stage. New volunteers cannot book shifts until

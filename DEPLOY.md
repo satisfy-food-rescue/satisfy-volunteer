@@ -76,7 +76,7 @@ It runs inside the app container, so it reaches the server on localhost with the
 
 The bootstrap admin has no password. They open the site, choose "First time here? Set up your password", enter their email and follow the link. Or they use "Continue with Google" if Google is set up and the email is their Google account. From Sign-in and security (their name at the bottom of the sidebar) they can add a passkey.
 
-They then add volunteers from Volunteers > Add volunteer, which emails each one an invite. Volunteers who were added without an invite can use "First time here?" themselves.
+They then add volunteers from Volunteers > Add volunteer, which emails each one an invite. Volunteers who were added without an invite can use "First time here?" themselves. Other coordinators are added from Coordinators (under Set-up in the sidebar), which emails them an invite too; nobody needs to edit the database.
 
 ## Demo deployment (optional)
 
