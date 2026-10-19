@@ -8,6 +8,7 @@ import { requireAdmin } from "@/lib/session";
 import { addDays, addMonths, dateToISO, isoToDate, isWeekday, nzInstant, todayISO, weekdayOf, formatDay, formatInstant, formatTimeRange } from "@/lib/dates";
 import { ABSENCE_REASON_LABEL, INITIAL_VISIT_CODE, ROLE_LABEL, VOLUNTEER_ROLES, fullName, isAdHocKind, normaliseEmail, sortRoles } from "@/lib/domain";
 import { sendSignInLink } from "@/lib/auth";
+import { grantAdminAccess, revokeAdminAccess, type GrantAdminResult, type NewAdminInput } from "@/lib/admin-access";
 import { shiftById } from "@/lib/roster";
 import { sendShiftCallout } from "@/lib/callouts";
 import { announcementSchema, audienceSchema, resolveAudience, sendAnnouncement, type AnnouncementInput, type AudienceInput } from "@/lib/announcements";
@@ -744,7 +745,23 @@ export async function setVolunteerStatus(volunteerId: string, active: boolean): 
       data: { volunteerId, authorId: admin.id, kind: "STATUS_CHANGED", summary: `Deactivated. Removed from ${slots} regular ${slots === 1 ? "slot" : "slots"} and ${upcoming.length} upcoming ${upcoming.length === 1 ? "shift" : "shifts"}.` },
     }),
   ]);
-  for (const shiftId of new Set(upcoming.map((a) => a.shiftId))) await afterShiftReleased(shiftId, null);
+  let gaps = 0;
+  for (const shiftId of new Set(upcoming.map((a) => a.shiftId))) if (await afterShiftReleased(shiftId, null)) gaps++;
   revalidateAll();
-  return { ok: true, message: `${volunteer.firstName} deactivated.${upcoming.length ? ` ${upcoming.length} upcoming ${upcoming.length === 1 ? "shift now needs" : "shifts now need"} cover.` : ""}` };
+  return { ok: true, message: `${volunteer.firstName} deactivated.${gaps ? ` ${gaps} upcoming ${gaps === 1 ? "shift now needs" : "shifts now need"} cover.` : ""}` };
+}
+
+// --- Coordinators (admin access). The rules live in src/lib/admin-access.ts ---
+export async function addAdmin(input: NewAdminInput): Promise<GrantAdminResult> {
+  const admin = await requireAdmin();
+  const r = await grantAdminAccess(admin, input);
+  if (r.ok) revalidateAll();
+  return r;
+}
+
+export async function removeAdmin(volunteerId: string): Promise<ActionResult> {
+  const admin = await requireAdmin();
+  const r = await revokeAdminAccess(admin, volunteerId);
+  if (r.ok) revalidateAll();
+  return r;
 }

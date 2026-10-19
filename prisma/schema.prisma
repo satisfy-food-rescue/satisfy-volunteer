@@ -120,6 +120,7 @@ enum EmailKind {
   ANNOUNCEMENT
   ACCOUNT_INVITE
   PASSWORD_RESET
+  ADMIN_ACCESS
 }
 
 // PENDING: recorded, not yet handed to the mail or push provider (retried by
@@ -147,6 +148,7 @@ enum ContactLogKind {
   SHIFT_CANCELLED
   ACCOUNT_CREATED
   STATUS_CHANGED
+  ADMIN_ACCESS
 }
 
 enum AuthTokenPurpose {

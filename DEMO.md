@@ -46,6 +46,7 @@ Still as Tony:
 ## 6. Filters and shift types - 1 min
 
 - **Training > Modules**: click a count such as "1 overdue" under a module. The **People** tab opens filtered to exactly those volunteers. Filter by module, status, expiry window or name, and sort by any column.
+- **Coordinators**: who can use this admin. **Add coordinator** takes a name and email; for someone already on the system, such as a regular volunteer, it first says which slots and shifts they will come off. Phillipa cannot remove her own access, so there is always a coordinator.
 - **Shift types**: names, times, crew sizes, who volunteers work with, and per-type last-minute thresholds. Route shifts push to last-minute volunteers 3 days out and alert the coordinator at 36 hours; the warehouse sort uses 2 days and 1 day.
 
 ## 7. Harvests and announcements - 3 min

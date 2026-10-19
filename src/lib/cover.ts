@@ -54,16 +54,18 @@ export async function escalateIfUncovered(view: ShiftView, now = new Date()): Pr
 
 /** Call after anything that may have opened a gap: a cancellation, an absence
  *  or a coordinator removing someone. `cause` set means the coordinator did not
- *  make the change and should hear about the gap. */
-export async function afterShiftReleased(shiftId: string, cause: string | null, now = new Date()) {
+ *  make the change and should hear about the gap. Resolves whether the shift
+ *  is now short. */
+export async function afterShiftReleased(shiftId: string, cause: string | null, now = new Date()): Promise<boolean> {
   const view = await shiftById(shiftId);
-  if (!view?.isGap) return;
+  if (!view?.isGap) return false;
   await notifyLastMinute(view, now);
-  if (!cause) return;
+  if (!cause) return true;
   const escalated = await escalateIfUncovered(view, now);
   if (!escalated) {
     await queueEmail(null, T.gapAlert({ shiftName: view.name, dateISO: view.iso, start: view.shift.startTime, end: view.shift.endTime, cause, shiftId: view.shift.id }));
   }
+  return true;
 }
 
 /** Sweeps upcoming gaps: gaps that have drifted into a last-minute window get

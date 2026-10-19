@@ -30,9 +30,15 @@ export async function issueSignInLink(email: string, purpose: "INVITE" | "PASSWO
   return `/reset-password?token=${raw}`;
 }
 
-export async function latestEmailTo(email: string) {
+/** The newest email to `email`, optionally of one kind. Seeded emails can be
+ *  dated later today (a shift reminder at 4pm), so pass `kind` for anyone
+ *  the demo data already writes to. */
+export async function latestEmailTo(email: string, kind?: string) {
   return withClient(async (c) => {
-    const { rows } = await c.query<{ kind: string; status: string; subject: string }>(`SELECT kind, status, subject FROM "Email" WHERE "toEmail" = $1 ORDER BY "createdAt" DESC LIMIT 1`, [email]);
+    const { rows } = await c.query<{ kind: string; status: string; subject: string }>(
+      `SELECT kind, status, subject FROM "Email" WHERE "toEmail" = $1 AND ($2::text IS NULL OR kind::text = $2) ORDER BY "createdAt" DESC LIMIT 1`,
+      [email, kind ?? null],
+    );
     return rows[0] ?? null;
   });
 }

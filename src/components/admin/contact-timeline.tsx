@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarOff, CalendarPlus, CalendarX, Hand, Mail, MessageSquareText, PhoneCall, Power, Smartphone, Tags, UserPen, UserPlus } from "lucide-react";
+import { CalendarOff, CalendarPlus, CalendarX, Hand, Mail, MessageSquareText, PhoneCall, Power, ShieldCheck, Smartphone, Tags, UserPen, UserPlus } from "lucide-react";
 import { dateToISO, formatDayRange, formatInstant } from "@/lib/dates";
 import { ABSENCE_REASON_LABEL, CONTACT_LOG_LABEL, EMAIL_KIND_LABEL, type AbsenceReason, type Channel, type ContactLogKind, type DeliveryStatus, type EmailKind } from "@/lib/domain";
 import { cn } from "@/lib/utils";
@@ -26,6 +26,7 @@ const LOG_ICON: Record<ContactLogKind, Entry["icon"]> = {
   SHIFT_CANCELLED: CalendarX,
   ACCOUNT_CREATED: UserPlus,
   STATUS_CHANGED: Power,
+  ADMIN_ACCESS: ShieldCheck,
 };
 
 export function ContactTimeline({
