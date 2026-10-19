@@ -71,7 +71,7 @@ export async function startGoogleSignIn(next: string | null, appChallenge: strin
     response_type: "code",
     client_id: id,
     redirect_uri: googleRedirectUri(),
-    scope: "openid email profile",
+    scope: "openid email",
     state,
     code_challenge: pkceChallenge(verifier),
     code_challenge_method: "S256",
