@@ -80,6 +80,7 @@ Once, before the first preview or production build:
 1. Set the API URL (the deployed web app) as an EAS environment variable for each environment you build, for example `npx eas-cli@latest env:create --name EXPO_PUBLIC_API_URL --value https://<host> --environment preview --visibility plaintext`. Builds and updates for `preview` or `production` refuse to run without it, because the app would otherwise talk to `localhost`.
 2. `npx eas-cli@latest credentials` sets up signing and the APNs key for push. It asks for your Apple account. For passkeys, give the server the Apple team id and the Android signing fingerprints it shows (DEPLOY.md, step 4).
 3. For iPhone test builds, register each test phone with `pnpm devices` (it gives a link to open on the phone). Android test builds install on any phone.
+4. Both stores need a privacy policy URL before the first submission: enter `https://volunteer.satisfyfoodrescue.org.nz/privacy` in App Store Connect (App Privacy) and in Google Play Console (App content, then Privacy policy). The app links the same page, and the terms of use, from the sign-in screen and Me.
 
 | Script | What it does |
 | --- | --- |

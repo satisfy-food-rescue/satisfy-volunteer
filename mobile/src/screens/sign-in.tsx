@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { AuthConfig, DemoPersona, DemoPersonas } from "@satisfy/core/api";
 import { GoogleMark } from "@/components/brand/google-mark";
 import { BrandWaves, FoodIcon, Logo } from "@/components/brand/logo";
+import { LegalLinks } from "@/components/legal-links";
 import { Photo } from "@/components/photo";
 import { useToast } from "@/components/toast";
 import { Button } from "@/components/ui/button";
@@ -46,7 +47,8 @@ export function SignInScreen() {
   );
 }
 
-/** The teal brand band every signed-out screen sits on. */
+/** The teal brand band every signed-out screen sits on, with the privacy
+ *  and terms links above the brand footer. */
 function Frame({ children }: { children: React.ReactNode }) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
@@ -61,6 +63,7 @@ function Frame({ children }: { children: React.ReactNode }) {
         <Logo height={104} color={t.white} />
         {children}
         <View style={{ flex: 1 }} />
+        <LegalLinks onHero />
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginHorizontal: -20, paddingRight: 20 }}>
           <View style={{ flex: 1, opacity: 0.9 }}>
             <BrandWaves height={36} />

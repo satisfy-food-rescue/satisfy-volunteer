@@ -7,6 +7,7 @@ import { Alert, AppState, Linking, Pressable, View } from "react-native";
 import type { Me, MobileSession, ProfileInput, SecurityOverview } from "@satisfy/core/api";
 import { formatDate } from "@satisfy/core/dates";
 import { fullName, ROLE_LABEL } from "@satisfy/core/domain";
+import { LegalLinks } from "@/components/legal-links";
 import { QueryScreen } from "@/components/screen";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,7 @@ function Profile({ session }: { session: MobileSession }) {
       {!session.demo && <SignInSecurity />}
       <ProfileForm me={me} />
       <SignOut demo={session.demo} />
+      <LegalLinks />
     </>
   );
 }
