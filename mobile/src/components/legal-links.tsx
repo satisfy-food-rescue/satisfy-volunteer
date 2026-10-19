@@ -7,14 +7,15 @@ import { API_URL } from "@/lib/config";
 const LINKS = [
   { path: "/privacy", label: "Privacy policy" },
   { path: "/terms", label: "Terms of use" },
+  { path: "/support", label: "Support" },
 ] as const;
 
-/** The website's privacy policy and terms of use, linked where the web app
- *  links them: the signed-out screens and the profile. The app stores ask for
- *  the privacy policy to be reachable inside the app. */
+/** The website's privacy policy, terms of use and support page, linked where
+ *  the web app links them: the signed-out screens and the profile. The app
+ *  stores ask for the privacy policy to be reachable inside the app. */
 export function LegalLinks({ onHero }: { onHero?: boolean }) {
   return (
-    <View style={{ flexDirection: "row", justifyContent: "center", gap: 24 }}>
+    <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "center", columnGap: 24 }}>
       {LINKS.map((l) => (
         <Pressable
           key={l.path}

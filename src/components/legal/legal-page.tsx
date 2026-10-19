@@ -4,9 +4,9 @@ import { cn } from "@/lib/utils";
 
 export type LegalSection = { id: string; title: string; body: React.ReactNode };
 
-/** The privacy policy and terms of use: a wide card in the signed-out frame
- *  with a contents list, so both read the same and are open to anyone,
- *  signed in or not (Google and the app stores link to them). */
+/** The privacy policy, terms of use and support page: a wide card in the
+ *  signed-out frame with a contents list, so they read the same and are open
+ *  to anyone, signed in or not (Google and the app stores link to them). */
 export function LegalPage({
   eyebrow,
   title,
@@ -18,7 +18,7 @@ export function LegalPage({
   title: string;
   intro: React.ReactNode;
   /** When the substance last changed, e.g. "19 October 2026". */
-  updated: string;
+  updated?: string;
   sections: LegalSection[];
 }) {
   return (
@@ -28,7 +28,7 @@ export function LegalPage({
           <p className="eyebrow">{eyebrow}</p>
           <h1 className="mt-2 text-3xl text-ink sm:text-4xl">{title}</h1>
           <div className="mt-4 text-lg leading-relaxed text-ink-soft">{intro}</div>
-          <p className="mt-3 text-sm text-muted-foreground">Last updated {updated}</p>
+          {updated && <p className="mt-3 text-sm text-muted-foreground">Last updated {updated}</p>}
         </header>
 
         <nav aria-labelledby="contents-h" className="mt-8 rounded-2xl bg-teal-tint-soft px-5 py-4">

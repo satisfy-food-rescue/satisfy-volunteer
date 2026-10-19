@@ -92,6 +92,22 @@ test.describe("privacy policy and terms of use", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Terms of use" })).toBeVisible();
   });
 
+  test("support is open to anyone, linked from sign-in and gives the contact email", async ({ page }) => {
+    await page.goto("/sign-in");
+    await page.getByRole("navigation", { name: "Legal" }).getByRole("link", { name: "Support" }).click();
+    await expect(page).toHaveURL(/\/support$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Support" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Help signing in" })).toBeVisible();
+    const contact = page.getByRole("region", { name: "Contact us" }).getByRole("link", { name: "volunteering@satisfyfoodrescue.org.nz" });
+    await expect(contact).toHaveAttribute("href", "mailto:volunteering@satisfyfoodrescue.org.nz");
+
+    await page.getByRole("link", { name: "Forgot your password?" }).click();
+    await expect(page).toHaveURL(/\/forgot-password$/);
+    await page.goBack();
+    await page.getByRole("region", { name: "Updating or deleting your details" }).getByRole("link", { name: "privacy policy" }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "Privacy policy" })).toBeVisible();
+  });
+
   test("are linked from a volunteer's profile", async ({ page }) => {
     await signInAs(page, "margaret");
     await page.goto("/app/profile");
