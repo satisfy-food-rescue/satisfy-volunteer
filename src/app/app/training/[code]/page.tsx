@@ -8,7 +8,7 @@ import { todayISO, formatDate } from "@/lib/dates";
 import { trainingContext } from "@/lib/volunteer-data";
 import { TrainingChip } from "@/components/shared/status-chip";
 import { OnlineModule } from "@/components/app/online-module";
-import { AppPageHeader } from "@/components/app/app-page-header";
+import { AppPage, AppPageHeader } from "@/components/app/app-page-header";
 import { Button } from "@/components/ui/button";
 
 export const metadata = { title: "Training module" };
@@ -23,7 +23,7 @@ export default async function ModulePage({ params }: { params: Promise<{ code: s
   const paragraphs = moduleParagraphs(mod.content);
 
   return (
-    <div className="flex flex-col gap-6 px-5 pb-6 pt-3">
+    <AppPage width="reading" className="pt-3">
       <div className="flex flex-col gap-3">
         <AppPageHeader
           back={{ href: "/app/training", label: "Training" }}
@@ -50,9 +50,9 @@ export default async function ModulePage({ params }: { params: Promise<{ code: s
       ) : (
         <div className="rounded-2xl border border-border bg-card p-5">
           <p className="text-ink">This module is completed in person. Book into a session from the Training page and the coordinator will mark your attendance on the day.</p>
-          <Button className="mt-4 h-12 w-full text-base" render={<Link href="/app/training#sessions" />}>See sessions</Button>
+          <Button className="mt-4 h-12 w-full text-base @3xl/app:w-auto @3xl/app:px-8" render={<Link href="/app/training#sessions" />}>See sessions</Button>
         </div>
       )}
-    </div>
+    </AppPage>
   );
 }

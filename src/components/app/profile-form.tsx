@@ -25,7 +25,7 @@ export function ProfileForm({ initial, email }: { initial: Values; email: string
   const set = (k: keyof Values) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setV({ ...v, [k]: e.target.value });
   return (
     <form
-      className="flex flex-col gap-5"
+      className="grid gap-5 @6xl/app:grid-cols-2"
       onSubmit={(e) => {
         e.preventDefault();
         run(async () => {
@@ -34,7 +34,7 @@ export function ProfileForm({ initial, email }: { initial: Values; email: string
         });
       }}
     >
-      <fieldset className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-4">
+      <fieldset className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-4 @3xl/app:p-5">
         <legend className={LEGEND}>Contact</legend>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="email" className="text-base">Email</Label>
@@ -51,7 +51,7 @@ export function ProfileForm({ initial, email }: { initial: Values; email: string
         </div>
       </fieldset>
 
-      <fieldset className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-4">
+      <fieldset className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-4 @3xl/app:p-5">
         <legend className={LEGEND}>Emergency contact</legend>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="ec-name" className="text-base">Name and relationship</Label>
@@ -63,7 +63,7 @@ export function ProfileForm({ initial, email }: { initial: Values; email: string
         </div>
       </fieldset>
 
-      <fieldset className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-4">
+      <fieldset className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-4 @3xl/app:p-5 @6xl/app:col-span-2">
         <legend className={LEGEND}>Availability</legend>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="avail" className="text-base">When can you usually help?</Label>
@@ -84,7 +84,7 @@ export function ProfileForm({ initial, email }: { initial: Values; email: string
         </label>
       </fieldset>
 
-      <Button type="submit" size="lg" className="h-12 text-base" disabled={pending}>
+      <Button type="submit" size="lg" className="h-12 text-base @3xl/app:justify-self-start @3xl/app:px-8 @6xl/app:col-span-2" disabled={pending}>
         {pending ? <Loader2 className="size-5 animate-spin" aria-hidden /> : <Save className="size-5" aria-hidden />}
         Save changes
       </Button>

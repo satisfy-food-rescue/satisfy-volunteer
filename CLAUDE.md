@@ -19,6 +19,7 @@ APIs and conventions differ from older Next.js (for example `src/proxy.ts` repla
 - **Demo mode**: anything demo-only checks `isDemo()` from `src/lib/env.ts`. Production UI must never claim something that only happens in the demo (sync, mocks, personas).
 - **Mutations** are server actions validated with Zod, returning `ActionResult` and calling `revalidatePath`.
 - **Admin layout** responds to its container (`@container/admin`), not the window: use `@4xl/admin:` rather than `lg:` for page layouts under `/admin`.
+- **Volunteer layout** works the same way (`@container/app` on `<main>`): use `@3xl/app:` and up for page layouts under `/app`, and keep the phone layout as the base. Pages sit in `AppPage`; navigation is defined once in `src/components/app/nav.ts` for the tab bar and the sidebar.
 - **Writing style** (UI copy, comments, docs): plain New Zealand English, no em dashes. Te reo greetings in volunteer emails (Kia ora, Ngā mihi nui) are intentional.
 
 ## Checks before a PR
