@@ -31,8 +31,19 @@ const schema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   // Only needed if the Expo project has enhanced push security turned on.
   EXPO_ACCESS_TOKEN: z.string().optional(),
-  // Lets the iOS app use this site's passkeys (apple-app-site-association).
+  // Lets the iOS app use this site's passkeys (apple-app-site-association),
+  // and signs the Sign in with Apple client secret.
   APPLE_TEAM_ID: z.string().regex(/^[A-Z0-9]{10}$/, "a 10-character Apple team id").optional(),
+  // Sign in with Apple. The Services ID is the website's client id (the iOS
+  // app signs in natively as its bundle id); the key is a Sign in with Apple
+  // private key (.p8, PEM), whose line breaks may be written as \n.
+  APPLE_SERVICES_ID: z.string().optional(),
+  APPLE_KEY_ID: z.string().regex(/^[A-Z0-9]{10}$/, "a 10-character Apple key id").optional(),
+  APPLE_PRIVATE_KEY: z
+    .string()
+    .optional()
+    .transform((v) => v?.replace(/\\n/g, "\n").trim())
+    .refine((v) => !v || /^-----BEGIN PRIVATE KEY-----[\s\S]+-----END PRIVATE KEY-----$/.test(v), "the contents of the .p8 key file"),
   // SHA-256 fingerprints of the Android app's signing certificates
   // ("AB:CD:..."), comma-separated: the upload key and Google Play's app
   // signing key. Lets the Android app use this site's passkeys.
@@ -94,4 +105,10 @@ export function isDemo(): boolean {
 export function googleConfigured(): boolean {
   const e = env();
   return Boolean(e.GOOGLE_CLIENT_ID && e.GOOGLE_CLIENT_SECRET);
+}
+
+/** Sign in with Apple, on the website and in the native app. */
+export function appleConfigured(): boolean {
+  const e = env();
+  return Boolean(e.APPLE_TEAM_ID && e.APPLE_SERVICES_ID && e.APPLE_KEY_ID && e.APPLE_PRIVATE_KEY);
 }

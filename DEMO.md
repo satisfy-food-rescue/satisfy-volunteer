@@ -70,4 +70,4 @@ Switch to **Margaret** at phone width: **Me > Harvest**, **Count me in for harve
 
 - Dates are relative to today and the demo regenerates its data every new day and on every restart. To reset mid-demo locally, run `pnpm db:seed`; on the demo deployment, restart it in Coolify.
 - If you end up on the wrong surface, use Switch persona (Me tab, or the sidebar footer) to get back to the persona picker.
-- Production differs in a few places: people sign in with a password, Google or a passkey; email is really sent (the Outbox shows whether each one was delivered); push notifications go to volunteers' phones, or by email to anyone not using the app.
+- Production differs in a few places: people sign in with a password, Google, Apple or a passkey; email is really sent (the Outbox shows whether each one was delivered); push notifications go to volunteers' phones, or by email to anyone not using the app.

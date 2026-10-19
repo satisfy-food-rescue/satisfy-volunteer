@@ -5,12 +5,13 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { browserSupportsWebAuthn, startRegistration, WebAuthnError } from "@simplewebauthn/browser";
 import { Fingerprint, KeyRound, Laptop, Loader2, LogOut, Plus, Trash2 } from "lucide-react";
-import { beginPasskeyRegistration, changePassword, disconnectGoogle, finishPasskeyRegistration, removePasskey, signOutOtherDevices, type PasswordFieldErrors } from "@/app/account/actions";
+import { beginPasskeyRegistration, changePassword, disconnectApple, disconnectGoogle, finishPasskeyRegistration, removePasskey, signOutOtherDevices, type PasswordFieldErrors } from "@/app/account/actions";
 import type { ActionResult } from "@/lib/volunteer-actions";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { PASSWORD_MIN } from "@/lib/auth-shared";
 import { cn } from "@/lib/utils";
+import { AppleButton, AppleMark } from "./apple-button";
 import { FormNotice } from "./form-notice";
 import { GoogleButton, GoogleMark } from "./google-button";
 import { PasswordInput } from "./password-input";
@@ -22,8 +23,11 @@ export type SecurityProps = {
   passkeys: PasskeyRow[];
   google: { email: string | null } | null;
   googleAvailable: boolean;
+  /** `email` is null when they hid it from Satisfy. */
+  apple: { email: string | null } | null;
+  appleAvailable: boolean;
   otherSessions: number;
-  /** Returned from the Google connect round trip. */
+  /** Returned from the Google or Apple connect round trip. */
   notice: { tone: "success" | "error"; text: string } | null;
   returnPath: string;
 };
@@ -195,7 +199,32 @@ function GoogleSection({ google, returnPath }: { google: SecurityProps["google"]
   );
 }
 
-export function SecuritySettings({ hasPassword, passkeys, google, googleAvailable, otherSessions, notice, returnPath }: SecurityProps) {
+function AppleSection({ apple, returnPath }: { apple: SecurityProps["apple"]; returnPath: string }) {
+  const [pending, run] = useAction();
+  return (
+    <Section
+      id="a-h"
+      title="Apple"
+      description="Sign in with your Apple Account instead of a password. This works even if you hide your email from Satisfy."
+    >
+      {apple ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <AppleMark className="text-ink" />
+          <p className="min-w-0 flex-1 font-semibold text-ink">{apple.email ? `Connected as ${apple.email}` : "Connected, email hidden"}</p>
+          <Button type="button" variant="outline" size="lg" className="h-11 px-4" disabled={pending} onClick={() => run(() => disconnectApple())}>
+            Disconnect
+          </Button>
+        </div>
+      ) : (
+        <div className="self-start">
+          <AppleButton next={returnPath} label="Connect Apple" />
+        </div>
+      )}
+    </Section>
+  );
+}
+
+export function SecuritySettings({ hasPassword, passkeys, google, googleAvailable, apple, appleAvailable, otherSessions, notice, returnPath }: SecurityProps) {
   const [pending, run] = useAction();
   return (
     <div className="flex flex-col gap-5">
@@ -203,6 +232,7 @@ export function SecuritySettings({ hasPassword, passkeys, google, googleAvailabl
       <PasswordSection hasPassword={hasPassword} />
       <PasskeySection passkeys={passkeys} />
       {(googleAvailable || google) && <GoogleSection google={google} returnPath={returnPath} />}
+      {(appleAvailable || apple) && <AppleSection apple={apple} returnPath={returnPath} />}
       <Section id="dev-h" title="Other devices" description={otherSessions === 0 ? "You are only signed in here." : `You are also signed in on ${otherSessions} other ${otherSessions === 1 ? "device" : "devices"}.`}>
         <Button type="button" variant="outline" size="lg" className={cn("h-12 self-start px-5 text-base")} disabled={pending || otherSessions === 0} onClick={() => run(() => signOutOtherDevices())}>
           {pending ? <Loader2 className="size-5 animate-spin" aria-hidden /> : otherSessions === 0 ? <Laptop className="size-5" aria-hidden /> : <LogOut className="size-5" aria-hidden />}

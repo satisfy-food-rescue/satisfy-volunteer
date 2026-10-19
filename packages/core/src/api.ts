@@ -30,7 +30,8 @@ export type ApiFailure = { error: string; fields?: Record<string, string> };
 // Auth ----------------------------------------------------------------------
 //
 // Volunteers sign in to the app the same ways as the website: password,
-// Google (in the system browser, handed back with a PKCE-bound code) or a
+// Google (in the system browser, handed back with a PKCE-bound code), Apple
+// (natively on iOS; in the system browser like Google on Android) or a
 // passkey (shared with the website: same relying party). Every sign-in
 // returns SignInResult. Accounts are never created from the app: signing up
 // sends an application, and the coordinator's approval creates the account.
@@ -41,6 +42,8 @@ export type AuthConfig = {
   /** The demo deployment: show the persona picker instead. */
   demo: boolean;
   google: boolean;
+  /** Sign in with Apple: natively on iOS, in the system browser on Android. */
+  apple: boolean;
   /** Passkeys are set up for this platform (the app sends X-Platform). */
   passkeys: boolean;
   /** The website, for "Forgot your password?" and Sign-in and security. */
@@ -63,6 +66,16 @@ export type GoogleSignInError =
   | "google_unknown"
   | "google_unverified"
   | "inactive";
+
+/** POST /api/mobile/auth/apple. On iOS, the native sign-in: the identity
+ *  token Apple gave the app and the nonce whose S256 hash (base64url) the app
+ *  passed to Apple. On Android, the browser handoff's code and verifier, as
+ *  for Google (the system browser opens /auth/apple?app=<challenge>). A
+ *  refusal is a 403 whose error says what to do. */
+export type AppleSignInInput = { identityToken: string; nonce: string } | GoogleSignInInput;
+/** The ?error= reasons the browser can hand back after Apple sign-in.
+ *  `apple_private`: the person hid their email, which matches no volunteer. */
+export type AppleSignInError = "apple_cancelled" | "apple_failed" | "apple_unavailable" | "apple_unknown" | "apple_private" | "inactive";
 
 /** POST /api/mobile/auth/passkey/options (sign in) and
  *  POST /api/mobile/passkeys/options (add a passkey, signed in). `options`
@@ -391,10 +404,15 @@ export type RoleRequestInput = { message: string };
 
 /** GET /api/mobile/security. Passwords and Google are managed on the
  *  website; passkeys can be added and removed here, since a phone's passkey
- *  has to be created on the phone. */
+ *  has to be created on the phone. Apple can be connected here on iOS, and
+ *  disconnected on any phone. */
 export type SecurityOverview = {
   hasPassword: boolean;
   google: { email: string | null } | null;
+  /** `email` is null when they hid it (an Apple relay address). */
+  apple: { email: string | null } | null;
+  /** Whether this server offers Sign in with Apple. */
+  appleAvailable: boolean;
   passkeys: { id: string; name: string; addedLabel: string; lastUsedLabel: string | null }[];
   /** Whether this server can register passkeys for the app's platform. */
   passkeysAvailable: boolean;
@@ -402,6 +420,10 @@ export type SecurityOverview = {
   manageUrl: string;
 };
 /** DELETE /api/mobile/passkeys/:id returns MutationOk. */
+
+/** POST /api/mobile/apple connects Apple to the signed-in volunteer from the
+ *  iOS app's native sign-in; DELETE disconnects it. Both return MutationOk. */
+export type AppleConnectInput = { identityToken: string; nonce: string };
 
 // Push notifications --------------------------------------------------------
 

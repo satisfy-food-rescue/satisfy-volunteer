@@ -1,9 +1,12 @@
 import { isRunningInExpoGo } from "expo";
+import * as AppleAuthentication from "expo-apple-authentication";
 import * as Device from "expo-device";
 import * as WebBrowser from "expo-web-browser";
+import { Platform } from "react-native";
 
 import type {
-  GoogleSignInError,
+  AppleConnectInput,
+  AppleSignInInput,
   GoogleSignInInput,
   MutationOk,
   PasskeyOptions,
@@ -12,16 +15,17 @@ import type {
   PasswordSignInInput,
   SignInResult,
 } from "@satisfy/core/api";
+import { isProviderSignInError, providerSignInMessage } from "@satisfy/core/sign-in";
 
 import { api, ApiError } from "./api";
 import { API_URL } from "./config";
 import { createPkce } from "./pkce";
 
-// The three ways to sign in, each ending in the server's SignInResult. The
+// The four ways to sign in, each ending in the server's SignInResult. The
 // rules (who may sign in, rate limits) are the server's; see
 // src/lib/sign-in.ts at the repo root.
 
-/** The address the website hands Google sign-ins back to. Must match the
+/** The address the website hands Google and Apple sign-ins back to. Must match the
  *  scheme in app.config.ts and APP_RETURN_URL in src/lib/mobile-auth.ts. */
 const RETURN_URL = "satisfy://auth";
 
@@ -37,31 +41,63 @@ export function signInWithPassword(input: PasswordSignInInput): Promise<SignInRe
   return api<SignInResult>("/auth/password", { method: "POST", body: input });
 }
 
-const GOOGLE_ERRORS: Record<GoogleSignInError, (email: string | null) => string> = {
-  google_cancelled: () => "Google sign-in was cancelled.",
-  google_failed: () => "Google sign-in did not work just now. Please try again, or use your email and password.",
-  google_unavailable: () => "Google sign-in is not available. Use your email and password instead.",
-  google_unverified: () => "Google has not verified that email address, so we cannot use it to sign you in. Use your email and password instead.",
-  google_unknown: (email) =>
-    `We could not find a volunteer account for ${email ?? "that Google account"}. Try the email address you gave Satisfy, or contact the volunteer coordinator.`,
-  inactive: () => "This account is no longer active. Contact the volunteer coordinator if that is a mistake.",
-};
-
-/** Google sign-in in the system browser (an in-app auth session), handed
- *  back to the app with a one-time code that only this app's verifier can
- *  redeem. */
-export async function signInWithGoogle(): Promise<SignInResult> {
+/** Google, or Apple on Android, in the system browser (an in-app auth
+ *  session), handed back to the app with a one-time code that only this
+ *  app's verifier can redeem. */
+async function browserSignIn(provider: "google" | "apple"): Promise<SignInResult> {
   const { verifier, challenge } = await createPkce();
-  const result = await WebBrowser.openAuthSessionAsync(`${API_URL}/auth/google?app=${challenge}`, RETURN_URL);
+  const result = await WebBrowser.openAuthSessionAsync(`${API_URL}/auth/${provider}?app=${challenge}`, RETURN_URL);
   if (result.type !== "success") throw new Cancelled();
   const params = new URL(result.url).searchParams;
-  const error = params.get("error") as GoogleSignInError | null;
-  if (error === "google_cancelled") throw new Cancelled();
-  if (error) throw new ApiError((GOOGLE_ERRORS[error] ?? GOOGLE_ERRORS.google_failed)(params.get("email")), 403);
+  const error = params.get("error");
+  if (error === `${provider}_cancelled`) throw new Cancelled();
+  const failed = providerSignInMessage(`${provider}_failed`);
+  if (error) throw new ApiError(isProviderSignInError(error) ? providerSignInMessage(error, params.get("email")) : failed, 403);
   const code = params.get("code");
-  if (!code) throw new ApiError(GOOGLE_ERRORS.google_failed(null), 403);
+  if (!code) throw new ApiError(failed, 403);
   const body: GoogleSignInInput = { code, verifier };
-  return api<SignInResult>("/auth/google", { method: "POST", body });
+  return api<SignInResult>(`/auth/${provider}`, { method: "POST", body });
+}
+
+export function signInWithGoogle(): Promise<SignInResult> {
+  return browserSignIn("google");
+}
+
+// Apple: natively on iOS (the identity token goes to the server with the
+// nonce whose hash Apple put in it), in the system browser on Android.
+
+/** Whether this phone can sign in with Apple, given the server offers it.
+ *  Not in Expo Go on iOS: Apple would vouch for Expo Go, not for Satisfy. */
+export async function appleSupported(): Promise<boolean> {
+  if (Platform.OS === "android") return true;
+  if (Platform.OS !== "ios" || isRunningInExpoGo()) return false;
+  return AppleAuthentication.isAvailableAsync().catch(() => false);
+}
+
+/** Apple's sheet on iOS. Backing out of it is a Cancelled. */
+async function appleCredential(): Promise<AppleConnectInput> {
+  const { verifier: nonce, challenge } = await createPkce();
+  let credential: AppleAuthentication.AppleAuthenticationCredential;
+  try {
+    credential = await AppleAuthentication.signInAsync({ requestedScopes: [AppleAuthentication.AppleAuthenticationScope.EMAIL], nonce: challenge });
+  } catch (e) {
+    if (e instanceof Error && "code" in e && e.code === "ERR_REQUEST_CANCELED") throw new Cancelled();
+    throw new ApiError(providerSignInMessage("apple_failed"), 0);
+  }
+  if (!credential.identityToken) throw new ApiError(providerSignInMessage("apple_failed"), 0);
+  return { identityToken: credential.identityToken, nonce };
+}
+
+export async function signInWithApple(): Promise<SignInResult> {
+  if (Platform.OS !== "ios") return browserSignIn("apple");
+  const body: AppleSignInInput = await appleCredential();
+  return api<SignInResult>("/auth/apple", { method: "POST", body });
+}
+
+/** Connects Apple to the signed-in volunteer, on iOS. */
+export async function connectApple(): Promise<MutationOk> {
+  const body: AppleConnectInput = await appleCredential();
+  return api<MutationOk>("/apple", { method: "POST", body });
 }
 
 type PasskeysModule = typeof import("react-native-passkeys");

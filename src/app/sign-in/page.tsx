@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/session";
-import { googleConfigured, isDemo } from "@/lib/env";
+import { isProviderSignInError, providerSignInMessage } from "@satisfy/core/sign-in";
+import { appleConfigured, googleConfigured, isDemo } from "@/lib/env";
 import { postSignInPath, safeNextPath } from "@/lib/auth-shared";
 import { ORG } from "@/lib/brand";
 import { AuthShell } from "@/components/auth/auth-shell";
@@ -14,22 +15,13 @@ import { SignInForm } from "@/components/auth/sign-in-form";
 export const metadata: Metadata = { title: "Sign in" };
 export const dynamic = "force-dynamic";
 
-const ERRORS: Record<string, (email?: string) => string> = {
-  google_cancelled: () => "Google sign-in was cancelled.",
-  google_failed: () => "Google sign-in did not work just now. Please try again, or use your email and password.",
-  google_unavailable: () => "Google sign-in is not available. Use your email and password instead.",
-  google_unverified: () => "Google has not verified that email address, so we cannot use it to sign you in. Use your email and password instead.",
-  google_unknown: (email) =>
-    `We could not find a volunteer account for ${email ?? "that Google account"}. Try the email address you gave Satisfy, or contact the volunteer coordinator.`,
-  inactive: () => "This account is no longer active. Contact the volunteer coordinator if that is a mistake.",
-};
-
 export default async function SignInPage({ searchParams }: { searchParams: Promise<{ next?: string; error?: string; email?: string }> }) {
   const { next: rawNext, error, email } = await searchParams;
   const next = safeNextPath(rawNext);
   const user = await currentUser();
   if (user) redirect(postSignInPath(user.role, next));
   if (isDemo()) return <DemoPersonas />;
+  const notice = isProviderSignInError(error) ? providerSignInMessage(error, email ?? null) : null;
 
   return (
     <AuthShell
@@ -53,9 +45,9 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
       }
     >
       <div className="flex flex-col gap-5">
-        {error && ERRORS[error] && <FormNotice tone="error">{ERRORS[error](email)}</FormNotice>}
+        {notice && <FormNotice tone="error">{notice}</FormNotice>}
         <SignInForm next={next} />
-        <OtherSignInMethods google={googleConfigured()} next={next} />
+        <OtherSignInMethods google={googleConfigured()} apple={appleConfigured()} next={next} />
       </div>
     </AuthShell>
   );

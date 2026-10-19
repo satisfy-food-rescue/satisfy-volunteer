@@ -5,7 +5,7 @@ import { AppPageHeader } from "@/components/app/app-page-header";
 
 export const metadata = { title: "Sign-in and security" };
 
-export default async function VolunteerSecurityPage({ searchParams }: { searchParams: Promise<{ google?: string; error?: string }> }) {
+export default async function VolunteerSecurityPage({ searchParams }: { searchParams: Promise<{ google?: string; apple?: string; error?: string }> }) {
   const me = await requireVolunteer();
   const props = await securityProps(me, await searchParams, "/app/security");
   return (

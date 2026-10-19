@@ -5,7 +5,7 @@ import { SecuritySettings } from "@/components/auth/security-settings";
 
 export const metadata = { title: "Sign-in and security" };
 
-export default async function AdminSecurityPage({ searchParams }: { searchParams: Promise<{ google?: string; error?: string }> }) {
+export default async function AdminSecurityPage({ searchParams }: { searchParams: Promise<{ google?: string; apple?: string; error?: string }> }) {
   const me = await requireAdmin();
   const props = await securityProps(me, await searchParams, "/admin/security");
   return (

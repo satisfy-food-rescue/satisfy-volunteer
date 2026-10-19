@@ -1,3 +1,4 @@
+import { generateKeyPairSync } from "node:crypto";
 import { defineConfig, devices } from "@playwright/test";
 import { E2E_DATABASE_URL } from "./tests/e2e/support/database-url";
 
@@ -9,6 +10,11 @@ import { E2E_DATABASE_URL } from "./tests/e2e/support/database-url";
 // E2E_SKIP_BUILD.
 
 const PORT = 3200;
+
+// Sign in with Apple is configured with a throwaway key, so the button shows
+// and the round trip can be followed up to Apple, which the tests stand in
+// for (tests/e2e/apple.spec.ts).
+const APPLE_TEST_KEY = generateKeyPairSync("ec", { namedCurve: "P-256" }).privateKey.export({ type: "pkcs8", format: "pem" }).toString();
 const BASE_URL = `http://localhost:${PORT}`;
 
 export default defineConfig({
@@ -46,6 +52,10 @@ export default defineConfig({
       EMAIL_DELIVERY: "log",
       CRON_SECRET: "e2e-cron-secret",
       DEMO_MODE: "",
+      APPLE_TEAM_ID: "E2ETEAM001",
+      APPLE_SERVICES_ID: "nz.org.satisfyfoodrescue.volunteers.e2e",
+      APPLE_KEY_ID: "E2EKEY0001",
+      APPLE_PRIVATE_KEY: APPLE_TEST_KEY,
     },
   },
 });

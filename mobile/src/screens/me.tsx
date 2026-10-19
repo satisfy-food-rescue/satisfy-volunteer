@@ -2,11 +2,12 @@ import { Host, Switch } from "@expo/ui";
 import { router, type Href } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useEffect, useState } from "react";
-import { Alert, AppState, Linking, Pressable, View } from "react-native";
+import { Alert, AppState, Linking, Platform, Pressable, View } from "react-native";
 
 import type { Me, MobileSession, ProfileInput, SecurityOverview } from "@satisfy/core/api";
 import { formatDate } from "@satisfy/core/dates";
 import { fullName, ROLE_LABEL } from "@satisfy/core/domain";
+import { AppleMark } from "@/components/brand/apple-mark";
 import { LegalLinks } from "@/components/legal-links";
 import { QueryScreen } from "@/components/screen";
 import { Avatar } from "@/components/ui/avatar";
@@ -18,8 +19,8 @@ import { Icon, type IconName } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { useAuth } from "@/lib/auth";
 import { pushAvailability, pushPermission, registerForPush } from "@/lib/push";
-import { actions, useAction, useSecurity, useSession } from "@/lib/queries";
-import { addPasskey, passkeysSupported } from "@/lib/sign-in";
+import { actions, useAction, useAppleSupported, useSecurity, useSession } from "@/lib/queries";
+import { addPasskey, connectApple, passkeysSupported } from "@/lib/sign-in";
 import { useTheme } from "@/theme";
 
 export function MeScreen() {
@@ -173,7 +174,8 @@ function NotificationsRow() {
 }
 
 /** Passkeys on this phone are created here (a phone's passkey has to be made
- *  on the phone); the password and Google are managed on the website. */
+ *  on the phone), and Apple is connected here on iOS, where it is the phone's
+ *  own sign-in; the password and Google are managed on the website. */
 function SignInSecurity() {
   const query = useSecurity();
   if (!query.data) return null;
@@ -184,8 +186,17 @@ function SecurityCard({ security }: { security: SecurityOverview }) {
   const t = useTheme();
   const add = useAction(addPasskey);
   const remove = useAction(actions.removePasskey);
+  const connect = useAction(connectApple);
+  const disconnect = useAction(actions.disconnectApple);
   const canAdd = security.passkeysAvailable && passkeysSupported();
-  const methods = [security.hasPassword && "a password", security.google && "Google", security.passkeys.length > 0 && "a passkey"].filter(Boolean);
+  const appleOnThisPhone = useAppleSupported();
+  const canConnectApple = security.appleAvailable && !security.apple && Platform.OS === "ios" && appleOnThisPhone;
+  const methods = [
+    security.hasPassword && "a password",
+    security.google && "Google",
+    security.apple && "Apple",
+    security.passkeys.length > 0 && "a passkey",
+  ].filter(Boolean);
   return (
     <Card style={{ gap: 12 }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
@@ -221,6 +232,32 @@ function SecurityCard({ security }: { security: SecurityOverview }) {
           />
         </View>
       ))}
+      {security.apple && (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: t.border }}>
+          <AppleMark size={20} color={t.mutedText} />
+          <View style={{ flex: 1 }}>
+            <Text variant="bodySemibold">Apple</Text>
+            <Text variant="caption" tone="mutedText">
+              {security.apple.email ? `Connected as ${security.apple.email}` : "Connected, email hidden"}
+            </Text>
+          </View>
+          <Button
+            label="Disconnect"
+            variant="ghost"
+            size="md"
+            loading={disconnect.isPending}
+            onPress={() =>
+              Alert.alert("Disconnect Apple?", "You won't be able to sign in with Apple until you connect it again.", [
+                { text: "Cancel", style: "cancel" },
+                { text: "Disconnect", style: "destructive", onPress: () => disconnect.mutate() },
+              ])
+            }
+          />
+        </View>
+      )}
+      {canConnectApple && (
+        <Button label="Connect Apple" leading={<AppleMark size={18} color={t.ink} />} variant="outline" size="md" loading={connect.isPending} onPress={() => connect.mutate()} />
+      )}
       {canAdd && (
         <Button
           label="Add a passkey on this phone"
@@ -231,7 +268,13 @@ function SecurityCard({ security }: { security: SecurityOverview }) {
           onPress={() => add.mutate()}
         />
       )}
-      <Button label="Password and Google on the website" icon="external" variant="ghost" size="md" onPress={() => WebBrowser.openBrowserAsync(security.manageUrl)} />
+      <Button
+        label={Platform.OS === "ios" || !security.appleAvailable ? "Password and Google on the website" : "Password, Google and Apple on the website"}
+        icon="external"
+        variant="ghost"
+        size="md"
+        onPress={() => WebBrowser.openBrowserAsync(security.manageUrl)}
+      />
     </Card>
   );
 }

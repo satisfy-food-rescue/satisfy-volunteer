@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CalendarCheck, CalendarClock, CalendarOff, CheckCircle2, ChevronLeft, CircleDashed, Mail, MapPin, Phone, PhoneCall, Power, RefreshCw, Sprout, XCircle, Zap } from "lucide-react";
+import { APPLE } from "@/lib/apple";
+import { GOOGLE } from "@/lib/oauth";
 import { requireAdmin } from "@/lib/session";
 import { shiftName } from "@/lib/roster";
 import { db } from "@/lib/db";
@@ -63,7 +65,8 @@ export default async function VolunteerProfilePage({ params, searchParams }: { p
   const visitButton = needsVisit ? <BookInitialVisitButton volunteer={{ id: v.id, firstName: v.firstName }} openSlots={openSlots} today={today} defaultDate={nextWorkingDay(today)} rebook={!!visitBooked} /> : null;
   const signInMethods = [
     v.passwordHash && "Password",
-    v.oauthAccounts.length > 0 && "Google",
+    v.oauthAccounts.some((a) => a.provider === GOOGLE) && "Google",
+    v.oauthAccounts.some((a) => a.provider === APPLE) && "Apple",
     v.passkeys.length > 0 && `${v.passkeys.length} ${v.passkeys.length === 1 ? "passkey" : "passkeys"}`,
   ].filter((m): m is string => Boolean(m));
   const hours = history.filter((a) => a.status === "ATTENDED").reduce((n, a) => { const [sh, sm] = a.shift.startTime.split(":").map(Number); const [eh, em] = a.shift.endTime.split(":").map(Number); return n + (eh * 60 + em - sh * 60 - sm) / 60; }, 0);

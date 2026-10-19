@@ -20,7 +20,7 @@ Press `i` for the iOS simulator or `a` for an Android emulator, or scan the QR c
 
 Sign in with a demo volunteer's email and the password `kai-rescue-demo` (see the root README), or start the web app with `DEMO_MODE=1` to get the persona picker instead. Coordinators use the website.
 
-Volunteers sign in the same ways as on the website: a password, Google, or a passkey. The app asks the server which are on (`GET /api/mobile/auth/config`) and shows only those. Google opens the website's sign-in in the system browser, which hands back to `satisfy://auth`; in development that only works in a simulator on the machine running the web app, with `APP_URL` matching the address the app uses. Passkeys need a development or release build (`react-native-passkeys` is native, so Expo Go hides the button) and an HTTPS server that vouches for the app (see DEPLOY.md, step 4).
+Volunteers sign in the same ways as on the website: a password, Google, Apple, or a passkey. The app asks the server which are on (`GET /api/mobile/auth/config`) and shows only those. Google opens the website's sign-in in the system browser, which hands back to `satisfy://auth`; in development that only works in a simulator on the machine running the web app, with `APP_URL` matching the address the app uses. Apple signs in natively on iOS (`expo-apple-authentication`, with the Sign in with Apple capability from `usesAppleSignIn`) and through the system browser on Android, like Google; on iOS it needs a development or release build, since in Expo Go Apple vouches for Expo Go rather than Satisfy, so the button is hidden there (see DEPLOY.md, step 5). Passkeys need a development or release build (`react-native-passkeys` is native, so Expo Go hides the button) and an HTTPS server that vouches for the app (see DEPLOY.md, step 4).
 
 Expo Go runs everything except push on Android, which Expo Go no longer supports; the Me tab says so. Push works on a real iPhone in Expo Go, and on both platforms in development and release builds.
 
@@ -54,7 +54,7 @@ scripts/                 icon and store graphic generation, route type generatio
 store-screenshots/       App Store and Google Play listing graphics
 src/app                  routes only (Expo Router)
   _layout.tsx            fonts, splash, auth gate, notification taps
-  sign-in.tsx            password, Google and passkey sign-in; the persona picker on the demo
+  sign-in.tsx            password, Google, Apple and passkey sign-in; the persona picker on the demo
   (tabs)/_layout.tsx     native tab bar with badges
   (tabs)/(home,shifts,cover,training,me)/   one stack per tab, sharing shift/[id], module/[code], slot, harvest
   mark-away.tsx, role-request.tsx           form sheets

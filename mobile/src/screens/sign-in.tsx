@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useRef, useState } from "react";
-import { ActivityIndicator, Pressable, TextInput, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, TextInput, View } from "react-native";
 
 import type { AuthConfig, DemoPersona, DemoPersonas } from "@satisfy/core/api";
+import { AppleMark } from "@/components/brand/apple-mark";
 import { GoogleMark } from "@/components/brand/google-mark";
 import { Photo } from "@/components/photo";
 import { HeroLink, Notice, Panel, SignedOutFrame } from "@/components/signed-out";
@@ -14,12 +15,12 @@ import { Icon, type IconName } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { actions, useAuthConfig } from "@/lib/queries";
+import { actions, useAppleSupported, useAuthConfig } from "@/lib/queries";
 import { Cancelled, passkeysSupported } from "@/lib/sign-in";
 import { radius, useTheme } from "@/theme";
 
-/** Signing in: email and password, Google or a passkey, the same as the
- *  website. The demo deployment shows a persona picker instead. */
+/** Signing in: email and password, Google, Apple or a passkey, the same as
+ *  the website. The demo deployment shows a persona picker instead. */
 export function SignInScreen() {
   const t = useTheme();
   const config = useAuthConfig();
@@ -65,15 +66,18 @@ function errorText(e: unknown): string {
 type Mode = { kind: "signIn" } | { kind: "link"; firstTime: boolean };
 
 function SignInForm({ config }: { config: AuthConfig }) {
+  const t = useTheme();
   const auth = useAuth();
   const [mode, setMode] = useState<Mode>({ kind: "signIn" });
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [busy, setBusy] = useState<"password" | "google" | "passkey" | "link" | null>(null);
+  const [busy, setBusy] = useState<"password" | "google" | "apple" | "passkey" | "link" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState<string | null>(null);
   const passwordRef = useRef<TextInput>(null);
   const passkeys = config.passkeys && passkeysSupported();
+  const appleOnThisPhone = useAppleSupported();
+  const apple = config.apple && appleOnThisPhone;
 
   const run = async (which: NonNullable<typeof busy>, task: () => Promise<void>) => {
     setBusy(which);
@@ -90,6 +94,19 @@ function SignInForm({ config }: { config: AuthConfig }) {
     if (!email.trim() || !password) return setError("Enter your email and password.");
     void run("password", () => auth.signInWithPassword({ email: email.trim(), password }));
   };
+
+  // First on iOS, where it is the phone's own sign-in; after Google elsewhere.
+  const appleButton = (
+    <Button
+      label="Continue with Apple"
+      variant="outline"
+      leading={<AppleMark size={18} color={t.ink} />}
+      block
+      loading={busy === "apple"}
+      disabled={busy !== null && busy !== "apple"}
+      onPress={() => void run("apple", auth.signInWithApple)}
+    />
+  );
 
   if (mode.kind === "link") {
     return (
@@ -171,7 +188,8 @@ function SignInForm({ config }: { config: AuthConfig }) {
         </View>
         {error && <Notice tone="error">{error}</Notice>}
         <Button label="Sign in" icon="arrowRight" block loading={busy === "password"} disabled={busy !== null && busy !== "password"} onPress={submitPassword} />
-        {(config.google || passkeys) && <Divider />}
+        {(config.google || apple || passkeys) && <Divider />}
+        {apple && Platform.OS === "ios" && appleButton}
         {config.google && (
           <Button
             label="Continue with Google"
@@ -183,6 +201,7 @@ function SignInForm({ config }: { config: AuthConfig }) {
             onPress={() => void run("google", auth.signInWithGoogle)}
           />
         )}
+        {apple && Platform.OS !== "ios" && appleButton}
         {passkeys && (
           <Button
             label="Sign in with a passkey"
