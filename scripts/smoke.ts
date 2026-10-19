@@ -72,6 +72,8 @@ async function main() {
   const checks: Check[] = [
     { path: "/", persona: null, expect: 307, location: "/sign-in" },
     { path: "/sign-in", persona: null, expect: 200 },
+    { path: "/sign-up", persona: null, expect: 200 },
+    { path: "/sign-up", persona: keyOf(volunteers[0]), cookie: cookies.get(volunteers[0].id), expect: 307, location: "/app" },
     { path: "/app", persona: null, expect: 307, location: "/sign-in" },
     { path: "/admin", persona: null, expect: 307, location: "/sign-in" },
     { path: "/admin", persona: keyOf(volunteers[0]), cookie: cookies.get(volunteers[0].id), expect: 307, location: "/app" },
@@ -156,6 +158,8 @@ async function mobileApiChecks(admins: Volunteer[], volunteers: Volunteer[], val
   });
   await call<Api.AuthConfig>("signed out", "GET", "/auth/config", { check: (b) => b.demo === true && b.google === false && isStr(b.webUrl) });
   for (const a of admins) await call(keyOf(a), "POST", "/auth/demo", { body: { personaKey: keyOf(a) }, expect: 403 });
+  // An empty sign-up is refused field by field, and nothing is recorded.
+  await call<Api.ApiFailure>("signed out", "POST", "/apply", { body: { privacy: false }, expect: 400, check: (b) => isStr(b.fields?.firstName) && isStr(b.fields?.privacy) });
 
   const shiftIds = values["/app/shifts/[id]"];
   const moduleCodes = values["/app/training/[code]"];

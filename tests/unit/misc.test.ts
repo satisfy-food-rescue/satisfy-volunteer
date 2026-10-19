@@ -4,7 +4,9 @@ import { take, reset } from "@/lib/rate-limit";
 import { deviceLabel } from "@/lib/webauthn";
 import { normaliseEmail, sortRoles } from "@/lib/domain";
 
-describe("passwords", () => {
+// bcrypt at the production cost is deliberately slow (several hashes here),
+// so a busy machine can take longer than the default 5 seconds.
+describe("passwords", { timeout: 30_000 }, () => {
   it("verifies the right password only", async () => {
     const hash = await hashPassword("correct horse");
     expect(await verifyPassword("correct horse", hash)).toBe(true);

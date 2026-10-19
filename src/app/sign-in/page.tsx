@@ -8,8 +8,7 @@ import { ORG } from "@/lib/brand";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { DemoPersonas } from "@/components/auth/demo-personas";
 import { FormNotice } from "@/components/auth/form-notice";
-import { GoogleButton } from "@/components/auth/google-button";
-import { PasskeySignInButton } from "@/components/auth/passkey-sign-in-button";
+import { OtherSignInMethods } from "@/components/auth/other-sign-in-methods";
 import { SignInForm } from "@/components/auth/sign-in-form";
 
 export const metadata: Metadata = { title: "Sign in" };
@@ -32,33 +31,31 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
   if (user) redirect(postSignInPath(user.role, next));
   if (isDemo()) return <DemoPersonas />;
 
-  const google = googleConfigured();
   return (
     <AuthShell
       title="Sign in"
       description={<>For volunteers and coordinators at {ORG.name}.</>}
       footer={
-        <>
-          First time here?{" "}
-          <Link href="/forgot-password?first=1" className="font-semibold text-teal underline underline-offset-4">
-            Set up your password
-          </Link>{" "}
-          with the email you volunteer with.
-        </>
+        <div className="flex flex-col gap-3">
+          <p>
+            New to {ORG.shortName}?{" "}
+            <Link href="/sign-up" className="font-semibold text-teal underline underline-offset-4">
+              Sign up to volunteer
+            </Link>
+          </p>
+          <p>
+            Already volunteer but never signed in?{" "}
+            <Link href="/forgot-password?first=1" className="font-semibold text-teal underline underline-offset-4">
+              Set up your password
+            </Link>
+          </p>
+        </div>
       }
     >
       <div className="flex flex-col gap-5">
         {error && ERRORS[error] && <FormNotice tone="error">{ERRORS[error](email)}</FormNotice>}
         <SignInForm next={next} />
-        <div className="flex items-center gap-3 text-sm text-muted-foreground" aria-hidden>
-          <span className="h-px flex-1 bg-border" />
-          or
-          <span className="h-px flex-1 bg-border" />
-        </div>
-        <div className="flex flex-col gap-3">
-          {google && <GoogleButton next={next} />}
-          <PasskeySignInButton next={next} />
-        </div>
+        <OtherSignInMethods google={googleConfigured()} next={next} />
       </div>
     </AuthShell>
   );

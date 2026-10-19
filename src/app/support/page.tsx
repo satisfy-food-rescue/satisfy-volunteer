@@ -33,13 +33,12 @@ export default function SupportPage() {
           body: (
             <>
               <p>
-                The website and the {ORG.shortName} Volunteers app are for people already volunteering with {ORG.name} in{" "}
-                {ORG.coverage}. You use them to book shifts, keep your training up to date and keep your details current.
+                The website and the {ORG.shortName} Volunteers app are for people volunteering with {ORG.name} in {ORG.coverage}.
+                You use them to book shifts, keep your training up to date and keep your details current.
               </p>
               <p>
-                {ORG.shortName} sets up each account, from an approved volunteer application or an invitation from a coordinator, so
-                there is no sign-up in the app. If you would like to volunteer, find out how on the{" "}
-                <LegalLink href={ORG.website}>{ORG.name} website</LegalLink>.
+                Would you like to volunteer? <LegalLink href="/sign-up">Sign up to volunteer</LegalLink> here or in the app. Signing up
+                sends an application to our volunteer coordinator, and once it is approved we email you a link to set up your account.
               </p>
             </>
           ),

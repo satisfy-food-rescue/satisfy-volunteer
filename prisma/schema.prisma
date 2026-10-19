@@ -121,6 +121,9 @@ enum EmailKind {
   ACCOUNT_INVITE
   PASSWORD_RESET
   ADMIN_ACCESS
+  APPLICATION_RECEIVED
+  APPLICATION_NEW
+  ALREADY_REGISTERED
 }
 
 // PENDING: recorded, not yet handed to the mail or push provider (retried by
@@ -566,25 +569,37 @@ model SessionRsvp {
 // Applications and communication
 // ---------------------------------------------------------------------------
 
-// A volunteer application awaiting review.
+// Someone who signed up to volunteer, on the website or in the app, awaiting
+// review. Approving it creates the Volunteer and emails an invite to set a
+// password. Infoodle is only a one-off import of existing volunteers, so
+// applications never come from there.
 model Application {
-  id           String            @id @default(cuid())
-  firstName    String
-  lastName     String
-  email        String
-  phone        String?
-  suburb       String?
-  birthYear    Int?
-  interests    VolunteerRole[]
-  availability String
-  message      String?
-  source       String            @default("INFOODLE_FORM")
-  infoodleId   String?
-  submittedAt  DateTime
-  status       ApplicationStatus @default(PENDING)
-  reviewedAt   DateTime?
-  reviewNote   String?
-  volunteerId  String?
+  id             String            @id @default(cuid())
+  firstName      String
+  lastName       String
+  // Always stored lower-cased and trimmed (see normaliseEmail).
+  email          String
+  phone          String?
+  suburb         String?
+  birthYear      Int?
+  interests      VolunteerRole[]
+  availability   String
+  emergencyName  String?
+  emergencyPhone String?
+  message        String?
+  // WEBSITE or APP (see APPLICATION_SOURCE_LABEL).
+  source         String
+  // Unused: from when applications were expected to arrive from Infoodle.
+  infoodleId     String?
+  submittedAt    DateTime          @default(now())
+  status         ApplicationStatus @default(PENDING)
+  reviewedAt     DateTime?
+  reviewNote     String?
+  volunteerId    String?
+  emails         Email[]
+
+  @@index([email])
+  @@index([status, submittedAt])
 }
 
 // Every email and push notification the app sends, in one log. It drives the
@@ -593,34 +608,39 @@ model Application {
 // handed to the provider (Resend, or Expo for pushes) after the response;
 // failures are retried by the hourly job.
 model Email {
-  id          String         @id @default(cuid())
-  volunteerId String?
-  volunteer   Volunteer?     @relation(fields: [volunteerId], references: [id], onDelete: SetNull)
-  channel     Channel        @default(EMAIL)
-  toName      String
-  toEmail     String
-  kind        EmailKind
-  subject     String
-  preview     String
+  id            String         @id @default(cuid())
+  volunteerId   String?
+  volunteer     Volunteer?     @relation(fields: [volunteerId], references: [id], onDelete: SetNull)
+  // Set instead of volunteerId for emails to someone who has applied but has
+  // no account yet. Neither set means the coordinator.
+  applicationId String?
+  application   Application?   @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  channel       Channel        @default(EMAIL)
+  toName        String
+  toEmail       String
+  kind          EmailKind
+  subject       String
+  preview       String
   // Paragraphs separated by blank lines.
-  body        String
-  ctaLabel    String?
+  body          String
+  ctaLabel      String?
   // App-relative path; made absolute when the email is rendered. Null for
   // sign-in links, which are never stored.
-  ctaHref     String?
+  ctaHref       String?
   // Dedupe key for automated messages, e.g. "training-due:<recordId>".
-  ref         String?
-  status      DeliveryStatus @default(PENDING)
-  attempts    Int            @default(0)
-  lastError   String?
+  ref           String?
+  status        DeliveryStatus @default(PENDING)
+  attempts      Int            @default(0)
+  lastError     String?
   // Resend message id, or the Expo push ticket ids.
-  providerId  String?
-  sentAt      DateTime?
-  createdAt   DateTime       @default(now())
+  providerId    String?
+  sentAt        DateTime?
+  createdAt     DateTime       @default(now())
 
   @@index([createdAt])
   @@index([ref])
   @@index([volunteerId, createdAt])
+  @@index([applicationId])
   @@index([status, createdAt])
 }
 

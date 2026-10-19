@@ -96,8 +96,6 @@ export default async function SettingsPage() {
           <div className="rounded-xl border border-border p-4">
             <p className="font-display text-xs font-bold uppercase tracking-wide text-teal">Infoodle to this app</p>
             <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-ink">
-              <li>New sign-up form submissions appear in Applications automatically.</li>
-              <li>Approved applicants keep their Infoodle record id, so nothing is double-entered.</li>
               <li>Contact changes made in Infoodle overwrite the copy here.</li>
             </ul>
           </div>

@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { CalendarCheck, Clock, Mail, MapPin, Phone, RefreshCw, UserPlus, XCircle } from "lucide-react";
+import { CalendarCheck, Clock, History, LifeBuoy, Link2, Mail, MapPin, Phone, UserPlus, XCircle } from "lucide-react";
 import { requireAdmin } from "@/lib/session";
-import { isDemo } from "@/lib/env";
+import { env } from "@/lib/env";
 import { db } from "@/lib/db";
 import { formatInstant } from "@/lib/dates";
-import { INITIAL_VISIT_CODE, ROLE_SHORT } from "@/lib/domain";
+import { INITIAL_VISIT_CODE, ROLE_SHORT, applicationSourceLabel } from "@/lib/domain";
 import { PageHeader } from "@/components/shared/page-header";
 import { AvatarBadge } from "@/components/shared/avatar-badge";
 import { Chip } from "@/components/shared/status-chip";
@@ -20,17 +20,20 @@ export default async function ApplicationsPage() {
   ]);
   const pending = apps.filter((a) => a.status === "PENDING");
   const reviewed = apps.filter((a) => a.status !== "PENDING");
+  // Someone signing up again after they stopped volunteering.
+  const known = await db.volunteer.findMany({ where: { email: { in: pending.map((a) => a.email) } }, select: { id: true, email: true, status: true } });
+  const accountFor = new Map(known.map((v) => [v.email, v]));
+  const signUpUrl = new URL("/sign-up", env().APP_URL).toString();
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-8">
-      <PageHeader eyebrow="Applications" title="New volunteer applications" description="Applicants fill in the sign-up form on the website, which lands in Infoodle. Approved applicants get an account here and an email inviting them to sign in. Then give them a call and book their initial visit from their profile." />
+      <PageHeader eyebrow="Applications" title="New volunteer applications" description="People who sign up to volunteer on the website or in the app. Approving creates their account and emails them an invite to sign in. Then give them a call and book their initial visit from their profile." />
 
       <div className="flex items-start gap-3 rounded-2xl border border-border bg-card p-4 text-sm">
-        <RefreshCw className="mt-0.5 size-5 shrink-0 text-sky" aria-hidden />
-        <div>
-          <p className="font-bold text-ink">Source: Infoodle sign-up form{isDemo() ? " (mocked)" : ""}</p>
+        <Link2 className="mt-0.5 size-5 shrink-0 text-sky" aria-hidden />
+        <div className="min-w-0">
+          <p className="font-bold text-ink">Share the sign-up form</p>
           <p className="text-muted-foreground">
-            When the Infoodle API is confirmed, new form submissions appear here automatically. Until then, add new volunteers from{" "}
-            <Link href="/admin/volunteers" className="font-semibold text-teal hover:underline">Volunteers</Link> with Add volunteer. On approval: account created, sign-in invite emailed{induction ? `, pencilled into the next open initial-visit slot (${formatInstant(induction.startsAt)}) if there is room` : ""}.
+            <a href={signUpUrl} target="_blank" rel="noreferrer" className="break-all font-semibold text-teal hover:underline">{signUpUrl}</a>, or Sign up to volunteer in the Satisfy volunteer app. Each application is emailed to you and waits here. On approval: account created, sign-in invite emailed{induction ? `, pencilled into the next open initial-visit slot (${formatInstant(induction.startsAt)}) if there is room` : ""}.
           </p>
         </div>
       </div>
@@ -52,9 +55,19 @@ export default async function ApplicationsPage() {
                 <dl className="mt-3 grid gap-x-6 gap-y-2 text-sm @2xl/admin:grid-cols-2">
                   <div><dt className="font-display text-xs font-bold uppercase tracking-wide text-muted-foreground">Interested in</dt><dd className="mt-0.5 flex flex-wrap gap-1">{a.interests.map((r) => <Chip key={r} tone="good" size="sm">{ROLE_SHORT[r]}</Chip>)}</dd></div>
                   <div><dt className="font-display text-xs font-bold uppercase tracking-wide text-muted-foreground">Availability</dt><dd className="mt-0.5 text-ink">{a.availability}</dd></div>
+                  {(a.emergencyName || a.emergencyPhone) && <div><dt className="font-display text-xs font-bold uppercase tracking-wide text-muted-foreground">Emergency contact</dt><dd className="mt-0.5 inline-flex flex-wrap items-center gap-x-2 text-ink"><LifeBuoy className="size-4 text-sky" aria-hidden />{a.emergencyName}{a.emergencyPhone && <span className="tabular">{a.emergencyPhone}</span>}</dd></div>}
                   {a.message && <div className="@2xl/admin:col-span-2"><dt className="font-display text-xs font-bold uppercase tracking-wide text-muted-foreground">Message</dt><dd className="mt-0.5 text-ink">&ldquo;{a.message}&rdquo;</dd></div>}
                 </dl>
-                <p className="mt-3 inline-flex items-center gap-1.5 text-xs text-muted-foreground"><Clock className="size-3.5" aria-hidden />Submitted {formatInstant(a.submittedAt)}{a.infoodleId ? ` · Infoodle ${a.infoodleId}` : ""}</p>
+                <p className="mt-3 inline-flex items-center gap-1.5 text-xs text-muted-foreground"><Clock className="size-3.5" aria-hidden />Submitted {formatInstant(a.submittedAt)} · {applicationSourceLabel(a.source)}</p>
+                {accountFor.get(a.email) && (
+                  <p className="mt-3 flex items-start gap-2 rounded-xl bg-status-info-bg px-3 py-2 text-sm text-status-info">
+                    <History className="mt-0.5 size-4 shrink-0" aria-hidden />
+                    <span>
+                      {accountFor.get(a.email)!.status === "ACTIVE" ? "Already has an active account with this email." : "Volunteered with Satisfy before. Approving reactivates their account, with their history and training."}{" "}
+                      <Link href={`/admin/volunteers/${accountFor.get(a.email)!.id}`} className="font-semibold underline underline-offset-2">Their profile</Link>
+                    </span>
+                  </p>
+                )}
               </div>
             </div>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">

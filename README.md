@@ -62,7 +62,7 @@ Dependabot opens weekly npm and monthly Actions and Docker base image updates.
 
 **Configuration** is validated at startup by `src/lib/env.ts`. Nothing is `NEXT_PUBLIC_`, so every setting is read at runtime and one Docker image serves every environment. See `.env.example`.
 
-**Sign-in** offers a password, Google, or a passkey, on the website and in the native app alike. The rules live once in `src/lib/sign-in.ts`; the website keeps an httpOnly cookie session (`src/lib/session.ts`) and the app a bearer token (`src/lib/mobile-auth.ts`), both stored only as their SHA-256 in `Session`. There is no public sign-up: people get an account when a coordinator approves their application or adds them, and are emailed an invite to set a password. Anyone whose account was imported can use "First time here?" to get a link. Web sessions slide for 30 days of inactivity, up to 180 days. Invite and reset links are single-use, hashed, never stored in the email log, and only used when the form is submitted, so mail scanners cannot burn them. Password attempts and link requests are rate limited. Deactivating a volunteer signs them out everywhere. Google sign-in is the authorization code flow with PKCE, with the ID token checked against Google's keys (`src/lib/oauth.ts`). `src/proxy.ts` sends signed-out visitors to sign-in with the page they wanted, and every page and action still checks with `requireVolunteer()` or `requireAdmin()`.
+**Sign-in** offers a password, Google, or a passkey, on the website and in the native app alike. The rules live once in `src/lib/sign-in.ts`; the website keeps an httpOnly cookie session (`src/lib/session.ts`) and the app a bearer token (`src/lib/mobile-auth.ts`), both stored only as their SHA-256 in `Session`. Anyone can sign up to volunteer, on the website (`/sign-up`) or in the app, but signing up sends an application, not an account: people get an account when a coordinator approves their application (Admin > Applications) or adds them, and are emailed an invite to set a password. The sign-up rules live once in `src/lib/applications.ts`; the reply never says whether an address already has an account (that person is emailed to sign in instead). Anyone whose account was imported can use "Set up your password" on the sign-in page to get a link. Web sessions slide for 30 days of inactivity, up to 180 days. Invite and reset links are single-use, hashed, never stored in the email log, and only used when the form is submitted, so mail scanners cannot burn them. Password attempts and link requests are rate limited. Deactivating a volunteer signs them out everywhere. Google sign-in is the authorization code flow with PKCE, with the ID token checked against Google's keys (`src/lib/oauth.ts`). `src/proxy.ts` sends signed-out visitors to sign-in with the page they wanted, and every page and action still checks with `requireVolunteer()` or `requireAdmin()`.
 
 **Email and push** go through one outbox (`src/lib/emails.ts`). Every message is written to the `Email` table first, which drives the Outbox page, each volunteer's communication history and the reminder de-duplication refs. It is then delivered after the response (`after()`): emails through Resend with an idempotency key, push notifications through Expo to every phone the volunteer is signed in on. Someone with no phone signed in to the app gets a push as an email with the same words. Failures are retried by the hourly job for two days. Templates are pure functions in `src/lib/email-templates.ts`, rendered by one react-email layout (`src/emails/message-email.tsx`).
 
@@ -114,6 +114,7 @@ prisma/schema.prisma         data model; migrations in prisma/migrations
 src/proxy.ts                 signed-out redirect for /app and /admin
 src/instrumentation.ts       startup bootstrap
 src/app/sign-in, forgot-password, reset-password, auth/google   sign-in
+src/app/sign-up              signing up to volunteer (an application)
 src/app/.well-known          passkey association for the native app
 src/app/app/*                volunteer app (bottom tab bar, max width 30rem)
 src/app/admin/*              coordinator admin (sidebar)
@@ -134,6 +135,5 @@ mobile/                      Expo app, see mobile/README.md
 
 ## Not built yet
 
-- **Infoodle sync.** Waiting on API access. Until then new applications do not arrive automatically; coordinators add new volunteers from Volunteers > Add volunteer, and the Infoodle panels describe what will sync.
-- **Bulk import** of the existing volunteer list. Coordinators can add volunteers one at a time, and anyone added can sign in through "First time here?".
+- **Bulk import** of the existing volunteer list. Coordinators can add volunteers one at a time, and anyone added can get a link from "Set up your password" on the sign-in page.
 - **Password and Google settings in the native app.** The app adds and removes passkeys itself and links to Sign-in and security on the website for the rest.

@@ -41,7 +41,7 @@ export async function signInWithPassword(_prev: SignInState, formData: FormData)
 /** `invalid` marks the email field as wrong, as opposed to a rate limit. */
 export type LinkState = { error?: string; sent?: boolean; email?: string; invalid?: boolean };
 
-/** "Forgot your password?" and "First time here?". The reply is the same
+/** "Forgot your password?" and "Set up your password". The reply is the same
  *  whether or not the address has an account. */
 export async function requestSignInLink(_prev: LinkState, formData: FormData): Promise<LinkState> {
   const parsed = z.email().safeParse(String(formData.get("email") ?? "").trim());

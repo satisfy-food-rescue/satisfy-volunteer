@@ -40,8 +40,9 @@ export default function TermsPage() {
           title: "Who can use it",
           body: (
             <p>
-              The website and app are for people {ORG.shortName} has accepted as volunteers or coordinators. {ORG.shortName} sets up
-              each account, from an approved application or an invitation from a coordinator. There is no public sign-up.
+              Anyone can sign up to volunteer. Signing up sends an application, not an account: {ORG.shortName} sets up your account
+              when a coordinator approves your application, or invites you directly. The rest of the website and app is for people{" "}
+              {ORG.shortName} has accepted as volunteers or coordinators.
             </p>
           ),
         },

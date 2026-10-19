@@ -28,10 +28,17 @@ export type OutgoingEmail = {
   ctaLabel?: string | null;
   /** App-relative path or absolute URL. */
   ctaHref?: string | null;
-  /** Coordinator alerts say so in the footer instead of the volunteer note. */
-  audience: "volunteer" | "coordinator";
+  /** Who it is for, which picks the footer note. An applicant has no
+   *  account yet. */
+  audience: "volunteer" | "applicant" | "coordinator";
   /** Stable per message, so a retried send is not delivered twice. */
   idempotencyKey: string;
+};
+
+export const FOOTER_NOTE: Record<OutgoingEmail["audience"], string> = {
+  volunteer: "You are receiving this because you volunteer with Satisfy. Reply to this email to reach the volunteer coordinator.",
+  applicant: "You are receiving this because you applied to volunteer with Satisfy. Reply to this email to reach the volunteer coordinator.",
+  coordinator: "Sent to the volunteer coordinator by the Satisfy volunteer app.",
 };
 
 export async function renderEmail(m: Omit<OutgoingEmail, "to" | "toName" | "idempotencyKey">) {
@@ -43,10 +50,7 @@ export async function renderEmail(m: Omit<OutgoingEmail, "to" | "toName" | "idem
     logoUrl: absoluteUrl("/email/logo.png"),
     orgName: ORG.name,
     orgBase: ORG.base,
-    footerNote:
-      m.audience === "coordinator"
-        ? "Sent to the volunteer coordinator by the Satisfy volunteer app."
-        : "You are receiving this because you volunteer with Satisfy. Reply to this email to reach the volunteer coordinator.",
+    footerNote: FOOTER_NOTE[m.audience],
   });
   const [html, text] = await Promise.all([render(element), render(element, { plainText: true })]);
   return { html, text };
