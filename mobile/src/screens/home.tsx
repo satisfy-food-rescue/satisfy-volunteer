@@ -5,7 +5,7 @@ import { Pressable, RefreshControl, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import type { Home, HomeAlert, ShiftSummary } from "@satisfy/core/api";
-import { formatDay, formatDayLong, formatTimeRange, relativeDays } from "@satisfy/core/dates";
+import { formatDay, formatDayLong, formatTimeRange, relativeDays, todayISO } from "@satisfy/core/dates";
 import { BrandWaves, FoodIcon, Logo, type FoodKind } from "@/components/brand/logo";
 import { Photo, shiftPhoto } from "@/components/photo";
 import { usePullToRefresh } from "@/components/screen";
@@ -51,7 +51,7 @@ export function HomeScreen() {
             )}
           </View>
           <Text variant="eyebrow" tone="tealOn" style={{ marginTop: 20 }}>
-            {formatDayLong(home.data?.today ?? session?.today ?? "")}
+            {formatDayLong(home.data?.today ?? session?.today ?? todayISO())}
           </Text>
           <Text variant="hero" tone="white" style={{ marginTop: 6 }} accessibilityRole="header">
             {greeting()}
