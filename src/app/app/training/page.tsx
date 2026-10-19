@@ -7,7 +7,7 @@ import { DELIVERY_LABEL } from "@/lib/domain";
 import { TrainingChip } from "@/components/shared/status-chip";
 import { SessionRsvp } from "@/components/app/session-rsvp";
 import { EmptyState } from "@/components/shared/empty-state";
-import { AppPageHeader } from "@/components/app/app-page-header";
+import { AppPage, AppPageHeader } from "@/components/app/app-page-header";
 import { db } from "@/lib/db";
 import { cn } from "@/lib/utils";
 
@@ -34,126 +34,134 @@ export default async function TrainingPage() {
   const otherSessions = sessions.filter((s) => !relevantSessions.includes(s));
 
   return (
-    <div className="flex flex-col gap-6 px-5 pb-6 pt-5">
+    <AppPage>
       <AppPageHeader eyebrow="Health and safety" title="Training" />
 
-      <div className={cn("rounded-2xl p-5", summary.compliant ? "bg-green-tint-soft ring-1 ring-green/40" : "bg-card ring-1 ring-border")}>
-        <p className="font-display font-bold text-3xl text-ink tabular">
-          {currentCount} <span className="text-xl text-muted-foreground">of {required.length}</span>
-        </p>
-        <p className="mt-1 font-semibold text-ink">modules current</p>
-        <div className="mt-3 flex h-2.5 overflow-hidden rounded-full bg-muted" role="img" aria-label={`${currentCount} of ${required.length} modules current`}>
-          {required.map((s) => (
-            <span
-              key={s.module.id}
-              className={cn(
-                "flex-1 border-r-2 border-card last:border-r-0",
-                s.status === "COMPLETE" && "bg-green",
-                s.status === "DUE_SOON" && "bg-orange",
-                s.status === "OVERDUE" && "bg-status-bad",
-                s.status === "NOT_STARTED" && "bg-transparent",
-              )}
-            />
-          ))}
+      {/* One column on a phone. With room, the summary holds still on the
+          left while the modules and sessions run down the right. */}
+      <div className="flex flex-col gap-6 @4xl/app:grid @4xl/app:grid-cols-12 @4xl/app:items-start @4xl/app:gap-8">
+        <div className="contents @4xl/app:sticky @4xl/app:top-8 @4xl/app:col-span-5 @4xl/app:flex @4xl/app:flex-col @4xl/app:gap-6 @6xl/app:col-span-4">
+          <div className={cn("rounded-2xl p-5 @4xl/app:rounded-3xl @4xl/app:p-6", summary.compliant ? "bg-green-tint-soft ring-1 ring-green/40" : "bg-card ring-1 ring-border")}>
+            <p className="font-display font-bold text-3xl text-ink tabular @4xl/app:text-6xl">
+              {currentCount} <span className="text-xl text-muted-foreground @4xl/app:text-3xl">of {required.length}</span>
+            </p>
+            <p className="mt-1 font-semibold text-ink">modules current</p>
+            <div className="mt-3 flex h-2.5 overflow-hidden rounded-full bg-muted @4xl/app:mt-5 @4xl/app:h-3" role="img" aria-label={`${currentCount} of ${required.length} modules current`}>
+              {required.map((s) => (
+                <span
+                  key={s.module.id}
+                  className={cn(
+                    "flex-1 border-r-2 border-card last:border-r-0",
+                    s.status === "COMPLETE" && "bg-green",
+                    s.status === "DUE_SOON" && "bg-orange",
+                    s.status === "OVERDUE" && "bg-status-bad",
+                    s.status === "NOT_STARTED" && "bg-transparent",
+                  )}
+                />
+              ))}
+            </div>
+            <p className="mt-3 text-sm text-ink-soft">
+              {summary.compliant
+                ? summary.dueSoon > 0
+                  ? `You can book any shift. ${summary.dueSoon} refresher${summary.dueSoon === 1 ? " is" : "s are"} due within 30 days.`
+                  : "All current. You can book any shift for your roles."
+                : summary.overdue > 0
+                  ? "Overdue modules block new bookings for the shifts that need them. Your regular slot keeps running."
+                  : "Complete the modules below before your first shift."}
+            </p>
+          </div>
+
+          {notRequired.length > 0 && (
+            <section aria-labelledby="nr-heading" className="order-last @4xl/app:order-none">
+              <h2 id="nr-heading" className="mb-2 text-base font-bold text-muted-foreground">Not required for your roles</h2>
+              <ul className="flex flex-col gap-1.5">
+                {notRequired.map((s) => (
+                  <li key={s.module.id} className="flex items-center justify-between gap-3 rounded-xl border border-dashed border-border px-4 py-2.5 text-sm text-muted-foreground">
+                    <span>{s.module.name}</span>
+                    <TrainingChip status="NOT_REQUIRED" size="sm" />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
         </div>
-        <p className="mt-3 text-sm text-ink-soft">
-          {summary.compliant
-            ? summary.dueSoon > 0
-              ? `You can book any shift. ${summary.dueSoon} refresher${summary.dueSoon === 1 ? " is" : "s are"} due within 30 days.`
-              : "All current. You can book any shift for your roles."
-            : summary.overdue > 0
-              ? "Overdue modules block new bookings for the shifts that need them. Your regular slot keeps running."
-              : "Complete the modules below before your first shift."}
-        </p>
-      </div>
 
-      <ul className="flex flex-col gap-2.5">
-        {required.map((s) => {
-          const online = s.module.delivery === "ONLINE_CONFIRM";
-          const actionable = s.status !== "COMPLETE";
-          const Inner = (
-            <>
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="font-bold text-ink">{s.module.name}</p>
-                  <p className="mt-0.5 text-sm text-muted-foreground">
-                    {s.module.validityMonths ? `Valid ${s.module.validityMonths} months` : "Once only"} · {DELIVERY_LABEL[s.module.delivery]}
-                  </p>
-                </div>
-                <TrainingChip status={s.status} size="sm" className="shrink-0" />
-              </div>
-              <p className="mt-2 text-sm text-ink-soft tabular">
-                {s.status === "NOT_STARTED" && (s.module.mandatoryBeforeFirstShift ? "Required before your first shift." : "Not yet completed.")}
-                {s.status === "COMPLETE" && s.expiresISO && `Completed ${formatDate(s.completedISO!)} · expires ${formatDate(s.expiresISO)}`}
-                {s.status === "COMPLETE" && !s.expiresISO && `Completed ${formatDate(s.completedISO!)} · does not expire`}
-                {s.status === "DUE_SOON" && `Expires ${formatDate(s.expiresISO!)} (${relativeDays(s.expiresISO!, today)})`}
-                {s.status === "OVERDUE" && `Expired ${formatDate(s.expiresISO!)} (${relativeDays(s.expiresISO!, today)})`}
-              </p>
-              {actionable && (
-                <p className="mt-2 inline-flex items-center gap-1 text-sm font-bold text-teal group-hover:underline">
-                  {online ? <BookOpen className="size-4" aria-hidden /> : <CalendarDays className="size-4" aria-hidden />}
-                  {online ? "Complete it online" : "Book a session below"}
-                  <ChevronRight className="size-4" aria-hidden />
-                </p>
-              )}
-            </>
-          );
-          return (
-            <li key={s.module.id}>
-              {actionable ? (
-                <Link href={online ? `/app/training/${s.module.code}` : "#sessions"} className="group block rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-teal/60">
-                  {Inner}
-                </Link>
-              ) : (
-                <div className="rounded-2xl border border-border bg-card p-4">{Inner}</div>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-
-      <section id="sessions" aria-labelledby="sessions-heading" className="scroll-mt-4">
-        <h2 id="sessions-heading" className="mb-2 text-xl text-ink">Upcoming sessions</h2>
-        {relevantSessions.length === 0 && otherSessions.length === 0 ? (
-          <EmptyState icon={CalendarDays} title="No sessions scheduled right now" description="New sessions show up here as soon as they are booked in." className="py-6" />
-        ) : (
-          <ul className="flex flex-col gap-2.5">
-            {[...relevantSessions, ...otherSessions].map((s) => {
-              const mine = s.rsvps.find((r) => r.volunteerId === me.id)?.status ?? null;
-              const going = s.rsvps.filter((r) => r.status === "GOING").length;
-              const relevant = relevantSessions.includes(s);
-              return (
-                <li key={s.id} className={cn("rounded-2xl border bg-card p-4 shadow-sm", relevant ? "border-teal/50" : "border-border")}>
-                  <p className="font-bold text-ink">{s.module.name}</p>
-                  <p className="mt-0.5 text-sm text-ink-soft tabular">{formatInstantRange(s.startsAt, s.endsAt)}</p>
-                  <p className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground">
-                    <span className="inline-flex items-center gap-1"><MapPin className="size-4" aria-hidden />{s.location}</span>
-                    <span className="inline-flex items-center gap-1 tabular"><Users className="size-4" aria-hidden />{going} of {s.capacity} booked</span>
-                  </p>
-                  {!relevant && <p className="mt-2 text-sm text-muted-foreground">Your record for this module is current; come along if you would like a refresher.</p>}
-                  <div className="mt-3">
-                    <SessionRsvp sessionId={s.id} status={mine} full={going >= s.capacity && mine !== "GOING"} />
+        <div className="contents @4xl/app:col-span-7 @4xl/app:flex @4xl/app:flex-col @4xl/app:gap-8 @6xl/app:col-span-8">
+          <ul className="grid gap-2.5 @6xl/app:grid-cols-2 @6xl/app:gap-3">
+            {required.map((s) => {
+              const online = s.module.delivery === "ONLINE_CONFIRM";
+              const actionable = s.status !== "COMPLETE";
+              const Inner = (
+                <>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-bold text-ink">{s.module.name}</p>
+                      <p className="mt-0.5 text-sm text-muted-foreground">
+                        {s.module.validityMonths ? `Valid ${s.module.validityMonths} months` : "Once only"} · {DELIVERY_LABEL[s.module.delivery]}
+                      </p>
+                    </div>
+                    <TrainingChip status={s.status} size="sm" className="shrink-0" />
                   </div>
+                  <p className="mt-2 text-sm text-ink-soft tabular">
+                    {s.status === "NOT_STARTED" && (s.module.mandatoryBeforeFirstShift ? "Required before your first shift." : "Not yet completed.")}
+                    {s.status === "COMPLETE" && s.expiresISO && `Completed ${formatDate(s.completedISO!)} · expires ${formatDate(s.expiresISO)}`}
+                    {s.status === "COMPLETE" && !s.expiresISO && `Completed ${formatDate(s.completedISO!)} · does not expire`}
+                    {s.status === "DUE_SOON" && `Expires ${formatDate(s.expiresISO!)} (${relativeDays(s.expiresISO!, today)})`}
+                    {s.status === "OVERDUE" && `Expired ${formatDate(s.expiresISO!)} (${relativeDays(s.expiresISO!, today)})`}
+                  </p>
+                  {actionable && (
+                    <p className="mt-2 inline-flex items-center gap-1 text-sm font-bold text-teal group-hover:underline">
+                      {online ? <BookOpen className="size-4" aria-hidden /> : <CalendarDays className="size-4" aria-hidden />}
+                      {online ? "Complete it online" : "Book a session below"}
+                      <ChevronRight className="size-4" aria-hidden />
+                    </p>
+                  )}
+                </>
+              );
+              return (
+                <li key={s.module.id}>
+                  {actionable ? (
+                    <Link href={online ? `/app/training/${s.module.code}` : "#sessions"} className="group block h-full rounded-2xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-teal/60">
+                      {Inner}
+                    </Link>
+                  ) : (
+                    <div className="h-full rounded-2xl border border-border bg-card p-4">{Inner}</div>
+                  )}
                 </li>
               );
             })}
           </ul>
-        )}
-      </section>
 
-      {notRequired.length > 0 && (
-        <section aria-labelledby="nr-heading">
-          <h2 id="nr-heading" className="mb-2 text-base font-bold text-muted-foreground">Not required for your roles</h2>
-          <ul className="flex flex-col gap-1.5">
-            {notRequired.map((s) => (
-              <li key={s.module.id} className="flex items-center justify-between gap-3 rounded-xl border border-dashed border-border px-4 py-2.5 text-sm text-muted-foreground">
-                <span>{s.module.name}</span>
-                <TrainingChip status="NOT_REQUIRED" size="sm" />
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-    </div>
+          <section id="sessions" aria-labelledby="sessions-heading" className="scroll-mt-4">
+            <h2 id="sessions-heading" className="mb-2 text-xl text-ink @3xl/app:mb-3 @3xl/app:text-2xl">Upcoming sessions</h2>
+            {relevantSessions.length === 0 && otherSessions.length === 0 ? (
+              <EmptyState icon={CalendarDays} title="No sessions scheduled right now" description="New sessions show up here as soon as they are booked in." className="py-6" />
+            ) : (
+              <ul className="grid gap-2.5 @6xl/app:grid-cols-2 @6xl/app:gap-3">
+                {[...relevantSessions, ...otherSessions].map((s) => {
+                  const mine = s.rsvps.find((r) => r.volunteerId === me.id)?.status ?? null;
+                  const going = s.rsvps.filter((r) => r.status === "GOING").length;
+                  const relevant = relevantSessions.includes(s);
+                  return (
+                    <li key={s.id} className={cn("flex flex-col rounded-2xl border bg-card p-4 shadow-sm", relevant ? "border-teal/50" : "border-border")}>
+                      <p className="font-bold text-ink">{s.module.name}</p>
+                      <p className="mt-0.5 text-sm text-ink-soft tabular">{formatInstantRange(s.startsAt, s.endsAt)}</p>
+                      <p className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                        <span className="inline-flex items-center gap-1"><MapPin className="size-4" aria-hidden />{s.location}</span>
+                        <span className="inline-flex items-center gap-1 tabular"><Users className="size-4" aria-hidden />{going} of {s.capacity} booked</span>
+                      </p>
+                      {!relevant && <p className="mt-2 text-sm text-muted-foreground">Your record for this module is current; come along if you would like a refresher.</p>}
+                      <div className="mt-3 @6xl/app:mt-auto @6xl/app:pt-3">
+                        <SessionRsvp sessionId={s.id} status={mine} full={going >= s.capacity && mine !== "GOING"} />
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+        </div>
+      </div>
+    </AppPage>
   );
 }
