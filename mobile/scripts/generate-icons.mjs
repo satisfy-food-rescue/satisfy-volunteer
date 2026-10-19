@@ -1,6 +1,6 @@
 // Renders the app icon, the iOS 26 Icon Composer bundle, Android adaptive
-// icon layers and the splash image from the brand vector paths, so the store
-// assets always match the logo.
+// icon layers, the Google Play listing icon and the splash image from the
+// brand vector paths, so the store assets always match the logo.
 // Run from the repo root (it borrows sharp from the web workspace):
 //   node mobile/scripts/generate-icons.mjs
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -36,6 +36,13 @@ async function png(svg, file) {
 
 const S = 1024;
 await png(`<svg xmlns="http://www.w3.org/2000/svg" width="${S}" height="${S}"><rect width="${S}" height="${S}" fill="${TEAL}"/>${glyph(S, 23, "#ffffff")}</svg>`, "icon.png");
+// Google Play's listing icon: 512x512, 32-bit PNG, full bleed (Play rounds the corners).
+const P = 512;
+await sharp(Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${P}" height="${P}"><rect width="${P}" height="${P}" fill="${TEAL}"/>${glyph(P, 11.5, "#ffffff")}</svg>`))
+  .ensureAlpha()
+  .png()
+  .toFile(fileURLToPath(new URL("../store-screenshots/android/icon-512.png", import.meta.url)));
+console.log("wrote store-screenshots/android/icon-512.png");
 // Adaptive icons crop to a circle inside the middle 66%, so the glyph is smaller.
 await png(`<svg xmlns="http://www.w3.org/2000/svg" width="${S}" height="${S}">${glyph(S, 16, "#ffffff")}</svg>`, "android-icon-foreground.png");
 await png(`<svg xmlns="http://www.w3.org/2000/svg" width="${S}" height="${S}">${glyph(S, 16, "#000000")}</svg>`, "android-icon-monochrome.png");
