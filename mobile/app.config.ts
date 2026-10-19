@@ -1,4 +1,5 @@
 import type { ExpoConfig } from "expo/config";
+import { AndroidConfig, withAndroidStyles, type ConfigPlugin } from "expo/config-plugins";
 
 // The Expo project (EAS builds, push tokens, OTA updates). Not a secret.
 const projectId = "e8a98cba-bf1c-44a2-a796-7513d0de96b0";
@@ -11,6 +12,35 @@ const TEAL = "#106379";
 // API: development against a local server has no passkeys.
 const apiUrl = process.env.EXPO_PUBLIC_API_URL;
 const webHost = apiUrl?.startsWith("https://") ? new URL(apiUrl).host : null;
+
+// Android 15 and later lay out a TextView by its glyphs' drawn bounds once an
+// app targets SDK 35 (TextView#setUseBoundsForWidth), but React Native still
+// measures text by advance width. Where a glyph draws past its advance, as
+// Montserrat's often do, shrink-wrapped text no longer fits the box it was
+// measured for: the last word wraps onto a second line the box clips ("All
+// done" showed "All"). Drawing by advance width again matches the measurement.
+// The style extends AppCompat's own TextView style, which AppTheme otherwise
+// uses.
+const TEXT_VIEW_STYLE = { name: "AppTextView", parent: "Widget.AppCompat.TextView" };
+
+const withTextMeasuredByAdvance: ConfigPlugin = (config) =>
+  withAndroidStyles(config, (config) => {
+    let xml = AndroidConfig.Styles.assignStylesValue(config.modResults, {
+      add: true,
+      parent: TEXT_VIEW_STYLE,
+      name: "android:useBoundsForWidth",
+      value: "false",
+      targetApi: "35",
+    });
+    xml = AndroidConfig.Styles.assignStylesValue(xml, {
+      add: true,
+      parent: AndroidConfig.Styles.getAppThemeGroup(),
+      name: "android:textViewStyle",
+      value: `@style/${TEXT_VIEW_STYLE.name}`,
+    });
+    config.modResults = xml;
+    return config;
+  });
 
 const config: ExpoConfig = {
   // The label under the icon on the home screen. The store listings carry the
@@ -59,4 +89,4 @@ const config: ExpoConfig = {
   updates: { url: `https://u.expo.dev/${projectId}` },
 };
 
-export default config;
+export default withTextMeasuredByAdvance(config);
