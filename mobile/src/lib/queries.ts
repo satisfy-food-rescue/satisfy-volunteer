@@ -15,6 +15,7 @@ import type {
   SecurityOverview,
   ShiftDetail,
   ShiftsWeek,
+  SignUpInput,
   SlotOverview,
   TrainingModuleDetail,
   TrainingOverview,
@@ -106,4 +107,5 @@ export const actions = {
   requestRoleChange: (message: string) => api<MutationOk>("/profile/role-request", { method: "POST", body: { message } }),
   removePasskey: (id: string) => api<MutationOk>(`/passkeys/${encodeURIComponent(id)}`, { method: "DELETE" }),
   requestSignInLink: (email: string) => api<MutationOk>("/auth/link", { method: "POST", body: { email } }),
+  signUp: (input: SignUpInput) => api<MutationOk>("/apply", { method: "POST", body: input }),
 };

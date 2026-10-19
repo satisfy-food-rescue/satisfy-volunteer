@@ -7,6 +7,8 @@ import { formatInstant, formatInstantTime } from "@/lib/dates";
 import { EMAIL_KIND_LABEL } from "@/lib/domain";
 import { ORG } from "@/lib/brand";
 import { env, isDemo } from "@/lib/env";
+import { emailAudience } from "@/lib/emails";
+import { FOOTER_NOTE } from "@/lib/mailer";
 import { BrandFooter, Logo, LogoIcon } from "@/components/brand/logo";
 import { DeliveryChip } from "@/components/shared/status-chip";
 
@@ -92,7 +94,7 @@ export default async function EmailPreviewPage({ params }: { params: Promise<{ i
           <BrandFooter className="pt-2" />
           <div className="px-6 pb-5 pt-3 text-xs leading-relaxed text-muted-foreground">
             <p>{ORG.name} · {ORG.base}</p>
-            <p>{e.volunteerId ? "You are receiving this because you volunteer with Satisfy. Reply to this email to reach the volunteer coordinator." : "Sent to the volunteer coordinator by the Satisfy volunteer app."}</p>
+            <p>{FOOTER_NOTE[emailAudience(e)]}</p>
           </div>
         </div>
       </div>

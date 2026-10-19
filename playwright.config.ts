@@ -19,6 +19,9 @@ export default defineConfig({
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : [["list"]],
+  // Signing in and setting a password run bcrypt at the production cost,
+  // which can take several seconds on a busy machine.
+  expect: { timeout: 15_000 },
   use: {
     baseURL: BASE_URL,
     trace: "retain-on-failure",

@@ -41,7 +41,7 @@ export const PERSONAS: readonly Persona[] = [
     key: "jess",
     email: "jess.moorhouse@example.nz",
     label: "New volunteer, no training yet",
-    blurb: "Approved from the Infoodle form two days ago. Needs an initial visit before booking anything.",
+    blurb: "Signed up on the website and was approved two days ago. Needs an initial visit before booking anything.",
     surface: "Volunteer app",
   },
 ];

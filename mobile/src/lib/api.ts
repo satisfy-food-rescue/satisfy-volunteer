@@ -4,11 +4,13 @@ import type { ApiFailure } from "@satisfy/core/api";
 
 import { API_URL } from "./config";
 
-/** A failed request. `message` is written for the volunteer and safe to show. */
+/** A failed request. `message` is written for the volunteer and safe to show;
+ *  `fields` has a message per form field when the server sent them. */
 export class ApiError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    readonly fields: Record<string, string> = {},
   ) {
     super(message);
     this.name = "ApiError";
@@ -56,6 +58,7 @@ export async function api<T>(path: string, { method = "GET", body, signal }: Opt
   if (response.ok) return data as T;
   // Only sign out if the token that failed is still the current one.
   if (response.status === 401 && sentToken && sentToken === token) onUnauthorized?.();
-  const message = (data as ApiFailure | null)?.error ?? `Something went wrong (${response.status}). Please try again.`;
-  throw new ApiError(message, response.status);
+  const failure = data as ApiFailure | null;
+  const message = failure?.error ?? `Something went wrong (${response.status}). Please try again.`;
+  throw new ApiError(message, response.status, failure?.fields);
 }

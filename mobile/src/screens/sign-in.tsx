@@ -1,14 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import { StatusBar } from "expo-status-bar";
+import { router } from "expo-router";
 import { useRef, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, TextInput, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ActivityIndicator, Pressable, TextInput, View } from "react-native";
 
 import type { AuthConfig, DemoPersona, DemoPersonas } from "@satisfy/core/api";
 import { GoogleMark } from "@/components/brand/google-mark";
-import { BrandWaves, FoodIcon, Logo } from "@/components/brand/logo";
-import { LegalLinks } from "@/components/legal-links";
 import { Photo } from "@/components/photo";
+import { HeroLink, Notice, Panel, SignedOutFrame } from "@/components/signed-out";
 import { useToast } from "@/components/toast";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
@@ -26,7 +24,7 @@ export function SignInScreen() {
   const t = useTheme();
   const config = useAuthConfig();
   return (
-    <Frame>
+    <SignedOutFrame>
       {config.data ? (
         config.data.demo ? (
           <DemoPersonaList />
@@ -43,54 +41,7 @@ export function SignInScreen() {
       ) : (
         <ActivityIndicator color={t.white} style={{ paddingVertical: 32 }} accessibilityLabel="Loading" />
       )}
-    </Frame>
-  );
-}
-
-/** The teal brand band every signed-out screen sits on, with the privacy
- *  and terms links above the brand footer. */
-function Frame({ children }: { children: React.ReactNode }) {
-  const t = useTheme();
-  const insets = useSafeAreaInsets();
-  return (
-    <View style={{ flex: 1, backgroundColor: t.hero }}>
-      <StatusBar style="light" />
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
-        automaticallyAdjustKeyboardInsets
-        contentContainerStyle={{ paddingTop: insets.top + 24, paddingBottom: insets.bottom + 16, paddingHorizontal: 20, gap: 24, flexGrow: 1 }}
-      >
-        <Logo height={104} color={t.white} />
-        {children}
-        <View style={{ flex: 1 }} />
-        <LegalLinks onHero />
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginHorizontal: -20, paddingRight: 20 }}>
-          <View style={{ flex: 1, opacity: 0.9 }}>
-            <BrandWaves height={36} />
-          </View>
-          {(["broccoli", "carrot", "apple"] as const).map((k) => (
-            <FoodIcon key={k} kind={k} size={26} ringed />
-          ))}
-        </View>
-      </ScrollView>
-    </View>
-  );
-}
-
-/** An inline message under the form. Icon plus text, never colour alone. */
-function Notice({ tone, children }: { tone: "error" | "success"; children: string }) {
-  const t = useTheme();
-  return (
-    <View
-      accessibilityRole={tone === "error" ? "alert" : "text"}
-      accessibilityLiveRegion="polite"
-      style={{ flexDirection: "row", gap: 10, padding: 12, borderRadius: radius.lg, borderCurve: "continuous", backgroundColor: tone === "error" ? t.badTint : t.greenTint }}
-    >
-      <Icon name={tone === "error" ? "alert" : "checkCircle"} size={18} color={tone === "error" ? t.bad : t.greenText} />
-      <Text variant="small" tone={tone === "error" ? "bad" : "greenDeep"} style={{ flex: 1 }} selectable>
-        {children}
-      </Text>
-    </View>
+    </SignedOutFrame>
   );
 }
 
@@ -114,7 +65,6 @@ function errorText(e: unknown): string {
 type Mode = { kind: "signIn" } | { kind: "link"; firstTime: boolean };
 
 function SignInForm({ config }: { config: AuthConfig }) {
-  const t = useTheme();
   const auth = useAuth();
   const [mode, setMode] = useState<Mode>({ kind: "signIn" });
   const [email, setEmail] = useState("");
@@ -245,41 +195,18 @@ function SignInForm({ config }: { config: AuthConfig }) {
           />
         )}
       </Panel>
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => {
-          setError(null);
-          setMode({ kind: "link", firstTime: true });
-        }}
-        style={{ minHeight: 44, justifyContent: "center", paddingHorizontal: 8 }}
-      >
-        <Text variant="body" tone="white" center>
-          First time here?{" "}
-          <Text variant="bodyBold" tone="white" style={{ textDecorationLine: "underline", color: t.white }}>
-            Set up your password
-          </Text>
-        </Text>
-      </Pressable>
-    </>
-  );
-}
-
-function Panel({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
-  const t = useTheme();
-  return (
-    <View style={{ gap: 16, padding: 20, borderRadius: radius.card, borderCurve: "continuous", backgroundColor: t.card }}>
       <View style={{ gap: 4 }}>
-        <Text variant="display" accessibilityRole="header">
-          {title}
-        </Text>
-        {subtitle && (
-          <Text variant="body" tone="inkSoft">
-            {subtitle}
-          </Text>
-        )}
+        <HeroLink lead="New to Satisfy?" action="Sign up to volunteer" onPress={() => router.push("/sign-up")} />
+        <HeroLink
+          lead="Already volunteer but never signed in?"
+          action="Set up your password"
+          onPress={() => {
+            setError(null);
+            setMode({ kind: "link", firstTime: true });
+          }}
+        />
       </View>
-      {children}
-    </View>
+    </>
   );
 }
 
@@ -315,6 +242,7 @@ function DemoPersonaList() {
           <ActivityIndicator color={t.white} style={{ paddingVertical: 32 }} />
         )}
       </View>
+      <HeroLink lead="New to Satisfy?" action="Sign up to volunteer" onPress={() => router.push("/sign-up")} />
     </>
   );
 }

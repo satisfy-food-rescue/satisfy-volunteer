@@ -25,6 +25,12 @@ describe("email rendering", () => {
     expect(html).toContain("&lt;b&gt;hi&lt;/b&gt;");
   });
 
+  it("tells applicants why they got it", async () => {
+    const { text } = await renderEmail({ ...T.applicationReceived({ firstName: "Aroha" }), audience: "applicant" });
+    expect(text).toContain("because you applied to volunteer with Satisfy");
+    expect(text).toContain("Kia ora Aroha,");
+  });
+
   it("tells coordinators why they got it", async () => {
     const { text } = await renderEmail({ ...T.gapAlert({ shiftName: "Warehouse", dateISO: "2026-10-07", start: "09:00", end: "12:00", cause: "Brian away", shiftId: "s1" }), audience: "coordinator" });
     expect(text).toContain("Sent to the volunteer coordinator");
@@ -58,6 +64,23 @@ describe("templates", () => {
     const removed = T.adminAccessRemoved({ firstName: "Aroha", removedBy: "Phillipa" });
     expect(removed).toMatchObject({ kind: "ADMIN_ACCESS", ctaHref: "/app" });
     expect(EMAIL_KIND_LABEL[removed.kind]).toBe("Coordinator access");
+  });
+
+  it("word sign-up emails for who gets them", () => {
+    const received = T.applicationReceived({ firstName: "Aroha" });
+    expect(received.kind).toBe("APPLICATION_RECEIVED");
+    expect(received.ctaHref).toBeUndefined();
+    expect(received.body).toContain("initial visit");
+
+    const fresh = T.applicationNew({ applicationId: "a1", name: "Aroha Ngata", source: "app", suburb: "Kaiapoi", interests: ["Warehouse sorting", "Harvest"], availability: "Monday mornings", message: null });
+    expect(fresh).toMatchObject({ kind: "APPLICATION_NEW", subject: "New volunteer application from Aroha Ngata", ctaHref: "/admin/applications#a1" });
+    expect(fresh.body).toContain("Aroha Ngata from Kaiapoi signed up to volunteer on the app.");
+    expect(fresh.body).toContain("Availability: Monday mornings.");
+    expect(fresh.body).not.toContain("Their message");
+
+    const already = T.alreadyRegistered({ firstName: "Margaret" });
+    expect(already).toMatchObject({ kind: "ALREADY_REGISTERED", ctaHref: "/sign-in" });
+    for (const d of [received, fresh, already]) expect(EMAIL_KIND_LABEL[d.kind]).toBeTruthy();
   });
 
   it("marks last-minute callouts as push notifications", () => {

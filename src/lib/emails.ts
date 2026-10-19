@@ -19,7 +19,10 @@ import { pushToVolunteer } from "./push";
 // In demo mode emails are recorded as CAPTURED and never sent. Pushes still
 // reach phones signed in to the demo, which is how it is shown to people.
 
+/** A volunteer. */
 export type Recipient = { id: string; firstName: string; lastName?: string | null; email: string };
+/** Someone who has applied to volunteer and has no account yet. */
+export type ApplicantRecipient = { applicationId: string; firstName: string; lastName?: string | null; email: string };
 
 const capturing = new AsyncLocalStorage<true>();
 
@@ -45,30 +48,32 @@ function pushAsEmailBody(to: Recipient, body: string): string {
   return `Kia ora ${to.firstName},\n\n${body}\n\nNgā mihi nui,\nThe Satisfy volunteer team`;
 }
 
-/** Records a message for a volunteer, or for the coordinator when `to` is
- *  null, and schedules delivery. `ref` de-duplicates automated messages. A
- *  push draft goes to the volunteer's phones, or by email when they have not
- *  signed in to the app on one. */
-export async function queueEmail(to: Recipient | null, draft: EmailDraft, ref?: string) {
+/** Records a message for a volunteer, an applicant, or the coordinator when
+ *  `to` is null, and schedules delivery. `ref` de-duplicates automated
+ *  messages. A push draft goes to the volunteer's phones, or by email when
+ *  they have not signed in to the app on one. */
+export async function queueEmail(to: Recipient | ApplicantRecipient | null, draft: EmailDraft, ref?: string) {
   const e = env();
+  const volunteer = to && "id" in to ? to : null;
   let channel = draft.channel ?? "EMAIL";
   let body = draft.body;
   let capture = seeding() || isDemo();
   if (channel === "PUSH") {
-    if (!to) {
+    if (!volunteer) {
       channel = "EMAIL";
     } else if (!seeding()) {
-      const devices = await db.pushToken.count({ where: { volunteerId: to.id } });
+      const devices = await db.pushToken.count({ where: { volunteerId: volunteer.id } });
       if (devices > 0) capture = false;
       else if (!isDemo()) {
         channel = "EMAIL";
-        body = pushAsEmailBody(to, draft.body);
+        body = pushAsEmailBody(volunteer, draft.body);
       }
     }
   }
   const row = await db.email.create({
     data: {
-      volunteerId: to?.id ?? null,
+      volunteerId: volunteer?.id ?? null,
+      applicationId: to && "applicationId" in to ? to.applicationId : null,
       channel,
       toName: to ? fullName(to) : "Volunteer coordinator",
       toEmail: to?.email ?? e.COORDINATOR_EMAIL,
@@ -132,6 +137,11 @@ function scheduleDelivery(id: string) {
   }
 }
 
+/** Who a logged message is for, which picks its footer. */
+export function emailAudience(row: Pick<Email, "volunteerId" | "applicationId">) {
+  return row.volunteerId ? ("volunteer" as const) : row.applicationId ? ("applicant" as const) : ("coordinator" as const);
+}
+
 function toOutgoing(row: Email) {
   return {
     to: row.toEmail,
@@ -141,7 +151,7 @@ function toOutgoing(row: Email) {
     body: row.body,
     ctaLabel: row.ctaLabel,
     ctaHref: row.ctaHref,
-    audience: row.volunteerId ? ("volunteer" as const) : ("coordinator" as const),
+    audience: emailAudience(row),
     idempotencyKey: `email-${row.id}`,
   };
 }

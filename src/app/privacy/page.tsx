@@ -43,8 +43,9 @@ export default function PrivacyPage() {
               <p>Only what we need to run volunteering safely:</p>
               <LegalList>
                 <li>
-                  <Term>Your application.</Term> Your name, email address, phone number, suburb, year of birth, the roles you are
-                  interested in, your availability and anything you tell us in the volunteer form.
+                  <Term>Your application.</Term> When you sign up to volunteer: your name, email address, phone number, suburb, year
+                  of birth if you give it, the roles you are interested in, your availability, your emergency contact&apos;s name and
+                  phone number, and anything else you tell us in the sign-up form.
                 </li>
                 <li>
                   <Term>Your profile.</Term> Your phone number, suburb, emergency contact&apos;s name and phone number, a note about
@@ -135,8 +136,7 @@ export default function PrivacyPage() {
               </p>
               <LegalList>
                 <li>
-                  <Term>Infoodle</Term>, our supporter database, where the volunteer form arrives and where we keep your contact
-                  details.
+                  <Term>Infoodle</Term>, our supporter database, where we keep supporters&apos; contact details.
                 </li>
                 <li>
                   <Term>Resend</Term>, which delivers our emails.

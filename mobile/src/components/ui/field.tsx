@@ -2,12 +2,14 @@ import { TextInput, View, type TextInputProps } from "react-native";
 
 import { font, radius, useTheme } from "@/theme";
 
+import { Icon } from "./icon";
 import { Text } from "./text";
 
-type Props = TextInputProps & { label: string; hint?: string; optional?: boolean; ref?: React.Ref<TextInput> };
+type Props = TextInputProps & { label: string; hint?: string; optional?: boolean; error?: string; ref?: React.Ref<TextInput> };
 
-/** A labelled text input. Readonly fields show as muted, not disabled grey. */
-export function Field({ label, hint, optional, multiline, editable = true, style, ...rest }: Props) {
+/** A labelled text input. Readonly fields show as muted, not disabled grey.
+ *  An error shows under it with an icon, never colour alone. */
+export function Field({ label, hint, optional, error, multiline, editable = true, style, ...rest }: Props) {
   const t = useTheme();
   return (
     <View style={{ gap: 6 }}>
@@ -21,7 +23,7 @@ export function Field({ label, hint, optional, multiline, editable = true, style
         )}
       </Text>
       <TextInput
-        accessibilityLabel={label}
+        accessibilityLabel={error ? `${label}, ${error}` : label}
         accessibilityHint={hint}
         editable={editable}
         multiline={multiline}
@@ -36,8 +38,8 @@ export function Field({ label, hint, optional, multiline, editable = true, style
             paddingBottom: multiline ? 12 : 0,
             borderRadius: radius.lg,
             borderCurve: "continuous",
-            borderWidth: 1,
-            borderColor: t.input,
+            borderWidth: error ? 2 : 1,
+            borderColor: error ? t.bad : t.input,
             backgroundColor: editable ? t.card : t.muted,
             color: editable ? t.ink : t.mutedText,
             fontFamily: font.regular,
@@ -53,6 +55,27 @@ export function Field({ label, hint, optional, multiline, editable = true, style
           {hint}
         </Text>
       )}
+      {/* Read out with the input's label instead. */}
+      {error && <FieldErrorText hidden>{error}</FieldErrorText>}
+    </View>
+  );
+}
+
+/** A message about one field, under it. `hidden` keeps it from being read
+ *  twice when the control already announces it. */
+export function FieldErrorText({ children, hidden }: { children: string; hidden?: boolean }) {
+  const t = useTheme();
+  return (
+    <View
+      style={{ flexDirection: "row", gap: 6, alignItems: "flex-start" }}
+      importantForAccessibility={hidden ? "no-hide-descendants" : "auto"}
+      accessibilityElementsHidden={hidden}
+      accessibilityRole={hidden ? undefined : "alert"}
+    >
+      <Icon name="alert" size={14} color={t.bad} />
+      <Text variant="smallSemibold" tone="bad" style={{ flex: 1, marginTop: -2 }}>
+        {children}
+      </Text>
     </View>
   );
 }

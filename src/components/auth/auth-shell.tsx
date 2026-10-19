@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 /** The frame every signed-out page shares: the blue/teal brand band with the
  *  white logo, content that overlaps it, the privacy and terms links, and the
  *  brand footer. */
-export function SignedOutFrame({ children, width = "narrow" }: { children: React.ReactNode; width?: "narrow" | "wide" }) {
+export function SignedOutFrame({ children, width = "narrow" }: { children: React.ReactNode; width?: "narrow" | "form" | "wide" }) {
   return (
     <main id="main" className="flex flex-1 flex-col">
       <div className="bg-teal px-4 pb-24 pt-10 sm:pb-28 sm:pt-12">
@@ -19,7 +19,7 @@ export function SignedOutFrame({ children, width = "narrow" }: { children: React
         </Link>
       </div>
       <div className="-mt-16 flex flex-1 flex-col items-center px-4 pb-10 sm:-mt-20">
-        <div className={cn("w-full", width === "narrow" ? "max-w-[26rem]" : "max-w-3xl")}>
+        <div className={cn("w-full", { narrow: "max-w-[26rem]", form: "max-w-xl", wide: "max-w-3xl" }[width])}>
           {children}
           <LegalLinks className="mt-8" />
         </div>

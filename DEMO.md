@@ -38,7 +38,8 @@ Still as Tony:
 
 ## 5. Applications and the welcome call - 2 min
 
-- **Applications**. Three pending, mocked as arriving from the Infoodle sign-up form. Open Aroha Ngata and click **Approve**: account created and an invite to set a password emailed (it shows in the Outbox without its link, which is never stored).
+- **Sign up**. Signed out, open **/sign-up** (linked from the persona picker, and **Sign up to volunteer** in the app). Fill it in and send: the applicant sees what happens next, and the application lands in Phillipa's Applications with a confirmation and a coordinator email in the Outbox.
+- **Applications**. Three pending, from the website and the app sign-up forms. Open Aroha Ngata and click **Approve**: account created and an invite to set a password emailed (it shows in the Outbox without its link, which is never stored).
 - Open **Volunteers > Jess Moorhouse**. The banner says she has not had an initial visit yet, with her number to call. Click **Book initial visit**, pick a new time or the open slot, and book. Jess gets an email and the banner flips to the booked time.
 - While "on the call": **Edit details** to update her emergency contact or availability, and **Log a call** in Communication history. The timeline shows the call alongside every email she has been sent.
 - Under **Training record**, **Mark complete** asks for the date the stage was done, not just today.

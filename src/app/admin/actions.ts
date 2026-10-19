@@ -456,24 +456,34 @@ export async function approveApplication(id: string): Promise<ActionResult> {
   if (!app || app.status !== "PENDING") return { ok: false, error: "Application already reviewed." };
   const email = normaliseEmail(app.email);
   const existing = await db.volunteer.findUnique({ where: { email } });
-  if (existing) return { ok: false, error: "A volunteer with this email already exists." };
+  if (existing?.status === "ACTIVE") return { ok: false, error: `${fullName(existing)} already has an active account with this email. Decline this application and update their profile instead.` };
   const induction = await db.trainingSession.findFirst({ where: { startsAt: { gte: new Date() }, module: { code: INITIAL_VISIT_CODE } }, include: { rsvps: { where: { status: "GOING" } } }, orderBy: { startsAt: "asc" } });
-  const volunteer = await db.volunteer.create({
-    data: {
-      firstName: app.firstName, lastName: app.lastName, email, phone: app.phone, suburb: app.suburb, birthYear: app.birthYear,
-      roles: app.interests.length ? sortRoles(app.interests) : ["WAREHOUSE"], availabilityNote: app.availability, infoodleId: app.infoodleId, infoodleSyncedAt: app.infoodleId ? new Date() : null, joinedAt: new Date(),
-    },
-  });
-  const visit = induction && induction.rsvps.length < induction.capacity ? induction : null;
+  // Undefined leaves a returning volunteer's existing value alone.
+  const details = {
+    firstName: app.firstName, lastName: app.lastName, phone: app.phone ?? undefined, suburb: app.suburb ?? undefined, birthYear: app.birthYear ?? undefined,
+    roles: app.interests.length ? sortRoles(app.interests) : ["WAREHOUSE" as const], availabilityNote: app.availability,
+    emergencyName: app.emergencyName ?? undefined, emergencyPhone: app.emergencyPhone ?? undefined,
+  };
+  // Someone coming back keeps their account, history and training records.
+  const volunteer = existing
+    ? await db.volunteer.update({ where: { id: existing.id }, data: { ...details, status: "ACTIVE" } })
+    : await db.volunteer.create({ data: { ...details, email, joinedAt: new Date() } });
+  const visit = induction && (induction.rsvps.length < induction.capacity || induction.rsvps.some((r) => r.volunteerId === volunteer.id)) ? induction : null;
   if (visit) {
-    await db.sessionRsvp.create({ data: { sessionId: visit.id, volunteerId: volunteer.id, status: "GOING" } });
+    await db.sessionRsvp.upsert({ where: { sessionId_volunteerId: { sessionId: visit.id, volunteerId: volunteer.id } }, create: { sessionId: visit.id, volunteerId: volunteer.id, status: "GOING" }, update: { status: "GOING" } });
   }
   await db.application.update({ where: { id }, data: { status: "APPROVED", reviewedAt: new Date(), volunteerId: volunteer.id } });
-  await db.contactLog.create({ data: { volunteerId: volunteer.id, authorId: admin.id, kind: "ACCOUNT_CREATED", summary: "Application approved." } });
+  // What they were sent as an applicant joins their communication history.
+  await db.email.updateMany({ where: { applicationId: id, volunteerId: null }, data: { volunteerId: volunteer.id } });
+  await db.contactLog.create({
+    data: existing
+      ? { volunteerId: volunteer.id, authorId: admin.id, kind: "STATUS_CHANGED", summary: "Signed up again. Application approved and account reactivated." }
+      : { volunteerId: volunteer.id, authorId: admin.id, kind: "ACCOUNT_CREATED", summary: "Application approved." },
+  });
   await queueEmail(volunteer, T.applicationApproved({ firstName: volunteer.firstName, inductionAt: visit?.startsAt, inductionLocation: visit?.location }));
-  const invited = await sendSignInLink(volunteer, "INVITE");
+  const invited = await sendSignInLink(volunteer, volunteer.passwordHash || volunteer.lastSignInAt ? "PASSWORD_RESET" : "INVITE");
   revalidateAll();
-  return { ok: true, message: `${app.firstName} approved. Account created${visit ? " and pencilled into the next initial visit" : ""}.${invited ? "" : " The sign-in invite could not be sent; resend it from their profile."}` };
+  return { ok: true, message: `${app.firstName} approved. ${existing ? "Their old account is active again" : "Account created"}${visit ? " and pencilled into the next initial visit" : ""}.${invited ? "" : " The sign-in invite could not be sent; resend it from their profile."}` };
 }
 
 export async function declineApplication(id: string, note: string): Promise<ActionResult> {

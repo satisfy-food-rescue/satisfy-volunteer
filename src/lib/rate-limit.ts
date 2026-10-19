@@ -52,4 +52,7 @@ export const LIMITS = {
   /** Sign-in link emails per address requested. */
   linkPerEmail: { limit: 3, windowMs: 60 * 60_000 },
   linkPerIp: { limit: 10, windowMs: 60 * 60_000 },
+  /** Sign-up form submissions, each of which can send an email. */
+  applyPerEmail: { limit: 3, windowMs: 60 * 60_000 },
+  applyPerIp: { limit: 10, windowMs: 60 * 60_000 },
 } satisfies Record<string, Limit>;
