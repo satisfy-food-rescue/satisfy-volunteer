@@ -40,5 +40,5 @@ test("a duplicate email is refused", async ({ page }) => {
 test("the outbox shows delivery status", async ({ page }) => {
   await signInAs(page, "phillipa");
   await page.goto("/admin/outbox");
-  await expect(page.getByRole("heading", { name: "Every email and notification the system has sent" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Outbox", level: 1 })).toBeVisible();
 });

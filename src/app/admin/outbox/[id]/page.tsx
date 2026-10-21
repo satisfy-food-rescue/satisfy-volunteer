@@ -9,7 +9,7 @@ import { ORG } from "@/lib/brand";
 import { env, isDemo } from "@/lib/env";
 import { emailAudience } from "@/lib/emails";
 import { FOOTER_NOTE } from "@/lib/mailer";
-import { BrandFooter, Logo, LogoIcon } from "@/components/brand/logo";
+import { Logo, LogoIcon } from "@/components/brand/logo";
 import { DeliveryChip } from "@/components/shared/status-chip";
 
 export const metadata = { title: "Message preview" };
@@ -91,8 +91,14 @@ export default async function EmailPreviewPage({ params }: { params: Promise<{ i
               </p>
             )}
           </div>
-          <BrandFooter className="pt-2" />
-          <div className="px-6 pb-5 pt-3 text-xs leading-relaxed text-muted-foreground">
+          {/* The brand ribbons as the email draws them: a simple three-colour
+              rule. The page's own footer already shows the full ribbons. */}
+          <div className="grid h-1 grid-cols-3" aria-hidden>
+            <span className="bg-teal" />
+            <span className="bg-(--brand-orange-50)" />
+            <span className="bg-green" />
+          </div>
+          <div className="bg-background px-6 py-4 text-xs leading-relaxed text-muted-foreground">
             <p>{ORG.name} · {ORG.base}</p>
             <p>{FOOTER_NOTE[emailAudience(e)]}</p>
           </div>

@@ -2,33 +2,28 @@ import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+/** A headline number. The icon only says what is counted, so it is always
+ *  the same colour; anything worth flagging belongs in the hint, in words.
+ *  The label row is as tall as two lines of label, so numbers line up across
+ *  a row of tiles whichever labels wrap. */
 export function StatTile({
   label,
   value,
   hint,
   icon: Icon,
-  tone = "neutral",
   href,
 }: {
   label: string;
   value: string | number;
   hint?: string;
   icon: LucideIcon;
-  tone?: "neutral" | "good" | "warn" | "bad" | "info";
   href?: string;
 }) {
-  const toneCls = {
-    neutral: "bg-muted text-ink",
-    good: "bg-status-good-bg text-status-good",
-    warn: "bg-status-warn-bg text-status-warn",
-    bad: "bg-status-bad-bg text-status-bad",
-    info: "bg-status-info-bg text-status-info",
-  }[tone];
   const body = (
     <>
-      <div className="flex items-start justify-between gap-3">
-        <p className="text-sm font-semibold text-muted-foreground">{label}</p>
-        <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", toneCls)}>
+      <div className="flex min-h-9 items-center justify-between gap-3">
+        <p className="line-clamp-2 text-sm font-semibold leading-tight text-muted-foreground">{label}</p>
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-teal-tint text-teal">
           <Icon className="size-5" aria-hidden />
         </span>
       </div>

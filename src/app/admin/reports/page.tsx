@@ -60,12 +60,12 @@ export default async function ReportsPage() {
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-8">
-      <PageHeader eyebrow="Reports" title="How the volunteer programme is tracking" description={`Six months to ${formatMonth(today)}. Hours come from marked attendance, so they are only as good as the roster.`} />
+      <PageHeader eyebrow="Overview" title="Reports" description={`How the volunteer programme is tracking over the six months to ${formatMonth(today)}. Hours come from marked attendance, so they are only as good as the roster.`} />
       <div className="grid grid-cols-1 gap-4 @xl/admin:grid-cols-2 @5xl/admin:grid-cols-4">
-        <StatTile label="Volunteer hours, last 30 days" value={Math.round(hours30)} hint={`${last30.filter((a) => a.status === "ATTENDED").length} attended shifts`} icon={Clock} tone="good" />
-        <StatTile label="No-show rate" value={`${totalShifts ? ((totalNoShow / totalShifts) * 100).toFixed(1) : "0.0"}%`} hint={`${totalNoShow} of ${totalShifts} rostered shifts, 6 months`} icon={UserX} tone={totalNoShow / Math.max(totalShifts, 1) > 0.05 ? "warn" : "neutral"} />
-        <StatTile label="Training compliance" value={`${active.length ? Math.round((compliant / active.length) * 100) : 100}%`} hint={`${compliant} of ${active.length} active volunteers fully current`} icon={ShieldCheck} tone={compliant / Math.max(active.length, 1) >= 0.9 ? "good" : "warn"} />
-        <StatTile label="Month-on-month retention" value={`${retention.filter((r) => !r.na).slice(-1)[0]?.value ?? 0}%`} hint="Of last month's active volunteers, share active again this month" icon={Repeat} tone="neutral" />
+        <StatTile label="Volunteer hours, last 30 days" value={Math.round(hours30)} hint={`${last30.filter((a) => a.status === "ATTENDED").length} attended shifts`} icon={Clock} />
+        <StatTile label="No-show rate" value={`${totalShifts ? ((totalNoShow / totalShifts) * 100).toFixed(1) : "0.0"}%`} hint={`${totalNoShow} of ${totalShifts} rostered shifts, 6 months`} icon={UserX} />
+        <StatTile label="Training compliance" value={`${active.length ? Math.round((compliant / active.length) * 100) : 100}%`} hint={`${compliant} of ${active.length} active volunteers fully current`} icon={ShieldCheck} />
+        <StatTile label="Month-on-month retention" value={`${retention.filter((r) => !r.na).slice(-1)[0]?.value ?? 0}%`} hint="Of last month's active volunteers, share active again this month" icon={Repeat} />
       </div>
 
       <div className="grid grid-cols-1 gap-6 @4xl/admin:grid-cols-2">

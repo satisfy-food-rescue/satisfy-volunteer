@@ -24,7 +24,7 @@ export default async function RosterPage({ searchParams }: { searchParams: Promi
     <div className="mx-auto flex max-w-7xl flex-col gap-8">
       <PageHeader
         eyebrow="Roster"
-        title={view === "week" ? "This week's shifts" : "Month at a glance"}
+        title="Roster"
         description={gaps.length ? `${gaps.length} shift${gaps.length === 1 ? " in view still needs" : "s in view still need"} cover.` : "Every shift in view has its minimum crew."}
         actions={
           <>

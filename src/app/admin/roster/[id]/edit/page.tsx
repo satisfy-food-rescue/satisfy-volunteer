@@ -23,7 +23,7 @@ export default async function EditShiftPage({ params }: { params: Promise<{ id: 
         <ChevronLeft className="size-5" aria-hidden /> {view.name}
       </Link>
       <PageHeader
-        eyebrow={view.isDraft ? "Draft" : "Edit shift"}
+        eyebrow="Roster"
         title={`Edit ${view.name}`}
         description={
           view.isDraft

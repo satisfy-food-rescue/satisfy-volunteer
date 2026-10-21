@@ -43,7 +43,7 @@ export function VolunteerFilters() {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-3">
-        <div className="relative min-w-60 flex-1">
+        <div className="relative w-full @4xl/admin:w-auto @4xl/admin:min-w-60 @4xl/admin:flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
           <Input aria-label="Search volunteers" placeholder="Search by name, suburb or email" value={q} onChange={(e) => { setQ(e.target.value); search.run(e.target.value); }} className="h-11 bg-card pl-9 text-base" />
         </div>

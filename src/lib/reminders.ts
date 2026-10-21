@@ -58,7 +58,7 @@ export const REMINDER_RULES = [
     when: "Still uncovered at the shift type's alert threshold (24 hours by default)",
     audience: "Coordinator",
     template: "Uncovered shift alert",
-    detail: "Time to pick up the phone. Route shifts can be set to alert earlier than warehouse shifts in Settings > Shift types.",
+    detail: "Time to pick up the phone. Route shifts can be set to alert earlier than warehouse shifts in Set-up > Shift types.",
   },
 ] as const;
 

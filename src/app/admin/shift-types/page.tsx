@@ -20,7 +20,7 @@ export default async function ShiftTypesPage() {
   const templates = await db.shiftTemplate.findMany({ where: { active: true }, include: { route: true }, orderBy: { order: "asc" } });
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-8">
-      <PageHeader eyebrow="Roster" title="Shift types" description="Names, times, crew sizes and who volunteers work with. Last-minute thresholds are set per shift type, so route shifts can call for cover earlier than the warehouse." />
+      <PageHeader eyebrow="Set-up" title="Shift types" description="Names, times, crew sizes and who volunteers work with. Last-minute thresholds are set per shift type, so route shifts can call for cover earlier than the warehouse." />
       <div className="flex flex-col gap-3">
         {templates.map((t) => {
           // Ad hoc shifts (harvests) are made one at a time and are never
@@ -43,12 +43,12 @@ export default async function ShiftTypesPage() {
                 </div>
                 {!adHoc && (
                   <dl className="grid w-full grid-cols-2 gap-2 @xl/admin:w-auto">
-                    <div className="rounded-xl bg-orange-tint px-3 py-2">
-                      <dt className="flex items-center gap-1.5 text-xs font-semibold text-orange-text"><Smartphone className="size-3.5" aria-hidden /> Push to last-minute</dt>
+                    <div className="rounded-xl bg-muted px-3 py-2">
+                      <dt className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground"><Smartphone className="size-3.5" aria-hidden /> Push to last-minute</dt>
                       <dd className="font-display text-base font-bold text-ink tabular">{hoursLabel(t.lastMinuteHours)}</dd>
                     </div>
-                    <div className="rounded-xl bg-status-warn-bg px-3 py-2">
-                      <dt className="flex items-center gap-1.5 text-xs font-semibold text-status-warn"><BellRing className="size-3.5" aria-hidden /> Alert coordinator</dt>
+                    <div className="rounded-xl bg-muted px-3 py-2">
+                      <dt className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground"><BellRing className="size-3.5" aria-hidden /> Alert coordinator</dt>
                       <dd className="font-display text-base font-bold text-ink tabular">{hoursLabel(t.escalateHours)}</dd>
                     </div>
                   </dl>

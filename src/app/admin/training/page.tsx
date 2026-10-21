@@ -6,7 +6,7 @@ import { isDemo } from "@/lib/env";
 import { db } from "@/lib/db";
 import { formatInstant, formatInstantRange, todayISO, formatDate } from "@/lib/dates";
 import { DELIVERY_LABEL, EMAIL_KIND_LABEL, ROLE_SHORT, fullName } from "@/lib/domain";
-import { moduleStatuses, type ModuleStatus } from "@/lib/training";
+import { moduleStatuses, trainingSummary, type ModuleStatus } from "@/lib/training";
 import { REMINDER_RULES } from "@/lib/reminders";
 import { PageHeader } from "@/components/shared/page-header";
 import { TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -64,7 +64,8 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
     return { m, required: rel.length, complete: count("COMPLETE"), dueSoon: count("DUE_SOON"), overdue: count("OVERDUE"), notStarted: count("NOT_STARTED") };
   });
   const allRows: Row[] = perVolunteer.flatMap((x) => x.statuses.filter((s) => s.required).map((s) => ({ v: x.v, s })));
-  const attentionCount = allRows.filter((r) => ATTENTION.includes(r.s.status)).length;
+  // The same count as the sidebar badge: people, not records.
+  const overdueCount = perVolunteer.filter((x) => trainingSummary(x.statuses).overdue > 0).length;
   const status = sp.status ?? "attention";
   const q = (sp.q ?? "").toLowerCase();
   const sort = (SORTS as readonly string[]).includes(sp.sort ?? "") ? (sp.sort as (typeof SORTS)[number]) : "expiry";
@@ -95,13 +96,13 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-8">
-      <PageHeader eyebrow="Training" title="Modules, sessions and reminders" description="Configure what each role must complete and how often. The gate in the volunteer app reads directly from these settings." />
+      <PageHeader eyebrow="People" title="Training" description="Modules, sessions and reminders: what each role must complete and how often. The volunteer app reads these settings to decide who can book which shifts." />
       <UrlTabs value={tab === "sessions" || tab === "reminders" || tab === "people" ? tab : "modules"} className="gap-6">
         <TabsList variant="line" className="w-full justify-start overflow-x-auto overflow-y-hidden scrollbar-none">
           <TabsTrigger value="modules">Modules</TabsTrigger>
           <TabsTrigger value="people">
             People
-            {attentionCount > 0 && <span className="rounded-full bg-status-bad-bg px-2 py-0.5 text-xs font-bold leading-none text-status-bad tabular" aria-label={`${attentionCount} need attention`}>{attentionCount}</span>}
+            {overdueCount > 0 && <span className="rounded-full bg-status-bad-bg px-2 py-0.5 text-xs font-bold leading-none text-status-bad tabular">{overdueCount} overdue</span>}
           </TabsTrigger>
           <TabsTrigger value="sessions">Sessions</TabsTrigger>
           <TabsTrigger value="reminders">Reminders</TabsTrigger>
