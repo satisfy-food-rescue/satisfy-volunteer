@@ -74,7 +74,7 @@ export function monthStart(iso: string): string {
 
 export function monthEnd(iso: string): string {
   const [y, m] = iso.split("-").map(Number);
-  return dateToISO(new Date(Date.UTC(y, m, 0)));
+  return dateToISO(new Date(Date.UTC(y, m - 1, 0)));
 }
 
 export const WEEKDAY_SHORT = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
