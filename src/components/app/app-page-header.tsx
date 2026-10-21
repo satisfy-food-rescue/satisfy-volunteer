@@ -17,7 +17,8 @@ export function BackLink({ href, label, className }: { href: string; label: stri
 /**
  * The column every volunteer page sits in: phone gutters on a phone, wider
  * gutters and a capped measure once <main> has room. `reading` keeps forms
- * and long text to a comfortable line length.
+ * and long text to a comfortable line length, still starting from the same
+ * left edge as every other page so titles do not jump between tabs.
  */
 export function AppPage({
   width = "wide",
@@ -31,8 +32,8 @@ export function AppPage({
   return (
     <div
       className={cn(
-        "mx-auto flex w-full flex-col gap-6 px-5 pb-6 pt-5 @3xl/app:gap-8 @3xl/app:px-8 @3xl/app:pb-12 @3xl/app:pt-8 @6xl/app:px-12 @6xl/app:pt-10",
-        width === "wide" ? "max-w-[88rem]" : "max-w-[52rem]",
+        "mx-auto flex w-full max-w-[88rem] flex-col gap-6 px-5 pb-6 pt-5 @3xl/app:gap-8 @3xl/app:px-8 @3xl/app:pb-12 @3xl/app:pt-8 @6xl/app:px-12 @6xl/app:pt-10",
+        width === "reading" && "*:max-w-[46rem]",
         className,
       )}
     >

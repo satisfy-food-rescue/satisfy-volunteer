@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarCheck, Clock, History, LifeBuoy, Link2, Mail, MapPin, Phone, UserPlus, XCircle } from "lucide-react";
+import { CalendarCheck, Clock, History, LifeBuoy, Link2, Mail, MapPin, Phone, XCircle } from "lucide-react";
 import { requireAdmin } from "@/lib/session";
 import { env } from "@/lib/env";
 import { db } from "@/lib/db";
@@ -26,14 +26,14 @@ export default async function ApplicationsPage() {
   const signUpUrl = new URL("/sign-up", env().APP_URL).toString();
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-8">
-      <PageHeader eyebrow="Applications" title="New volunteer applications" description="People who sign up to volunteer on the website or in the app. Approving creates their account and emails them an invite to sign in. Then give them a call and book their initial visit from their profile." />
+      <PageHeader eyebrow="People" title="Applications" description="New volunteers who sign up on the website or in the app wait here for you to review." />
 
       <div className="flex items-start gap-3 rounded-2xl border border-border bg-card p-4 text-sm">
         <Link2 className="mt-0.5 size-5 shrink-0 text-sky" aria-hidden />
         <div className="min-w-0">
           <p className="font-bold text-ink">Share the sign-up form</p>
           <p className="text-muted-foreground">
-            <a href={signUpUrl} target="_blank" rel="noreferrer" className="break-all font-semibold text-teal hover:underline">{signUpUrl}</a>, or Sign up to volunteer in the Satisfy volunteer app. Each application is emailed to you and waits here. On approval: account created, sign-in invite emailed{induction ? `, pencilled into the next open initial-visit slot (${formatInstant(induction.startsAt)}) if there is room` : ""}.
+            <a href={signUpUrl} target="_blank" rel="noreferrer" className="break-all font-semibold text-teal hover:underline">{signUpUrl}</a>, or Sign up to volunteer in the Satisfy volunteer app. Each one is emailed to you as well. Approving creates their account and emails them a sign-in invite{induction ? `, and pencils them into the next initial visit (${formatInstant(induction.startsAt)}) if there is room` : ""}. Then give them a call, and book their initial visit from their profile if they are not booked in yet.
           </p>
         </div>
       </div>
@@ -70,8 +70,7 @@ export default async function ApplicationsPage() {
                 )}
               </div>
             </div>
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
-              <p className="inline-flex items-start gap-2 text-sm text-muted-foreground"><UserPlus className="mt-0.5 size-4 shrink-0 text-sky" aria-hidden />Approving creates the account and emails a sign-in invite. Book the initial visit from their profile.</p>
+            <div className="mt-4 flex flex-wrap items-center justify-end gap-3 border-t border-border pt-4">
               <ApplicationReview id={a.id} firstName={a.firstName} />
             </div>
           </article>

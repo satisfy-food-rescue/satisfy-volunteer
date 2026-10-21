@@ -9,13 +9,14 @@ import { E2E_DATABASE_URL } from "./tests/e2e/support/database-url";
 // Locally the app is built first; CI builds in an earlier step and sets
 // E2E_SKIP_BUILD.
 
-const PORT = 3200;
+// E2E_PORT lets runs in parallel worktrees keep to their own servers.
+const PORT = Number(process.env.E2E_PORT ?? 3200);
+const BASE_URL = `http://localhost:${PORT}`;
 
 // Sign in with Apple is configured with a throwaway key, so the button shows
 // and the round trip can be followed up to Apple, which the tests stand in
 // for (tests/e2e/apple.spec.ts).
 const APPLE_TEST_KEY = generateKeyPairSync("ec", { namedCurve: "P-256" }).privateKey.export({ type: "pkcs8", format: "pem" }).toString();
-const BASE_URL = `http://localhost:${PORT}`;
 
 export default defineConfig({
   testDir: "tests/e2e",

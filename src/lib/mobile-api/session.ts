@@ -4,7 +4,7 @@ import type { Volunteer } from "@/generated/prisma/client";
 import { dateToISO, todayISO } from "../dates";
 import { inHarvestPool, sortRoles } from "../domain";
 import { isDemo } from "../env";
-import { coverableGaps, trainingContext } from "../volunteer-data";
+import { coverGaps, coverableGaps, trainingContext } from "../volunteer-data";
 
 export function meView(v: Volunteer): Me {
   return {
@@ -27,7 +27,8 @@ export function meView(v: Volunteer): Me {
 /** Badges count exactly what the web tab bar does (src/app/app/layout.tsx). */
 export async function mobileSession(me: Volunteer): Promise<MobileSession> {
   const today = todayISO();
-  const [coverable, training] = await Promise.all([coverableGaps(me.id, today), trainingContext(me, today)]);
+  const [gaps, training] = await Promise.all([coverGaps(me.id, today), trainingContext(me, today)]);
+  const coverable = coverableGaps(gaps, { me, statuses: training.statuses, today });
   return {
     me: meView(me),
     today,

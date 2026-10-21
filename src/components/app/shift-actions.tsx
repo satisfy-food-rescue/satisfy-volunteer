@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Ban, CheckCircle2, HandHelping, Lock } from "lucide-react";
+import { Ban, CalendarOff, CheckCircle2, HandHelping, Lock } from "lucide-react";
 import { bookShift, cancelBooking } from "@/app/app/actions";
 import { ActionButton } from "./action-button";
 import { Button } from "@/components/ui/button";
@@ -40,9 +40,12 @@ export function ShiftActions({ state, compact = false }: { state: ShiftActionSta
         </p>
         {!compact &&
           (state.mine.source === "REGULAR" ? (
-            <Button variant="outline" size="lg" className="h-12 text-base" render={<Link href="/app/slot" />}>
-              Going to be away? Mark me away
-            </Button>
+            <div className="flex flex-col gap-2">
+              <p className="text-sm text-muted-foreground">Going to be away? Your place goes to someone who can cover.</p>
+              <Button variant="outline" size="lg" className="h-12 text-base" render={<Link href="/app/slot" />}>
+                <CalendarOff className="size-5" aria-hidden /> Mark me away
+              </Button>
+            </div>
           ) : (
             <ActionButton variant="outline" className="h-12 text-base" action={() => cancelBooking(state.mine!.id)} confirm={{ title: "Cancel this booking?", description: "Your place opens up for someone else. You can book it again while there is room.", confirmLabel: "Cancel booking", cancelLabel: "Keep booking" }}>
               Cancel my booking
@@ -53,15 +56,16 @@ export function ShiftActions({ state, compact = false }: { state: ShiftActionSta
   }
   if (!state.eligible) {
     return (
-      <div className="rounded-xl border border-status-warn/30 bg-status-warn-bg p-4 text-status-warn">
-        <p className="flex items-start gap-2 font-semibold">
-          <Lock className="mt-0.5 size-5 shrink-0" aria-hidden />
+      // Grey like every lock: orange is for shifts that need cover.
+      <div className="rounded-xl bg-status-neutral-bg p-4 text-status-neutral">
+        <p className="flex items-start gap-2 font-semibold text-ink">
+          <Lock className="mt-0.5 size-5 shrink-0 text-status-neutral" aria-hidden />
           <span>{state.reason}</span>
         </p>
         <Button
           variant="outline"
           size="lg"
-          className="mt-3 h-12 w-full border-status-warn/40 bg-card text-base text-status-warn hover:bg-card"
+          className="mt-3 h-12 w-full bg-card text-base"
           render={<Link href={state.missingRole ? (state.harvest ? "/app/harvest" : "/app/profile") : state.blockerModuleCode ? `/app/training/${state.blockerModuleCode}` : "/app/training"} />}
         >
           {state.missingRole ? (state.harvest ? "Join the harvest pool" : "Ask to change my roles") : "Go to training"}

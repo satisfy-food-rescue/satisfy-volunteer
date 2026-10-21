@@ -37,7 +37,7 @@ Or set `DEMO_MODE=1` in `.env` for the one-click persona picker. Without `RESEND
 | `pnpm lint` / `pnpm typecheck` | ESLint and TypeScript |
 | `pnpm test` | Unit tests (Vitest, `tests/unit`), no database |
 | `pnpm test:integration` | Outbox, push, sign-in links, the app's sign-in handoff and jobs against Postgres (`satisfy_test`, created automatically) |
-| `pnpm test:e2e` | Playwright against a production build with real sign-in (`satisfy_e2e`, recreated each run) |
+| `pnpm test:e2e` | Playwright against a production build with real sign-in (`satisfy_e2e`, recreated each run) on port 3200; set `E2E_PORT` to run beside another checkout |
 | `pnpm test:smoke` | Every page as every persona and every native app endpoint, against a running demo server (see CI) |
 | `pnpm db:migrate` | Create and apply a migration after editing `prisma/schema.prisma` |
 | `pnpm db:deploy` | Apply pending migrations (what the container does on start) |

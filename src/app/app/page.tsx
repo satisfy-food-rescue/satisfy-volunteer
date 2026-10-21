@@ -64,11 +64,14 @@ export default async function HomePage() {
   const today = todayISO();
   const { next, later, year, coverable, harvest, alert, empty } = await loadHome(me, today);
   const others = next ? next.confirmed.filter((a) => a.volunteerId !== me.id) : [];
+  // Before a first shift, the getting-started alert says what the empty
+  // next-shift card would, so the card carries it and the alert goes.
+  const onboarding = !next && alert?.tone === "info" ? alert : null;
   const AlertIcon = alert?.tone === "info" ? GraduationCap : AlertTriangle;
   const heroPhoto = next ? shiftPhoto(next.kind) : "team";
   // Things that want the volunteer's attention, beside the agenda on wide screens.
   const prompts = [
-    alert && (
+    alert && !onboarding && (
       <Link
         key="alert"
         href="/app/training"
@@ -183,10 +186,10 @@ export default async function HomePage() {
             </Link>
           ) : (
             <div className="rounded-2xl bg-card p-5 shadow-raised ring-1 ring-border @3xl/app:rounded-3xl @3xl/app:p-8">
-              <p id="next-shift" className="eyebrow">Next shift</p>
-              <p className="mt-1.5 text-xl font-bold text-ink @3xl/app:mt-3 @3xl/app:text-3xl">No shifts booked yet</p>
+              <p id="next-shift" className="eyebrow">{onboarding ? "Getting started" : "Next shift"}</p>
+              <p className="mt-1.5 text-xl font-bold text-ink @3xl/app:mt-3 @3xl/app:text-3xl">{onboarding?.title ?? "No shifts booked yet"}</p>
               <p className="mt-1 text-sm text-muted-foreground @3xl/app:mt-2 @3xl/app:text-base">
-                {empty.text}
+                {onboarding?.text ?? empty.text}
               </p>
               <Button className="mt-4 h-12 w-full text-base @3xl/app:mt-6 @3xl/app:w-auto @3xl/app:px-6" render={<Link href={empty.target === "training" ? "/app/training" : "/app/shifts"} />}>
                 {empty.cta}
@@ -197,47 +200,49 @@ export default async function HomePage() {
       </div>
 
       <div className="mx-auto mt-6 flex w-full max-w-[88.5rem] flex-col gap-6 px-5 @3xl/app:mt-14 @3xl/app:gap-10 @3xl/app:px-8 @6xl/app:px-12">
-        <div className={cn("grid gap-6 @3xl/app:gap-x-6", next && prompts.length > 0 && "@5xl/app:grid-cols-12")}>
-          {/* On a phone the alert leads, the agenda follows, then the rest. */}
-          {next && (
-            <section aria-labelledby="later-h" className="order-2 @5xl/app:order-none @5xl/app:col-span-8">
-              <h2 id="later-h" className="mb-2.5 text-xl text-ink @3xl/app:mb-4 @3xl/app:text-2xl">
-                {later.length > 0 ? "After that" : "Your shifts"}
-              </h2>
-              <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-                {later.map((view) => (
-                  <AgendaRow key={view.shift.id} view={view} meId={me.id} />
+        {(next || prompts.length > 0) && (
+          <div className={cn("grid gap-6 @3xl/app:gap-x-6", next && prompts.length > 0 && "@5xl/app:grid-cols-12")}>
+            {/* On a phone the alert leads, the agenda follows, then the rest. */}
+            {next && (
+              <section aria-labelledby="later-h" className="order-2 @5xl/app:order-none @5xl/app:col-span-8">
+                <h2 id="later-h" className="mb-2.5 text-xl text-ink @3xl/app:mb-4 @3xl/app:text-2xl">
+                  {later.length > 0 ? "After that" : "Your shifts"}
+                </h2>
+                <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+                  {later.map((view) => (
+                    <AgendaRow key={view.shift.id} view={view} meId={me.id} />
+                  ))}
+                  <li>
+                    <Link href="/app/slot" className="group flex items-center gap-4 px-4 py-3 text-teal transition-colors hover:bg-teal-tint-soft @3xl/app:px-5 @3xl/app:py-4">
+                      <span className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-teal-tint">
+                        <CalendarOff className="size-6" aria-hidden />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block font-bold">Can&apos;t make one? Mark me away</span>
+                        <span className="block text-sm text-muted-foreground">Your shifts go to someone who can cover.</span>
+                      </span>
+                      <ChevronRight className="size-5 shrink-0 transition-transform group-hover:translate-x-0.5" aria-hidden />
+                    </Link>
+                  </li>
+                </ul>
+              </section>
+            )}
+            {prompts.length > 0 && (
+              <section
+                aria-label="Needs you"
+                className={cn(
+                  "contents",
+                  next ? "@5xl/app:col-span-4 @5xl/app:flex @5xl/app:flex-col @5xl/app:gap-4 @5xl/app:pt-12" : "@3xl/app:grid @3xl/app:grid-cols-[repeat(auto-fit,minmax(18rem,1fr))] @3xl/app:gap-4",
+                )}
+              >
+                {prompts.map((p, i) => (
+                  // The alert comes before the agenda on a phone, the others after.
+                  <div key={i} className={cn("[&>a]:h-full", i === 0 && alert && !onboarding ? "order-1 @5xl/app:order-none" : "order-3 @5xl/app:order-none")}>{p}</div>
                 ))}
-                <li>
-                  <Link href="/app/slot" className="group flex items-center gap-4 px-4 py-3 text-teal transition-colors hover:bg-teal-tint-soft @3xl/app:px-5 @3xl/app:py-4">
-                    <span className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-teal-tint">
-                      <CalendarOff className="size-6" aria-hidden />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block font-bold">Can&apos;t make one? Mark me away</span>
-                      <span className="block text-sm text-muted-foreground">Your shifts go to someone who can cover.</span>
-                    </span>
-                    <ChevronRight className="size-5 shrink-0 transition-transform group-hover:translate-x-0.5" aria-hidden />
-                  </Link>
-                </li>
-              </ul>
-            </section>
-          )}
-          {prompts.length > 0 && (
-            <section
-              aria-label="Needs you"
-              className={cn(
-                "contents",
-                next ? "@5xl/app:col-span-4 @5xl/app:flex @5xl/app:flex-col @5xl/app:gap-4 @5xl/app:pt-12" : "@3xl/app:grid @3xl/app:grid-cols-[repeat(auto-fit,minmax(18rem,1fr))] @3xl/app:gap-4",
-              )}
-            >
-              {prompts.map((p, i) => (
-                // The alert comes before the agenda on a phone, the others after.
-                <div key={i} className={cn("[&>a]:h-full", i === 0 && alert ? "order-1 @5xl/app:order-none" : "order-3 @5xl/app:order-none")}>{p}</div>
-              ))}
-            </section>
-          )}
-        </div>
+              </section>
+            )}
+          </div>
+        )}
 
         <section aria-labelledby="mahi-h" className="overflow-hidden rounded-3xl bg-teal text-white @5xl/app:grid @5xl/app:grid-cols-12">
           <div className="p-5 pb-6 @3xl/app:p-10 @5xl/app:col-span-7">
@@ -246,11 +251,11 @@ export default async function HomePage() {
               <>
                 <p className="mt-3 flex items-end gap-5 @3xl/app:mt-6 @3xl/app:gap-12">
                   <span className="flex flex-col">
-                    <span className="font-display text-6xl font-bold leading-none tabular @3xl/app:text-8xl">{year.hours}</span>
+                    <span className="whitespace-nowrap font-display text-6xl font-bold leading-none tabular @3xl/app:text-8xl">{year.hours}</span>
                     <span className="mt-1.5 text-sm font-semibold text-white/85 @3xl/app:mt-3 @3xl/app:text-base">hours given</span>
                   </span>
                   <span className="flex flex-col">
-                    <span className="font-display text-6xl font-bold leading-none text-teal-on tabular @3xl/app:text-8xl">{year.shifts}</span>
+                    <span className="whitespace-nowrap font-display text-6xl font-bold leading-none text-teal-on tabular @3xl/app:text-8xl">{year.shifts}</span>
                     <span className="mt-1.5 text-sm font-semibold text-white/85 @3xl/app:mt-3 @3xl/app:text-base">{year.shifts === 1 ? "shift" : "shifts"}</span>
                   </span>
                 </p>
@@ -260,20 +265,20 @@ export default async function HomePage() {
               <p className="mt-3 text-lg text-white/90 @3xl/app:max-w-md @3xl/app:text-xl">Your hours show up here after your first shift. Ngā mihi for joining us.</p>
             )}
           </div>
-          <div className="border-t border-white/15 bg-teal-deep/40 p-5 @3xl/app:p-10 @5xl/app:col-span-5 @5xl/app:flex @5xl/app:flex-col @5xl/app:justify-center @5xl/app:border-l @5xl/app:border-t-0">
+          <div className="border-t border-white/15 bg-teal-deep/40 p-5 @3xl/app:p-10 @5xl/app:col-span-5 @5xl/app:border-l @5xl/app:border-t-0">
             <p className="font-display text-xs font-bold uppercase tracking-[0.14em] text-teal-on @3xl/app:text-sm">Together, over {IMPACT.yearsRunning} years</p>
             <ul className="mt-3 grid grid-cols-3 gap-3 @3xl/app:mt-6 @3xl/app:gap-6 @5xl/app:grid-cols-1 @5xl/app:gap-5">
               {(
                 [
                   ["broccoli", compactCount(IMPACT.kgRescued), "kg of kai rescued"],
                   ["carrot", compactCount(IMPACT.meals), "meals shared"],
-                  ["apple", `${formatCount(IMPACT.co2Tonnes)} t`, `CO2e avoided in ${IMPACT.co2Period}`],
+                  ["apple", `${formatCount(IMPACT.co2Tonnes)} t`, `CO₂e avoided in ${IMPACT.co2Period}`],
                 ] as const
               ).map(([icon, n, l]) => (
                 <li key={l} className="flex flex-col @5xl/app:flex-row @5xl/app:items-center @5xl/app:gap-4">
                   <FoodIcon kind={icon} className="size-8 rounded-full ring-2 ring-white/80 @3xl/app:size-11" />
                   <span className="@5xl/app:flex @5xl/app:items-baseline @5xl/app:gap-3">
-                    <span className="mt-2 block font-display text-xl font-bold text-white tabular @3xl/app:mt-3 @3xl/app:text-3xl @5xl/app:mt-0">{n}</span>
+                    <span className="mt-2 block whitespace-nowrap font-display text-xl font-bold text-white tabular @3xl/app:mt-3 @3xl/app:text-3xl @5xl/app:mt-0">{n}</span>
                     <span className="mt-0.5 block text-xs leading-snug text-white/85 @3xl/app:text-base @5xl/app:mt-0">{l}</span>
                   </span>
                 </li>

@@ -1,13 +1,16 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { BadgeCheck, ChevronLeft, Clock, MapPin, Users } from "lucide-react";
+import { BadgeCheck, CalendarPlus, ChevronLeft, Clock, MapPin, Users } from "lucide-react";
 import { requireAdmin } from "@/lib/session";
 import { db } from "@/lib/db";
 import { formatInstantRange, addMonths, todayISO, formatDate } from "@/lib/dates";
 import { fullName } from "@/lib/domain";
+import { moduleStatuses } from "@/lib/training";
 import { AvatarBadge } from "@/components/shared/avatar-badge";
 import { Chip } from "@/components/shared/status-chip";
 import { AttendanceToggle } from "@/components/admin/training-admin-controls";
+import { EmptyState } from "@/components/shared/empty-state";
+import { Button } from "@/components/ui/button";
 
 export const metadata = { title: "Training session" };
 
@@ -20,6 +23,15 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
   const declined = s.rsvps.filter((r) => r.status === "DECLINED");
   const sessionISO = todayISO(s.startsAt);
   const nextDue = s.module.validityMonths ? addMonths(sessionISO, s.module.validityMonths) : null;
+  const isPast = s.startsAt < new Date();
+  // Who could book it: everyone the module applies to who is not current on it.
+  const [modules, volunteers] = going.length === 0 && !isPast
+    ? await Promise.all([db.trainingModule.findMany(), db.volunteer.findMany({ where: { status: "ACTIVE", role: "VOLUNTEER" }, include: { trainingRecords: true } })])
+    : [[], []];
+  const needing = volunteers.filter((v) => {
+    const st = moduleStatuses(v, modules, v.trainingRecords, todayISO()).find((x) => x.module.id === s.moduleId);
+    return st?.required && st.status !== "COMPLETE";
+  }).length;
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-6">
@@ -40,7 +52,19 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
           <h2 className="text-xl text-ink">RSVPs</h2>
           <p className="text-sm text-muted-foreground">Marking attended sets the completion date to {formatDate(sessionISO)}{nextDue ? ` and the next due date to ${formatDate(nextDue)}` : ""}.</p>
         </div>
-        {going.length === 0 ? <p className="px-4 py-8 text-center text-sm text-muted-foreground">Nobody booked yet.</p> : (
+        {going.length === 0 ? (
+          <EmptyState
+            icon={CalendarPlus}
+            title={isPast ? "Nobody was booked" : "Nobody booked yet"}
+            description={isPast ? "Nobody booked this session in the app." : `Volunteers book this session in the app. ${needing} ${needing === 1 ? "volunteer still needs" : "volunteers still need"} ${s.module.name}.`}
+            action={!isPast && needing > 0 && (
+              <Button variant="outline" size="lg" className="bg-card" render={<Link href={`/admin/training?tab=people&module=${s.moduleId}`} />}>
+                <Users className="size-4" /> See who needs it
+              </Button>
+            )}
+            className="m-4 border-0 bg-transparent py-8"
+          />
+        ) : (
           <ul className="divide-y divide-border">
             {going.map((r) => (
               <li key={r.id} className="flex flex-wrap items-center gap-3 px-4 py-2.5">

@@ -1,88 +1,102 @@
-import { CheckCircle2, Clock, Import, Mail, Palette, ShieldCheck, Type } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, CheckCircle2, Clock, Import, Mail } from "lucide-react";
 import { requireAdmin } from "@/lib/session";
 import { isDemo } from "@/lib/env";
 import { db } from "@/lib/db";
 import { EMAIL_KIND_LABEL, type EmailKind } from "@/lib/domain";
 import { PageHeader } from "@/components/shared/page-header";
 import { Chip } from "@/components/shared/status-chip";
-import Link from "next/link";
-import { BrandFooter, Logo } from "@/components/brand/logo";
 
-export const metadata = { title: "Settings" };
+export const metadata = { title: "Emails and import" };
 
-// The 2026 brand refresh palette and the role each colour plays in the app.
-const SWATCHES = [
-  ["Satisfy Green", "--brand-green", "#00A651", "Logo, success, warehouse shifts"],
-  ["Blue/Teal", "--brand-teal", "#106379", "Buttons, links, selection, navigation"],
-  ["Orange", "--brand-orange", "#E08C3C", "Needs cover, last-minute, badges"],
-  ["Light Blue", "--brand-light-blue", "#4395A2", "Driver shifts, info, focus rings"],
-];
-
-// Tints printed in the brand refresh, used in the footer ribbons and food icons.
-const TINTS = [
-  ["Green 50%", "--brand-green-50"],
-  ["Green 75%", "--brand-green-75"],
-  ["Blue/Teal 90%", "--brand-teal-90"],
-  ["Orange 50%", "--brand-orange-50"],
+// Every message the system sends by itself, who gets it and when.
+const TEMPLATES: { heading: string; kinds: [EmailKind, string][] }[] = [
+  {
+    heading: "To volunteers",
+    kinds: [
+      ["SHIFT_REMINDER", "4pm the day before each shift."],
+      ["ABSENCE_CONFIRMED", "When they mark themselves away, or you record it for them."],
+      ["COVER_CONFIRMED", "When they take a shift that needed cover."],
+      ["LAST_MINUTE_CALLOUT", "A push notification when a gap opens inside the shift type's last-minute window."],
+      ["SHIFT_PUBLISHED", "When you publish a one-off shift with a callout."],
+      ["HARVEST_CALLOUT", "When you publish a harvest, to the whole harvest pool."],
+      ["SHIFT_ADDED", "When you put them on a shift."],
+      ["SHIFT_CANCELLED", "When you cancel a shift they are booked on."],
+      ["ANNOUNCEMENT", "When you send an announcement."],
+      ["TRAINING_DUE_SOON", "Before a module they need runs out."],
+      ["TRAINING_OVERDUE", "When a module runs out, then weekly until it is refreshed."],
+      ["TRAINING_COMPLETED", "When they complete a module in the app."],
+      ["SESSION_CONFIRMED", "When they book a training session, or you book their initial visit."],
+      ["APPLICATION_RECEIVED", "When they sign up to volunteer."],
+      ["ALREADY_REGISTERED", "When they sign up with an email that already has an account."],
+      ["APPLICATION_APPROVED", "When you approve their application."],
+      ["ACCOUNT_INVITE", "When an account is made for them, with a link to sign in."],
+      ["PASSWORD_RESET", "When they ask to set or reset their password."],
+    ],
+  },
+  {
+    heading: "To coordinators",
+    kinds: [
+      ["GAP_ALERT", "As soon as an absence or cancellation leaves a shift short."],
+      ["GAP_ESCALATION", "When a shift is still short at the shift type's alert threshold."],
+      ["APPLICATION_NEW", "When a new application is waiting for review."],
+      ["TRAINING_OVERDUE_COORDINATOR", "When a volunteer's training is three weeks overdue."],
+      ["ROLE_CHANGE_REQUEST", "When a volunteer asks to change roles from the app."],
+      ["ROLES_CHANGED", "When a coordinator changes a volunteer's roles."],
+      ["ADMIN_ACCESS", "When someone is given coordinator access, or loses it."],
+    ],
+  },
 ];
 
 export default async function SettingsPage() {
   await requireAdmin();
   const demo = isDemo();
-  const [imported, templates] = await Promise.all([
+  const [imported, sent] = await Promise.all([
     db.volunteer.count({ where: { infoodleId: { not: null } } }),
     db.email.groupBy({ by: ["kind"], _count: { _all: true } }),
   ]);
+  const countOf = (k: EmailKind) => sent.find((t) => t.kind === k)?._count._all ?? 0;
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-8">
-      <PageHeader eyebrow="Settings" title="Branding, integrations and templates" />
+      <PageHeader eyebrow="Set-up" title="Emails and import" description="The messages the system sends by itself and when it sends them, and how volunteer records came across from Infoodle." />
 
-      <section className="rounded-2xl border border-border bg-card p-5" aria-labelledby="brand-h">
+      <section className="rounded-2xl border border-border bg-card p-5" aria-labelledby="tpl-h">
         <div className="flex items-start gap-3">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-teal-tint text-teal"><Palette className="size-5" aria-hidden /></span>
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-teal-tint text-teal"><Mail className="size-5" aria-hidden /></span>
           <div className="min-w-0 flex-1">
-            <h2 id="brand-h" className="text-2xl text-ink">Brand colours and fonts</h2>
-            <p className="mt-1 text-ink-soft">The volunteer app and this admin follow the 2026 Satisfy Food Rescue brand refresh. Every colour, radius and typeface lives in one theme file, so a future re-skin is a single-file change: update the values, and every screen, chip, chart and email preview follows. No component contains a hard-coded colour.</p>
-            <p className="mt-2 text-sm text-muted-foreground">File: <code className="rounded bg-muted px-1.5 py-0.5 text-xs">src/app/globals.css</code> · fonts in <code className="rounded bg-muted px-1.5 py-0.5 text-xs">src/app/layout.tsx</code></p>
+            <h2 id="tpl-h" className="text-2xl text-ink">Automatic emails</h2>
+            <p className="mt-1 text-ink-soft">Each one carries the Satisfy header and a single button. Some go as a push notification to volunteers with the app on their phone. Open one to see the latest real example in the Outbox. To change the wording of a message, send the new text to whoever looks after this site.</p>
           </div>
         </div>
-        <div className="mt-5 grid gap-3 @xl/admin:grid-cols-2">
-          <div className="flex items-center justify-center rounded-xl bg-teal p-6"><Logo tone="white" className="h-24" /></div>
-          <div className="flex items-center justify-center rounded-xl border border-border p-6"><Logo className="h-24" /></div>
-        </div>
-        <ul className="mt-3 grid gap-3 @xl/admin:grid-cols-2 @4xl/admin:grid-cols-4">
-          {SWATCHES.map(([name, v, hex, use]) => (
-            <li key={v} className="flex items-center gap-3 rounded-xl border border-border p-3">
-              <span className="size-11 shrink-0 rounded-full ring-1 ring-black/10" style={{ background: `var(${v})` }} aria-hidden />
-              <span className="min-w-0">
-                <span className="block text-sm font-bold text-ink">{name} <span className="font-semibold text-muted-foreground tabular">{hex}</span></span>
-                <span className="block text-xs text-muted-foreground">{use}</span>
-              </span>
-            </li>
+        <div className="mt-5 grid gap-6 @4xl/admin:grid-cols-[3fr_2fr]">
+          {TEMPLATES.map((group) => (
+            <div key={group.heading}>
+              <h3 className="eyebrow mb-2">{group.heading}</h3>
+              <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border">
+                {group.kinds.map(([k, when]) => {
+                  const count = countOf(k);
+                  return (
+                    <li key={k}>
+                      <Link href={`/admin/outbox?kind=${k}`} className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted">
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-sm font-semibold text-ink">{EMAIL_KIND_LABEL[k]}</span>
+                          <span className="block text-xs text-muted-foreground">{when}</span>
+                        </span>
+                        <span className="shrink-0 text-xs text-muted-foreground tabular">{count === 0 ? "None yet" : `${count} sent`}</span>
+                        <ArrowRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
           ))}
-        </ul>
-        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-border p-3">
-          <span className="eyebrow">Tints</span>
-          {TINTS.map(([name, v]) => (
-            <span key={v} className="inline-flex items-center gap-2 text-sm text-ink">
-              <span className="size-4 shrink-0 rounded-full ring-1 ring-black/10" style={{ background: `var(${v})` }} aria-hidden />
-              {name}
-            </span>
-          ))}
-        </div>
-        <div className="mt-3 overflow-hidden rounded-xl border border-border pt-3">
-          <p className="eyebrow px-3">Footer</p>
-          <BrandFooter className="pb-3 pt-1" />
-        </div>
-        <div className="mt-4 flex flex-wrap gap-x-8 gap-y-4 rounded-xl bg-muted/60 p-4">
-          <div className="flex items-center gap-3"><Type className="size-5 text-teal" aria-hidden /><div><p className="font-display text-xl font-bold text-ink">Montserrat</p><p className="text-xs text-muted-foreground">Headings, labels and body: the logo font, as used in the brand refresh</p></div></div>
-          <div className="flex items-center gap-3"><ShieldCheck className="size-5 text-teal" aria-hidden /><div><p className="font-semibold text-ink">WCAG AA checked</p><p className="text-xs text-muted-foreground">16px minimum body, 44px tap targets, status never colour-only</p></div></div>
         </div>
       </section>
 
       <section className="rounded-2xl border border-border bg-card p-5" aria-labelledby="inf-h">
         <div className="flex flex-wrap items-start gap-3">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-status-info-bg text-status-info"><Import className="size-5" aria-hidden /></span>
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-teal-tint text-teal"><Import className="size-5" aria-hidden /></span>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h2 id="inf-h" className="text-2xl text-ink">Infoodle import</h2>
@@ -95,29 +109,6 @@ export default async function SettingsPage() {
             <p className="mt-1 text-ink-soft">Existing volunteers are brought across from Infoodle once, when this app goes live. After that, volunteer details live here: there is no ongoing sync, and new volunteers join through the sign-up form. Each imported volunteer keeps their Infoodle record number on their profile.</p>
           </div>
         </div>
-      </section>
-
-      <section className="rounded-2xl border border-border bg-card p-5" aria-labelledby="tpl-h">
-        <div className="flex items-start gap-3">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-ink"><Mail className="size-5" aria-hidden /></span>
-          <div className="min-w-0 flex-1">
-            <h2 id="tpl-h" className="text-2xl text-ink">Email templates</h2>
-            <p className="mt-1 text-ink-soft">Every template renders with the brand header and a single call to action. Wording lives in one file so the coordinator&apos;s edits are quick to apply. Click a template to see a real example from the Outbox.</p>
-          </div>
-        </div>
-        <ul className="mt-4 grid gap-2 @xl/admin:grid-cols-2 @4xl/admin:grid-cols-3">
-          {(Object.keys(EMAIL_KIND_LABEL) as EmailKind[]).map((k) => {
-            const count = templates.find((t) => t.kind === k)?._count._all ?? 0;
-            return (
-              <li key={k}>
-                <Link href={`/admin/outbox?kind=${k}`} className="flex items-center justify-between gap-2 rounded-xl border border-border px-3 py-2.5 text-sm hover:border-teal/60">
-                  <span className="font-semibold text-ink">{EMAIL_KIND_LABEL[k]}</span>
-                  <span className="text-xs text-muted-foreground tabular">{count} in Outbox</span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
       </section>
 
       {demo && (
