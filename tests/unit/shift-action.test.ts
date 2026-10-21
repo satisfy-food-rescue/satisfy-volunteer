@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { TrainingModule } from "@/generated/prisma/client";
 import type { ShiftView } from "@/lib/roster";
-import type { Eligibility } from "@/lib/training";
+import type { Eligibility, ModuleStatus } from "@/lib/training";
 import { shiftAction } from "@/lib/mobile-api/shifts";
+import { coverableGaps } from "@/lib/volunteer-data";
 
 const TODAY = "2026-10-09";
 const ME = "me";
@@ -60,5 +61,26 @@ describe("shiftAction follows the web's ShiftActions order", () => {
 
   it("a gap books as cover", () => {
     expect(shiftAction(view({ isGap: true }), ME, eligible, TODAY)).toEqual({ kind: "BOOK", cover: true });
+  });
+});
+
+describe("coverableGaps counts only gaps the volunteer could take", () => {
+  const me = { id: ME, roles: ["DRIVERS_ASSISTANT"] as const };
+  const gap = (id: string, over: Parameters<typeof view>[0] = {}) => ({ ...view({ isGap: true, ...over }), id });
+  const gaps = [
+    gap("open"),
+    gap("no role", { kind: "WAREHOUSE" }),
+    gap("already on it", { confirmed: [{ ...mine, source: "COVER" }] }),
+    gap("gone by", { iso: "2026-10-08" }),
+  ];
+  const ids = (list: ShiftView[]) => list.map((g) => (g as unknown as { id: string }).id);
+
+  it("leaves out locked, own and past gaps", () => {
+    expect(ids(coverableGaps(gaps, { me, statuses: [], today: TODAY }))).toEqual(["open"]);
+  });
+
+  it("counts nothing while the training the role needs is overdue", () => {
+    const overdue = { module: { code: "MANUAL_HANDLING", name: "Manual Handling", requiredRoles: ["DRIVERS_ASSISTANT"], mandatoryBeforeFirstShift: false }, status: "OVERDUE" } as unknown as ModuleStatus;
+    expect(coverableGaps(gaps, { me, statuses: [overdue], today: TODAY })).toEqual([]);
   });
 });

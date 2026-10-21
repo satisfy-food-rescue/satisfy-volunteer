@@ -2,10 +2,11 @@ import Link from "next/link";
 import { CalendarOff, ChevronDown, ChevronLeft, ChevronRight, Lock } from "lucide-react";
 import { requireVolunteer } from "@/lib/session";
 import { addDays, formatDayShort, isWeekday, todayISO, weekMonday, workWeek, WEEKDAY_LONG, weekdayOf, isoToDate, formatMonth } from "@/lib/dates";
-import { shiftsBetween } from "@/lib/roster";
+import { shiftsBetween, type ShiftView } from "@/lib/roster";
 import { trainingContext } from "@/lib/volunteer-data";
 import { eligibilityFor } from "@/lib/training";
-import { ShiftCard } from "@/components/app/shift-card";
+import { LockedShiftCard, ShiftCard } from "@/components/app/shift-card";
+import { LockBanner } from "@/components/app/lock-banner";
 import { AppPage, AppPageHeader } from "@/components/app/app-page-header";
 import { Chip } from "@/components/shared/status-chip";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -26,16 +27,15 @@ export default async function ShiftsPage({ searchParams }: { searchParams: Promi
     trainingContext(me, today),
     db.absence.findMany({ where: { volunteerId: me.id, startDate: { lte: isoToDate(days[4]) }, endDate: { gte: isoToDate(days[0]) } } }),
   ]);
-  const eligibilityByKind = new Map(
-    ["WAREHOUSE", "DRIVERS_ASSISTANT", "VOLUNTEER_DRIVER"].map((k) => [k, eligibilityFor(me, k as never, training.statuses)] as const),
-  );
+  const eligibilityByKind = new Map([...new Set(shifts.map((s) => s.kind))].map((k) => [k, eligibilityFor(me, k, training.statuses)] as const));
   const isAway = (iso: string) => absences.some((a) => a.startDate <= isoToDate(iso) && a.endDate >= isoToDate(iso));
   const thisWeek = weekMonday(today);
   // Why some shifts are locked, said once above the list rather than on every
   // card: only for kinds that actually appear on a day still to come.
-  const upcomingKinds = new Set(shifts.filter((s) => s.iso >= today).map((s) => s.kind));
-  const locks = [...eligibilityByKind.entries()].filter(([kind, e]) => upcomingKinds.has(kind as never) && !e.eligible && e.reason);
-  const needsRole = locks.some(([, e]) => !e.hasRole);
+  // Harvests are left out: their lock is the harvest pool, joined from the
+  // Harvest page.
+  const upcomingKinds = new Set(shifts.filter((s) => s.iso >= today && s.kind !== "HARVEST").map((s) => s.kind));
+  const locks = [...eligibilityByKind.entries()].filter(([kind, e]) => upcomingKinds.has(kind) && !e.eligible).map(([, e]) => e);
   // In the current week only: browsing back to an old week shows every day.
   // On a phone the days gone by fold away so the week opens on today; with
   // room for the whole week they stay in place, dimmed.
@@ -50,6 +50,12 @@ export default async function ShiftsPage({ searchParams }: { searchParams: Promi
     const isToday = iso === today;
     const away = isAway(iso);
     const headingId = `${idPrefix}-${iso}`;
+    // Same rule as the card's lock: never on a day gone by, the volunteer's own
+    // shift or a cancelled one.
+    const isLocked = (view: ShiftView) =>
+      !past && view.shift.status !== "CANCELLED" && !view.confirmed.some((a) => a.volunteerId === me.id) && !eligibilityByKind.get(view.kind)!.eligible;
+    const open = dayShifts.filter((v) => !isLocked(v));
+    const locked = dayShifts.filter(isLocked);
     return (
       <section
         key={iso}
@@ -62,23 +68,47 @@ export default async function ShiftsPage({ searchParams }: { searchParams: Promi
         )}
       >
         <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 @3xl/app:mb-0 @3xl/app:flex-col @3xl/app:items-start @3xl/app:gap-1.5 @6xl/app:px-1.5 @6xl/app:pt-1">
-          <h2 id={headingId} className={cn("text-lg @3xl/app:text-xl", isToday ? "text-teal" : past ? "text-muted-foreground" : "text-ink")}>
-            {WEEKDAY_LONG[weekdayOf(iso)]}
-          </h2>
-          <span className={cn("text-sm text-muted-foreground tabular", past && "@3xl/app:opacity-80")}>{formatDayShort(iso)}</span>
-          <span className="flex flex-wrap gap-1.5">
+          {/* Today sits beside the day's name so every column of the week
+              board starts its cards at the same height. */}
+          <span className="flex items-center gap-2">
+            <h2 id={headingId} className={cn("text-lg @3xl/app:text-xl", isToday ? "text-teal" : past ? "text-muted-foreground" : "text-ink")}>
+              {WEEKDAY_LONG[weekdayOf(iso)]}
+            </h2>
             {isToday && <span className="rounded-full bg-teal px-2 py-0.5 text-xs font-bold text-white">Today</span>}
-            {away && <Chip tone="neutral" icon={CalendarOff} size="sm">You&apos;re away</Chip>}
           </span>
+          <span className={cn("text-sm text-muted-foreground tabular", past && "@3xl/app:opacity-80")}>{formatDayShort(iso)}</span>
+          {away && <Chip tone="neutral" icon={CalendarOff} size="sm">You&apos;re away</Chip>}
         </div>
         {dayShifts.length === 0 ? (
           <EmptyState title="No shifts scheduled" className="py-4 @6xl/app:border-transparent @6xl/app:bg-transparent" />
         ) : (
-          <div className={cn("grid gap-2.5 @4xl/app:grid-cols-2 @4xl/app:gap-3 @6xl/app:grid-cols-1", past && "@3xl/app:opacity-75")}>
-            {dayShifts.map((view) => {
-              const e = eligibilityByKind.get(view.kind)!;
-              return <ShiftCard key={view.shift.id} view={view} meId={me.id} eligible={e.eligible} needsRole={!e.hasRole} reason={e.reason} past={past} showReason={false} />;
-            })}
+          <div className="flex flex-col gap-2.5 @4xl/app:gap-3">
+            {open.length > 0 && (
+              <div className={cn("grid gap-2.5 @4xl/app:grid-cols-2 @4xl/app:gap-3 @6xl/app:grid-cols-1", past && "@3xl/app:opacity-75")}>
+                {open.map((view) => {
+                  const e = eligibilityByKind.get(view.kind)!;
+                  return <ShiftCard key={view.shift.id} view={view} meId={me.id} eligible={e.eligible} needsRole={!e.hasRole} reason={e.reason} past={past} />;
+                })}
+              </div>
+            )}
+            {locked.length > 0 && (
+              // Shifts the volunteer cannot book fold away under the ones
+              // they can, so a day of mostly locked shifts stays short.
+              <details className="group/locked rounded-2xl border border-border bg-card/60">
+                <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-3.5 text-sm font-semibold text-status-neutral [&::-webkit-details-marker]:hidden">
+                  <Lock className="size-4 shrink-0" aria-hidden />
+                  <span className="flex-1">
+                    Locked<span className="@6xl/app:hidden"> for you</span> <span className="tabular">({locked.length})</span>
+                  </span>
+                  <ChevronDown className="size-4.5 shrink-0 transition-transform group-open/locked:rotate-180" aria-hidden />
+                </summary>
+                <div className="grid gap-2 px-2 pb-2 @4xl/app:grid-cols-2 @6xl/app:grid-cols-1">
+                  {locked.map((view) => (
+                    <LockedShiftCard key={view.shift.id} view={view} needsRole={!eligibilityByKind.get(view.kind)!.hasRole} />
+                  ))}
+                </div>
+              </details>
+            )}
           </div>
         )}
       </section>
@@ -108,22 +138,7 @@ export default async function ShiftsPage({ searchParams }: { searchParams: Promi
     <AppPage className="gap-5">
       <AppPageHeader eyebrow="Monday to Friday" title="Shifts" aside={weekNav} />
 
-      {locks.length > 0 && (
-        <div className="flex gap-3 rounded-2xl bg-status-neutral-bg p-4 text-status-neutral">
-          <Lock className="mt-0.5 size-5 shrink-0" aria-hidden />
-          <div className="min-w-0 text-sm leading-snug @3xl/app:flex @3xl/app:flex-1 @3xl/app:items-center @3xl/app:justify-between @3xl/app:gap-6">
-            <div>
-              <p className="font-bold text-ink">Some shifts are locked for you</p>
-              <ul className="mt-1 flex flex-col gap-1">
-                {locks.map(([kind, e]) => <li key={kind}>{e.reason}</li>)}
-              </ul>
-            </div>
-            <Link href={needsRole ? "/app/profile" : "/app/training"} className="mt-2 inline-flex min-h-11 shrink-0 items-center font-semibold text-teal hover:underline @3xl/app:mt-0">
-              {needsRole ? "Ask to change my roles" : "Go to my training"}
-            </Link>
-          </div>
-        </div>
-      )}
+      {locks.length > 0 && <LockBanner title="Some shifts are locked for you" locks={locks} />}
 
       {earlier.length > 0 && (
         <details className="group rounded-2xl border border-border bg-card/60 @3xl/app:hidden">
