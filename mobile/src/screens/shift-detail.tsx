@@ -80,7 +80,7 @@ function Detail({ shift, today }: { shift: ShiftDetail; today: string }) {
             <Text variant="body" tabular>
               {shift.confirmedCount} of {shift.capacity} places filled
             </Text>
-            {shift.isGap && <Chip tone="bad" icon="cover" small label={`Needs ${shift.shortBy} more`} />}
+            {shift.isGap && <Chip tone="warn" icon="cover" small label={`Needs ${shift.shortBy} more`} />}
           </View>
         </Row>
       </Card>

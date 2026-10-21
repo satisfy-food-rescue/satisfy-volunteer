@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { CalendarCheck, KeyRound, LogOut, RefreshCw, Sprout, ChevronRight } from "lucide-react";
+import { CalendarCheck, KeyRound, LogOut, Sprout, ChevronRight } from "lucide-react";
 import { requireVolunteer } from "@/lib/session";
 import { isDemo } from "@/lib/env";
-import { formatInstant, formatDate, dateToISO } from "@/lib/dates";
+import { formatDate, dateToISO } from "@/lib/dates";
 import { ROLE_LABEL, fullName } from "@/lib/domain";
 import { AvatarBadge } from "@/components/shared/avatar-badge";
 import { Chip } from "@/components/shared/status-chip";
@@ -25,7 +25,6 @@ export default async function ProfilePage() {
         <div className="min-w-0">
           <h1 className="break-words text-3xl leading-tight text-ink @3xl/app:text-4xl @6xl/app:text-[2.75rem]">{fullName(me)}</h1>
           <p className="text-sm text-muted-foreground @3xl/app:mt-1 @3xl/app:text-base">Volunteer since {formatDate(dateToISO(me.joinedAt))}</p>
-          {!demo && me.infoodleId && <p className="text-sm text-muted-foreground">Infoodle record {me.infoodleId}</p>}
         </div>
       </header>
 
@@ -44,18 +43,6 @@ export default async function ProfilePage() {
             <RoleChangeRequest />
           </section>
 
-          {/* Infoodle sync only runs in the demo, so production claims nothing about it. */}
-          {demo && me.infoodleId && (
-            <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3">
-              <RefreshCw className="size-5 shrink-0 text-sky" aria-hidden />
-              <div className="min-w-0 flex-1">
-                <p className="font-semibold text-ink">Synced with Infoodle</p>
-                <p className="text-sm text-muted-foreground">
-                  {me.infoodleSyncedAt ? `Last synced ${formatInstant(me.infoodleSyncedAt)}` : "Not yet synced"} · <span className="whitespace-nowrap">record {me.infoodleId}</span>
-                </p>
-              </div>
-            </div>
-          )}
 
           {/* The sidebar lists these from 1024px. */}
           <nav aria-label="Profile sections" className="overflow-hidden rounded-2xl border border-border bg-card lg:hidden">

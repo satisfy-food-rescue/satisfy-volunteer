@@ -64,7 +64,7 @@ Switch to **Margaret** at phone width: **Me > Harvest**, **Count me in for harve
 
 ## 8. Rebrand-ready and Infoodle - 1 min
 
-- **Settings**. First card: the logo, colours, tints, footer and font from the 2026 brand refresh, all theme tokens in one file. Second card: the Infoodle panel with "API: pending confirmation" and what would sync in each direction. Third: the email templates.
+- **Settings**. First card: the logo, colours, tints, footer and font from the 2026 brand refresh, all theme tokens in one file. Second card: the Infoodle import, a one-off bring-across of existing volunteers at go-live (no ongoing sync; new volunteers come through the sign-up form). Third: the email templates.
 
 ## If something looks off
 

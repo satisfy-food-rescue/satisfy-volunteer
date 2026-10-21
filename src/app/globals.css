@@ -183,7 +183,9 @@
   --accent-foreground: var(--teal-deep);
   --destructive: #b42318;
   --border: #d6e3e7;
-  --input: #c3d4da;
+  /* Field borders, checkbox outlines and the off switch track: 3.3:1 on white
+     and 3:1 on the canvas, the minimum for telling where a control is. */
+  --input: #7a929b;
   --ring: var(--brand-light-blue);
   --chart-1: var(--brand-teal);
   --chart-2: var(--brand-green);
@@ -251,6 +253,17 @@
   }
   .scrollbar-none {
     scrollbar-width: none;
+  }
+  /* Shadows at the top and bottom of the admin sidebar's link list that only
+     show while there is more to scroll to: the covers scroll with the
+     content, the shadows stay put. */
+  .sidebar-scroll-shadows {
+    background:
+      linear-gradient(var(--sidebar) 30%, transparent) center top / 100% 2.5rem no-repeat local,
+      linear-gradient(transparent, var(--sidebar) 70%) center bottom / 100% 2.5rem no-repeat local,
+      radial-gradient(farthest-side at 50% 0, rgb(0 0 0 / 45%), transparent) center top / 100% 1rem no-repeat scroll,
+      radial-gradient(farthest-side at 50% 100%, rgb(0 0 0 / 45%), transparent) center bottom / 100% 1rem no-repeat scroll,
+      var(--sidebar);
   }
   .scrollbar-none::-webkit-scrollbar {
     display: none;

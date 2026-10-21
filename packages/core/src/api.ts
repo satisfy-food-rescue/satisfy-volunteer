@@ -137,7 +137,6 @@ export type Me = {
   inHarvestPool: boolean;
   roles: VolunteerRole[];
   joinedISO: string;
-  infoodle: { id: string; syncedLabel: string | null } | null;
 };
 
 /** GET /api/mobile/session. Who is signed in, plus the tab badges. */
