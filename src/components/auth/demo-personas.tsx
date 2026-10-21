@@ -144,7 +144,7 @@ export async function DemoPersonas() {
           })}
         </div>
         <p className="mt-8 text-muted-foreground">
-          Picking a persona signs you straight in. Real volunteers sign in with a password, Google or a passkey. New volunteers{" "}
+          Picking a persona signs you straight in. Real volunteers sign in with a password, Google, Apple or a passkey. New volunteers{" "}
           <Link href="/sign-up" className="font-semibold text-teal underline underline-offset-4">sign up to volunteer</Link>, and their application lands in Phillipa&apos;s Applications.
         </p>
         <LegalLinks className="mt-8 justify-start" />

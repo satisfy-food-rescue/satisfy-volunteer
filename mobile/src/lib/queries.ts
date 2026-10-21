@@ -23,6 +23,7 @@ import type {
 import { useToast } from "@/components/toast";
 
 import { api } from "./api";
+import { appleSupported } from "./sign-in";
 
 export const keys = {
   session: ["session"],
@@ -55,6 +56,8 @@ export const useHarvest = () => useQuery({ queryKey: keys.harvest, queryFn: () =
 /** Which sign-in methods the server offers. Read before signing in. */
 export const useAuthConfig = () => useQuery({ queryKey: keys.authConfig, queryFn: () => api<AuthConfig>("/auth/config"), staleTime: 5 * 60_000 });
 export const useSecurity = () => useQuery({ queryKey: keys.security, queryFn: () => api<SecurityOverview>("/security") });
+/** Whether this phone can sign in with Apple (see appleSupported). */
+export const useAppleSupported = () => useQuery({ queryKey: ["appleSupported"], queryFn: appleSupported, staleTime: Infinity }).data ?? false;
 
 /** Screens in a tab stay mounted, so refetch stale data when one comes back
  *  into view (e.g. after booking a shift from another tab). */
@@ -105,6 +108,7 @@ export const actions = {
   setHarvestPool: (inPool: boolean) => api<MutationOk>("/harvest/pool", { method: "PUT", body: { inPool } }),
   updateProfile: (input: ProfileInput) => api<MutationOk>("/profile", { method: "PATCH", body: input }),
   requestRoleChange: (message: string) => api<MutationOk>("/profile/role-request", { method: "POST", body: { message } }),
+  disconnectApple: () => api<MutationOk>("/apple", { method: "DELETE" }),
   removePasskey: (id: string) => api<MutationOk>(`/passkeys/${encodeURIComponent(id)}`, { method: "DELETE" }),
   requestSignInLink: (email: string) => api<MutationOk>("/auth/link", { method: "POST", body: { email } }),
   signUp: (input: SignUpInput) => api<MutationOk>("/apply", { method: "POST", body: input }),

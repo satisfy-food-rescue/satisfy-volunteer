@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 };
 
 // Change this whenever the substance of the policy changes.
-const UPDATED = "19 October 2026";
+const UPDATED = "20 October 2026";
 
 export default function PrivacyPage() {
   const contact = <LegalEmail address={ORG.coordinatorEmail} subject="Privacy request" />;
@@ -70,7 +70,7 @@ export default function PrivacyPage() {
               </LegalList>
               <p>
                 We do not use analytics, advertising or tracking cookies. The only cookies keep you signed in and complete a sign-in
-                with Google or a passkey.
+                with Google, Apple or a passkey.
               </p>
             </>
           ),
@@ -93,6 +93,14 @@ export default function PrivacyPage() {
                   own <LegalLink href="https://policies.google.com/privacy">privacy policy</LegalLink> also applies.
                 </li>
                 <li>
+                  <Term>Apple.</Term> If you choose “Continue with Apple”, Apple tells us an identifier for your Apple Account and,
+                  unless you choose to hide it, your email address. We use these only to match you to the volunteer account{" "}
+                  {ORG.shortName} has already set up for you: Apple sign-in never creates an account. If you hide your email, Apple
+                  gives us a relay address instead, which we keep only to show that Apple is connected. We do not ask for your name
+                  or receive your Apple Account password. Apple&apos;s own{" "}
+                  <LegalLink href="https://www.apple.com/legal/privacy/">privacy policy</LegalLink> also applies.
+                </li>
+                <li>
                   <Term>Passkeys.</Term> We store the public half of the passkey and the name you give it. The private half never
                   leaves your device, and a passkey gives us no access to anything else on it.
                 </li>
@@ -101,7 +109,7 @@ export default function PrivacyPage() {
                   link, never the link itself.
                 </li>
               </LegalList>
-              <p>In Sign-in and security you can remove a passkey, disconnect Google and sign out your other devices.</p>
+              <p>In Sign-in and security you can remove a passkey, disconnect Google or Apple and sign out your other devices.</p>
             </>
           ),
         },
@@ -146,6 +154,9 @@ export default function PrivacyPage() {
                 </li>
                 <li>
                   <Term>Google</Term>, if you sign in with Google.
+                </li>
+                <li>
+                  <Term>Apple</Term>, if you sign in with Apple.
                 </li>
                 <li>
                   <Term>Our hosting provider</Term>, which runs the server and database the website and app use.

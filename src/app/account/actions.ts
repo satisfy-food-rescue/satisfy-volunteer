@@ -7,8 +7,9 @@ import type { PublicKeyCredentialCreationOptionsJSON, RegistrationResponseJSON }
 import { db } from "@/lib/db";
 import { PASSWORD_MIN } from "@/lib/auth-shared";
 import { destroyOtherSessions, hashPassword, requireVolunteer, verifyPassword } from "@/lib/session";
+import { APPLE } from "@/lib/apple";
 import { GOOGLE } from "@/lib/oauth";
-import { CHALLENGE_EXPIRED, passkeyRegistrationOptions, savePasskey } from "@/lib/sign-in";
+import { CHALLENGE_EXPIRED, disconnectProvider, passkeyRegistrationOptions, savePasskey } from "@/lib/sign-in";
 import { deviceLabel, storeChallenge, takeChallenge } from "@/lib/webauthn";
 import type { ActionResult } from "@/lib/volunteer-actions";
 
@@ -82,9 +83,16 @@ export async function removePasskey(id: string): Promise<ActionResult> {
 
 export async function disconnectGoogle(): Promise<ActionResult> {
   const me = await requireVolunteer();
-  await db.oAuthAccount.deleteMany({ where: { volunteerId: me.id, provider: GOOGLE } });
+  await disconnectProvider(me, GOOGLE);
   revalidate();
   return { ok: true, message: "Google disconnected." };
+}
+
+export async function disconnectApple(): Promise<ActionResult> {
+  const me = await requireVolunteer();
+  await disconnectProvider(me, APPLE);
+  revalidate();
+  return { ok: true, message: "Apple disconnected." };
 }
 
 export async function signOutOtherDevices(): Promise<ActionResult> {

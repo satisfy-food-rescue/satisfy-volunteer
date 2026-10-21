@@ -156,7 +156,7 @@ async function mobileApiChecks(admins: Volunteer[], volunteers: Volunteer[], val
   await call<Api.DemoPersonas>("signed out", "GET", "/auth/personas", {
     check: (b) => volunteers.every((v) => b.personas.some((p) => p.key === keyOf(v))) && !b.personas.some((p) => admins.some((a) => keyOf(a) === p.key)),
   });
-  await call<Api.AuthConfig>("signed out", "GET", "/auth/config", { check: (b) => b.demo === true && b.google === false && isStr(b.webUrl) });
+  await call<Api.AuthConfig>("signed out", "GET", "/auth/config", { check: (b) => b.demo === true && b.google === false && b.apple === false && isStr(b.webUrl) });
   for (const a of admins) await call(keyOf(a), "POST", "/auth/demo", { body: { personaKey: keyOf(a) }, expect: 403 });
   // An empty sign-up is refused field by field, and nothing is recorded.
   await call<Api.ApiFailure>("signed out", "POST", "/apply", { body: { privacy: false }, expect: 400, check: (b) => isStr(b.fields?.firstName) && isStr(b.fields?.privacy) });
@@ -181,7 +181,7 @@ async function mobileApiChecks(admins: Volunteer[], volunteers: Volunteer[], val
       await get<Api.TrainingOverview>("/training", (b) => b.required.length > 0 && isNum(b.summary.current) && isArr(b.sessions));
       for (const code of moduleCodes) await get<Api.TrainingModuleDetail>(`/training/modules/${code}`, (b) => b.module.code === code && isArr(b.paragraphs) && isArr(b.links));
       await get<Api.SlotOverview>("/slot", (b) => isArr(b.slots) && isArr(b.absences) && isArr(b.upcoming));
-      await get<Api.SecurityOverview>("/security", (b) => typeof b.hasPassword === "boolean" && isArr(b.passkeys) && isStr(b.manageUrl));
+      await get<Api.SecurityOverview>("/security", (b) => typeof b.hasPassword === "boolean" && typeof b.appleAvailable === "boolean" && isArr(b.passkeys) && isStr(b.manageUrl));
       await get<Api.HarvestOverview>("/harvest", (b) => isNum(b.poolCount) && b.training.length > 0 && b.harvests.every((s) => shiftOk(s) && s.kind === "HARVEST"));
       const profile: Api.ProfileInput = { phone: v.phone ?? "", suburb: v.suburb ?? "", emergencyName: v.emergencyName ?? "", emergencyPhone: v.emergencyPhone ?? "", availabilityNote: v.availabilityNote ?? "", lastMinuteOk: v.lastMinuteOk };
       await call<Api.MutationOk>(who, "PATCH", "/profile", { token, body: profile, check: (b) => isStr(b.message) });

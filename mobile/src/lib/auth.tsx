@@ -7,7 +7,7 @@ import type { MutationOk, PasswordSignInInput, SignInResult, SignOutInput } from
 import { api, setApiToken, setUnauthorizedHandler } from "./api";
 import { forgetPushToken, registerForPush, storedPushToken } from "./push";
 import { keys } from "./queries";
-import { signInWithGoogle, signInWithPasskey, signInWithPassword } from "./sign-in";
+import { signInWithApple, signInWithGoogle, signInWithPasskey, signInWithPassword } from "./sign-in";
 
 const TOKEN_KEY = "satisfy.session-token";
 
@@ -18,6 +18,8 @@ type Auth = {
   signInWithPassword: (input: PasswordSignInInput) => Promise<void>;
   /** Throws Cancelled (src/lib/sign-in.ts) if the volunteer backs out. */
   signInWithGoogle: () => Promise<void>;
+  /** Throws Cancelled if the volunteer backs out. */
+  signInWithApple: () => Promise<void>;
   /** Throws Cancelled if the volunteer backs out. */
   signInWithPasskey: () => Promise<void>;
   /** Demo deployment only. */
@@ -75,6 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     () => ({
       signInWithPassword: (input: PasswordSignInInput) => finish(signInWithPassword(input)),
       signInWithGoogle: () => finish(signInWithGoogle()),
+      signInWithApple: () => finish(signInWithApple()),
       signInWithPasskey: () => finish(signInWithPasskey()),
       signInAsPersona: (personaKey: string) => finish(api<SignInResult>("/auth/demo", { method: "POST", body: { personaKey } })),
     }),

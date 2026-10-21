@@ -59,7 +59,9 @@ export default function SupportPage() {
                 </li>
                 <li>
                   <Term>No email arrived.</Term> Check your junk or spam folder, and that you used the email address you gave{" "}
-                  {ORG.shortName}. The same applies to Continue with Google: it only works with that address.
+                  {ORG.shortName}. The same applies to Continue with Google and Continue with Apple: they only work with that address.
+                  If you hid your email from {ORG.shortName} when using Apple, sign in another way once and connect Apple in Sign-in
+                  and security.
                 </li>
               </LegalList>
               <p>
@@ -76,7 +78,7 @@ export default function SupportPage() {
             <>
               <p>
                 Once signed in, you can change your phone number, suburb, emergency contact and availability in{" "}
-                <LegalLink href="/app/profile">your profile</LegalLink>, and manage passkeys, Google and your signed-in devices in{" "}
+                <LegalLink href="/app/profile">your profile</LegalLink>, and manage passkeys, Google, Apple and your signed-in devices in{" "}
                 <LegalLink href="/app/security">Sign-in and security</LegalLink>. In the app, both are under Me.
               </p>
               <p>

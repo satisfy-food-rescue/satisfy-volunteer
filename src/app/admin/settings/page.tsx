@@ -115,7 +115,7 @@ export default async function SettingsPage() {
         <section className="rounded-2xl border border-dashed border-border bg-card/60 p-5 text-sm text-muted-foreground">
           <p className="font-bold text-ink">What is different in this demo</p>
           <ul className="mt-2 list-disc space-y-1 pl-5">
-            <li>Sign-in: pick a persona. Production uses a password, Google or a passkey.</li>
+            <li>Sign-in: pick a persona. Production uses a password, Google, Apple or a passkey.</li>
             <li>Email and push notifications: nothing is sent; every message is captured in the Outbox.</li>
             <li>Infoodle: the imported volunteers and their record numbers are sample data.</li>
             <li>Data: regenerated every day relative to today.</li>

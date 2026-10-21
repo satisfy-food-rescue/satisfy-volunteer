@@ -72,7 +72,7 @@ export default async function CoordinatorsPage() {
             <h2 id="how-h" className="text-lg text-ink">How access works</h2>
           </div>
           <p>Coordinators run the roster, volunteers, training and messages. There is one level of access, so only add people you trust with volunteers&apos; contact details.</p>
-          <p><span className="font-semibold text-ink">Someone new</span> gets an account and an emailed invite to choose a password, valid for 7 days. They can also sign in with Google.</p>
+          <p><span className="font-semibold text-ink">Someone new</span> gets an account and an emailed invite to choose a password, valid for 7 days. They can also sign in with Google or Apple.</p>
           <p><span className="font-semibold text-ink">An existing volunteer</span> moves here from Volunteers. Coordinators are not rostered, so they come off their regular slots and upcoming shifts. Their roles, training and history are kept.</p>
           <p><span className="font-semibold text-ink">Removing access</span> makes them a volunteer again, listed under Volunteers. To stop them signing in at all, deactivate them from their profile there.</p>
           <p>You cannot remove your own access, so there is always at least one coordinator.</p>

@@ -58,6 +58,10 @@ const config: ExpoConfig = {
     icon: "./assets/satisfy.icon",
     supportsTablet: false,
     infoPlist: { ITSAppUsesNonExemptEncryption: false },
+    // Sign in with Apple, natively. EAS turns the capability on for the App
+    // ID when it syncs capabilities. Android signs in with Apple in the
+    // system browser instead.
+    usesAppleSignIn: true,
     ...(webHost ? { associatedDomains: [`webcredentials:${webHost}`] } : {}),
   },
   android: {
@@ -81,6 +85,7 @@ const config: ExpoConfig = {
       },
     ],
     "expo-secure-store",
+    "expo-apple-authentication",
     ["expo-notifications", { color: TEAL, defaultChannel: "default" }],
   ],
   experiments: { typedRoutes: true, reactCompiler: true },
