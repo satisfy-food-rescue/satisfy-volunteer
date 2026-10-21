@@ -95,11 +95,11 @@ Once, before the first preview or production build:
 
 The store listing graphics live in `store-screenshots/`:
 
-- `ios/6.9-inch` (1320x2868) and `ios/6.3-inch` (1206x2622): the App Store screenshots.
+- `ios/6.9-inch` (1320x2868) and `ios/6.3-inch` (1206x2622): the App Store screenshots. They frame the raw simulator captures in `ios/raw/<size>` (iPhone 17 Pro Max and iPhone 17 Pro, signed in as Margaret on a `DEMO_MODE=1` server, light mode, status bar overridden to 9:41 with `xcrun simctl status_bar`, Expo Go's tools button turned off).
 - `android/icon-512.png` (512x512, 32-bit PNG): the Google Play app icon, rendered by `node mobile/scripts/generate-icons.mjs` from the repo root.
 - `android/feature-graphic.png` (1024x500, 24-bit PNG): the Google Play feature graphic.
 - `android/phone` (1440x2560, 9:16, 24-bit PNG): the Google Play phone screenshots. They frame the raw emulator captures in `android/raw` (1080x2400, a release build on the Medium Phone emulator, signed in as Margaret on a `DEMO_MODE=1` server, status bar in demo mode at 9:41).
 
-`node mobile/scripts/generate-store-graphics.mjs` from the repo root redraws the feature graphic and the framed screenshots, then checks every Android graphic against Play's size and format rules. A new capture in `android/raw` (with a headline in the script) or a changed headline only needs a rerun.
+`node mobile/scripts/generate-store-graphics.mjs` from the repo root redraws the feature graphic and the framed screenshots for both stores, then checks every graphic against Play's and the App Store's size and format rules. A new capture in `android/raw` or `ios/raw/<size>` (with a headline in the script) or a changed headline only needs a rerun.
 
 Over-the-air updates only reach builds of the same app version (`version` in `app.config.ts`). Anything that changes native code (a new Expo package, a config plugin, the SDK) needs a new build, not an update. The bundle id and package are `nz.org.satisfyfoodrescue.volunteers`; they cannot change after the first store upload.

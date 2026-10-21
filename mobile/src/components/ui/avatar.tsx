@@ -40,7 +40,8 @@ export function Avatar({ person, size = "md", ring }: { person: { firstName: str
         borderColor: ring ? t[ring] : undefined,
       }}
     >
-      <Text variant={size === "lg" ? "title" : size === "md" ? "smallBold" : "caption"} tone={fg} style={size === "sm" && { fontFamily: "Montserrat_700Bold", fontSize: 11 }}>
+      {/* The circle keeps its size, so the initials do too. */}
+      <Text variant={size === "lg" ? "title" : size === "md" ? "smallBold" : "labelBold"} tone={fg} maxFontSizeMultiplier={1}>
         {initials(person)}
       </Text>
     </View>

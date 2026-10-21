@@ -110,25 +110,27 @@ function ModuleRow({ module: m, today }: { module: ModuleSummary; today: string 
   const actionable = m.status !== "COMPLETE";
   const body = (pressed: boolean) => (
     <Card border={pressed ? "tealText" : "border"} style={{ gap: 8 }}>
-      <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
-        <View style={{ flex: 1 }}>
-          <Text variant="bodyBold">{m.name}</Text>
-          <Text variant="small" tone="mutedText">
-            {m.validityMonths ? `Valid ${m.validityMonths} months` : "Once only"} · {DELIVERY_LABEL[m.delivery]}
+      <View style={{ gap: 2 }}>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", columnGap: 12, rowGap: 6 }}>
+          <Text variant="bodyBold" style={{ flexShrink: 1 }}>
+            {m.name}
           </Text>
+          <TrainingChip status={m.status} small />
         </View>
-        <TrainingChip status={m.status} small />
+        <Text variant="small" tone="mutedText">
+          {m.validityMonths ? `Valid ${m.validityMonths} months` : "Once only"} · {DELIVERY_LABEL[m.delivery]}
+        </Text>
       </View>
       <Text variant="small" tone="inkSoft" tabular>
         {statusLine(m, today)}
       </Text>
       {actionable && (
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-          <Icon name={online ? "book" : "calendar"} size={15} color={t.greenText} />
-          <Text variant="smallBold" tone="greenText">
+          <Icon name={online ? "book" : "calendar"} size={15} color={t.tealText} />
+          <Text variant="smallBold" tone="tealText">
             {online ? "Complete it online" : "Book a session"}
           </Text>
-          <Icon name="chevronRight" size={13} color={t.greenText} />
+          <Icon name="chevronRight" size={13} color={t.tealText} />
         </View>
       )}
     </Card>

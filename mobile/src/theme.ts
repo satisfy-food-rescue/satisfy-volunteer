@@ -119,6 +119,9 @@ export const type = {
   small: { fontFamily: font.regular, fontSize: 14, lineHeight: 20 },
   smallSemibold: { fontFamily: font.semibold, fontSize: 14, lineHeight: 20 },
   smallBold: { fontFamily: font.bold, fontSize: 14, lineHeight: 20 },
+  /** Small chips, pills and avatar initials. */
+  label: { fontFamily: font.semibold, fontSize: 13, lineHeight: 18 },
+  labelBold: { fontFamily: font.bold, fontSize: 13, lineHeight: 18 },
   caption: { fontFamily: font.medium, fontSize: 12, lineHeight: 16 },
   eyebrow: { fontFamily: font.bold, fontSize: 12, lineHeight: 16, letterSpacing: 1.6, textTransform: "uppercase" },
 } satisfies Record<string, TextStyle>;

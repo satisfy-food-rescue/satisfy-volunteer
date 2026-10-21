@@ -75,15 +75,18 @@ export function useRefreshOnFocus(refetch: () => unknown) {
  *  landed: a booking changes Home, Shifts, Cover and the tab badges at once.
  *  The returned promise settles after the refresh, so buttons stay busy until
  *  the screen shows the new state. */
-export function useAction<TInput = void>(run: (input: TInput) => Promise<MutationOk>, options: { onSuccess?: () => void } = {}) {
+export function useAction<TInput = void>(
+  run: (input: TInput) => Promise<MutationOk>,
+  options: { onSuccess?: () => void; /** In place of the server's message. */ message?: (input: TInput) => string } = {},
+) {
   const queryClient = useQueryClient();
   const toast = useToast();
   return useMutation({
     mutationFn: run,
-    onSuccess: async (result) => {
+    onSuccess: async (result, input) => {
       await queryClient.invalidateQueries();
       if (process.env.EXPO_OS === "ios") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      toast.show(result.message, "success");
+      toast.show(options.message?.(input) ?? result.message, "success");
       options.onSuccess?.();
     },
     onError: (error) => {
