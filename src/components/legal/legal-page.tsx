@@ -75,6 +75,19 @@ export function LegalLink({ href, children }: { href: string; children: React.Re
   );
 }
 
+/** An email address as a mailto link. On a phone it wraps after the @ rather
+ *  than mid-word. */
+export function LegalEmail({ address, subject }: { address: string; subject?: string }) {
+  const [local, domain] = address.split("@");
+  const query = subject ? `?subject=${encodeURIComponent(subject)}` : "";
+  return (
+    <LegalLink href={`mailto:${address}${query}`}>
+      {local}@<wbr />
+      {domain}
+    </LegalLink>
+  );
+}
+
 /** A term in bold at the start of a list item. */
 export function Term({ children }: { children: React.ReactNode }) {
   return <strong className="font-semibold text-ink">{children}</strong>;

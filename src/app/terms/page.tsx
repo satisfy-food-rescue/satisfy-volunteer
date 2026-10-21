@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { ORG } from "@/lib/brand";
-import { LegalLink, LegalList, LegalPage, Term } from "@/components/legal/legal-page";
+import { LegalEmail, LegalLink, LegalList, LegalPage, Term } from "@/components/legal/legal-page";
 
 export const metadata: Metadata = {
   title: "Terms of use",
@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 const UPDATED = "19 October 2026";
 
 export default function TermsPage() {
-  const contact = <LegalLink href={`mailto:${ORG.coordinatorEmail}`}>{ORG.coordinatorEmail}</LegalLink>;
+  const contact = <LegalEmail address={ORG.coordinatorEmail} />;
   return (
     <LegalPage
       eyebrow="Ngā tikanga · Terms"
