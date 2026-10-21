@@ -66,9 +66,17 @@ export function ShiftCard({ shift, showDate = false, hideReason = false }: { shi
               <Text variant="bodyBold" numberOfLines={2}>
                 {shift.name}
               </Text>
-              <Text variant="small" tone="mutedText" tabular>
-                {when}
-              </Text>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", columnGap: 10 }}>
+                <Text variant="small" tone="mutedText" tabular>
+                  {when}
+                </Text>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                  <Icon name="people" size={14} color={t.mutedText} />
+                  <Text variant="small" tone="mutedText" tabular>
+                    {shift.confirmedCount}/{shift.capacity}
+                  </Text>
+                </View>
+              </View>
               {isAdHocKind(shift.kind) && (
                 <Text variant="small" tone="mutedText" numberOfLines={1}>
                   {shift.location}
@@ -77,29 +85,25 @@ export function ShiftCard({ shift, showDate = false, hideReason = false }: { shi
             </View>
             <Icon name="chevronRight" size={16} color={t.mutedText} />
           </View>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 6 }}>
-            {status && (cancelled ? (
-              <Chip tone="neutral" icon="cancelled" small label={status} />
-            ) : mine ? (
-              <Chip tone="good" icon="checkCircle" small label={status} />
-            ) : shift.isGap ? (
-              <Chip tone="warn" icon="cover" small label={status} />
-            ) : shift.isFull ? (
-              <Chip tone="neutral" small label={status} />
-            ) : (
-              <Chip tone="info" small label={status} />
-            ))}
-            {lock && <Chip tone="neutral" icon="lock" small label={lock} />}
-            <View style={{ marginLeft: "auto", flexDirection: "row", alignItems: "center", gap: 4 }}>
-              <Icon name="people" size={14} color={t.mutedText} />
-              <Text variant="small" tone="mutedText" tabular accessibilityLabel={`${shift.confirmedCount} of ${shift.capacity} places filled`}>
-                {shift.confirmedCount}/{shift.capacity}
-              </Text>
+          {(status || lock) && (
+            <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 6 }}>
+              {status && (cancelled ? (
+                <Chip tone="neutral" icon="cancelled" small label={status} />
+              ) : mine ? (
+                <Chip tone="good" icon="checkCircle" small label={status} />
+              ) : shift.isGap ? (
+                <Chip tone="warn" icon="cover" small label={status} />
+              ) : shift.isFull ? (
+                <Chip tone="neutral" small label={status} />
+              ) : (
+                <Chip tone="info" small label={status} />
+              ))}
+              {lock && <Chip tone="neutral" icon="lock" small label={lock} />}
             </View>
-          </View>
+          )}
           <CrewLine crew={shift.crew} />
           {blocked && !hideReason && (
-            <Text variant="small" tone="orangeText">
+            <Text variant="small" tone="inkSoft">
               {a.reason}
             </Text>
           )}

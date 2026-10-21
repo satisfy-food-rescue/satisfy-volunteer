@@ -1,7 +1,7 @@
 import { View } from "react-native";
 
 import type { ShiftDetail } from "@satisfy/core/api";
-import { formatDayLong, formatTimeRange, relativeDay } from "@satisfy/core/dates";
+import { formatDayLong, formatTimeRange, relativeDays } from "@satisfy/core/dates";
 import { fullName } from "@satisfy/core/domain";
 import { Photo, shiftPhoto } from "@/components/photo";
 import { QueryScreen } from "@/components/screen";
@@ -41,9 +41,12 @@ function Detail({ shift, today }: { shift: ShiftDetail; today: string }) {
       <View style={{ gap: 16 }}>
         <Photo photo={shiftPhoto(shift.kind)} style={{ aspectRatio: 16 / 9, borderRadius: radius.card, borderCurve: "continuous" }} />
         <View style={{ gap: 4 }}>
-          <Text variant="eyebrow" tone="tealText">
-            {relativeDay(shift.iso, today)}
-          </Text>
+          {/* How far off, since the card below gives the date. */}
+          {today !== "" && (
+            <Text variant="eyebrow" tone="tealText">
+              {relativeDays(shift.iso, today)}
+            </Text>
+          )}
           <Text variant="display" accessibilityRole="header">
             {shift.name}
           </Text>

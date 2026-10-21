@@ -25,6 +25,9 @@ export default function TabStackLayout({ segment }: { segment: string }) {
   return (
     <Stack
       screenOptions={({ navigation, route }) => ({
+        // Another tab's root opened by a link inside this stack keeps its own
+        // title rather than its route name.
+        title: Object.values(ROOTS).find((r) => r.name === route.name)?.title,
         // A screen opened straight from a link has nothing underneath it;
         // give it a way back to its tab rather than a dead end.
         headerLeft:
@@ -43,7 +46,11 @@ export default function TabStackLayout({ segment }: { segment: string }) {
         // Transparent, not the page colour: on iOS 26 an opaque large-title
         // bar hides the large title itself, leaving an empty band.
         headerLargeStyle: { backgroundColor: "transparent" },
-        headerStyle: { backgroundColor: t.background },
+        // On iOS the bar stays clear so content scrolling under it gets the
+        // system's soft blur, as Home's status bar does. Every screen here
+        // scrolls with automatic insets, so nothing starts hidden under it.
+        headerTransparent: process.env.EXPO_OS === "ios",
+        headerStyle: process.env.EXPO_OS === "ios" ? undefined : { backgroundColor: t.background },
         headerBackButtonDisplayMode: "minimal",
         contentStyle: { backgroundColor: t.background },
       })}

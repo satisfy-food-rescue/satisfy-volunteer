@@ -64,12 +64,13 @@ export function ShiftActions({ shift, compact = false }: { shift: ShiftSummary; 
       );
     case "BLOCKED":
       return (
-        <View style={{ gap: 12, padding: 16, borderRadius: radius.xl, borderCurve: "continuous", backgroundColor: t.orangeTint }}>
+        // Grey: orange is kept for shifts that need cover.
+        <View style={{ gap: 12, padding: 16, borderRadius: radius.xl, borderCurve: "continuous", backgroundColor: t.neutralTint }}>
           <View style={{ flexDirection: "row", gap: 8 }}>
             <View style={{ paddingTop: 2 }}>
-              <Icon name="lock" size={18} color={t.orangeText} />
+              <Icon name="lock" size={18} color={t.neutral} />
             </View>
-            <Text variant="bodySemibold" tone="orangeText" style={{ flex: 1 }}>
+            <Text variant="bodySemibold" style={{ flex: 1 }}>
               {a.reason}
             </Text>
           </View>

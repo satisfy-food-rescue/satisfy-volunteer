@@ -53,7 +53,7 @@ function MarkAwayForm({ today, initialStart }: { today: string; initialStart: st
         Your shifts in these dates are released so someone else can cover. Your slot picks up again when you are back.
       </Text>
 
-      <View style={{ flexDirection: "row", gap: 12 }}>
+      <View style={{ gap: 16 }}>
         <DateField
           label="From"
           value={start}

@@ -263,30 +263,34 @@ function SecurityCard({ security }: { security: SecurityOverview }) {
   );
 }
 
-function toInput(me: Me): ProfileInput {
+type Draft = Omit<ProfileInput, "lastMinuteOk">;
+
+function toDraft(me: Me): Draft {
   return {
     phone: me.phone ?? "",
     suburb: me.suburb ?? "",
     emergencyName: me.emergencyName ?? "",
     emergencyPhone: me.emergencyPhone ?? "",
     availabilityNote: me.availabilityNote ?? "",
-    lastMinuteOk: me.lastMinuteOk,
   };
 }
 
 function ProfileForm({ me }: { me: Me }) {
-  const saved = toInput(me);
-  const [draft, setDraft] = useState(saved);
-  const save = useAction(actions.updateProfile);
-  // Pick up server changes (e.g. after a save) unless the volunteer is editing.
+  const saved = toDraft(me);
   const savedKey = JSON.stringify(saved);
-  const [lastSaved, setLastSaved] = useState(savedKey);
-  if (savedKey !== lastSaved) {
-    setLastSaved(savedKey);
-    setDraft(saved);
+  const [draft, setDraft] = useState(saved);
+  const [base, setBase] = useState(saved);
+  const save = useAction(actions.updateProfile);
+  // Pick up server changes, after a save or the switch below, keeping any
+  // field the volunteer is still editing.
+  if (savedKey !== JSON.stringify(base)) {
+    const next = { ...saved };
+    for (const key of Object.keys(saved) as (keyof Draft)[]) if (draft[key] !== base[key]) next[key] = draft[key];
+    setBase(saved);
+    setDraft(next);
   }
   const dirty = JSON.stringify(draft) !== savedKey;
-  const set = (key: keyof ProfileInput) => (value: string) => setDraft((d) => ({ ...d, [key]: value }));
+  const set = (key: keyof Draft) => (value: string) => setDraft((d) => ({ ...d, [key]: value }));
 
   return (
     <View style={{ gap: 20 }}>
@@ -301,19 +305,48 @@ function ProfileForm({ me }: { me: Me }) {
       </FieldGroup>
       <FieldGroup title="Availability">
         <Field label="When can you usually help?" value={draft.availabilityNote} onChangeText={set("availabilityNote")} placeholder="e.g. Most weekday mornings, not Fridays" multiline maxLength={300} />
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
-          <View style={{ flex: 1 }}>
-            <Text variant="bodySemibold">Send me last-minute cover requests</Text>
-            <Text variant="small" tone="mutedText">
-              Get a notification when a shift you can do needs cover at short notice.
-            </Text>
-          </View>
-          <Host matchContents>
-            <Switch value={draft.lastMinuteOk} onValueChange={(v) => setDraft((d) => ({ ...d, lastMinuteOk: v }))} />
-          </Host>
-        </View>
+        <LastMinuteSwitch me={me} />
       </FieldGroup>
-      <Button label="Save changes" icon="check" block disabled={!dirty} loading={save.isPending} onPress={() => save.mutate(draft)} />
+      <Button label="Save changes" icon="check" block disabled={!dirty} loading={save.isPending} onPress={() => save.mutate({ ...draft, lastMinuteOk: me.lastMinuteOk })} />
+    </View>
+  );
+}
+
+const LAST_MINUTE = "Send me last-minute cover requests";
+
+/** Saves as soon as it is flipped, like a switch in Settings, from the saved
+ *  profile so it never sends fields still being edited above. */
+function LastMinuteSwitch({ me }: { me: Me }) {
+  const save = useAction((on: boolean) => actions.updateProfile({ ...toDraft(me), lastMinuteOk: on }), {
+    message: (on) => (on ? "You'll get last-minute cover requests." : "Last-minute cover requests are off."),
+  });
+  // Shows the new position while it saves, and springs back if that fails.
+  const on = save.isPending ? save.variables : me.lastMinuteOk;
+  const toggle = (value: boolean) => {
+    if (!save.isPending) save.mutate(value);
+  };
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
+      {/* One element for screen readers: the text is the switch's label, and
+          tapping it flips the switch too. */}
+      <Pressable
+        accessibilityRole="switch"
+        accessibilityLabel={LAST_MINUTE}
+        accessibilityState={{ checked: on, busy: save.isPending }}
+        accessibilityHint="Saves straight away."
+        onPress={() => toggle(!on)}
+        style={{ flex: 1 }}
+      >
+        <Text variant="bodySemibold">{LAST_MINUTE}</Text>
+        <Text variant="small" tone="mutedText">
+          Get a notification when a shift you can do needs cover at short notice.
+        </Text>
+      </Pressable>
+      <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+        <Host matchContents>
+          <Switch value={on} onValueChange={toggle} />
+        </Host>
+      </View>
     </View>
   );
 }

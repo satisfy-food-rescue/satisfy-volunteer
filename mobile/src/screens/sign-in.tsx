@@ -217,7 +217,7 @@ function SignInForm({ config }: { config: AuthConfig }) {
       <View style={{ gap: 4 }}>
         <HeroLink lead="New to Satisfy?" action="Sign up to volunteer" onPress={() => router.push("/sign-up")} />
         <HeroLink
-          lead="Already volunteer but never signed in?"
+          lead="Already volunteering but never signed in?"
           action="Set up your password"
           onPress={() => {
             setError(null);
