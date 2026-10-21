@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CalendarCheck, CalendarClock, CalendarOff, CheckCircle2, ChevronLeft, CircleDashed, Mail, MapPin, Phone, PhoneCall, Power, RefreshCw, Sprout, XCircle, Zap } from "lucide-react";
+import { CalendarCheck, CalendarClock, CalendarOff, CheckCircle2, ChevronLeft, CircleDashed, Import, Mail, MapPin, Phone, PhoneCall, Power, Sprout, XCircle, Zap } from "lucide-react";
 import { requireAdmin } from "@/lib/session";
 import { shiftName } from "@/lib/roster";
 import { db } from "@/lib/db";
@@ -260,9 +260,9 @@ export default async function VolunteerProfilePage({ params, searchParams }: { p
 
           {v.infoodleId && (
             <div className="flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-sm">
-              <RefreshCw className="size-4 text-sky" aria-hidden />
-              <span className="text-ink">Infoodle {v.infoodleId}</span>
-              <span className="ml-auto text-xs text-muted-foreground">{v.infoodleSyncedAt ? `synced ${formatInstant(v.infoodleSyncedAt)}` : "not synced"}</span>
+              <Import className="size-4 text-sky" aria-hidden />
+              <span className="text-ink">Imported from Infoodle</span>
+              <span className="ml-auto text-xs text-muted-foreground tabular">record {v.infoodleId}</span>
             </div>
           )}
         </div>

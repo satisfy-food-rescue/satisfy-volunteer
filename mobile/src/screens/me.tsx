@@ -45,7 +45,6 @@ function Profile({ session }: { session: MobileSession }) {
         </View>
       </View>
       <Roles me={me} />
-      {me.infoodle && <Infoodle infoodle={me.infoodle} />}
       <Links />
       <NotificationsRow />
       {!session.demo && <SignInSecurity />}
@@ -71,21 +70,6 @@ function Roles({ me }: { me: Me }) {
         ))}
       </View>
       <Button label="Ask to change my roles" variant="outline" size="md" onPress={() => router.push("/role-request")} />
-    </Card>
-  );
-}
-
-function Infoodle({ infoodle }: { infoodle: NonNullable<Me["infoodle"]> }) {
-  const t = useTheme();
-  return (
-    <Card style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12 }}>
-      <Icon name="sync" size={20} color={t.lightBlue} />
-      <View style={{ flex: 1 }}>
-        <Text variant="bodySemibold">Synced with Infoodle</Text>
-        <Text variant="small" tone="mutedText">
-          {infoodle.syncedLabel ? `Last synced ${infoodle.syncedLabel}` : "Not yet synced"} · record {infoodle.id}
-        </Text>
-      </View>
     </Card>
   );
 }
@@ -264,7 +248,7 @@ function ProfileForm({ me }: { me: Me }) {
   return (
     <View style={{ gap: 20 }}>
       <FieldGroup title="Contact">
-        <Field label="Email" value={me.email} editable={false} hint="Managed in Infoodle. Ask the coordinator to change it." />
+        <Field label="Email" value={me.email} editable={false} hint="This is the email you sign in with. Ask the coordinator to change it." />
         <Field label="Mobile" value={draft.phone} onChangeText={set("phone")} keyboardType="phone-pad" textContentType="telephoneNumber" autoComplete="tel" maxLength={30} />
         <Field label="Suburb or town" value={draft.suburb} onChangeText={set("suburb")} textContentType="addressCity" autoComplete="postal-address-locality" maxLength={60} />
       </FieldGroup>

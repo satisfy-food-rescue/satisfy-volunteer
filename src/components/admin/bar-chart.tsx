@@ -1,10 +1,15 @@
-// Small dependency-free bar chart. One hue for magnitude, thin rounded marks
-// anchored to the baseline, direct value labels, recessive grid, and a table
-// alternative rendered below for screen readers and print.
+// Small dependency-free bar charts. One hue for magnitude, rounded marks
+// anchored to the baseline, direct value labels and a recessive grid. Drawn
+// with HTML rather than a scaled SVG so the text stays at body size however
+// wide the card is, and long labels wrap instead of running into each other.
 import { cn } from "@/lib/utils";
 
 export type BarDatum = { label: string; value: number; sublabel?: string; muted?: boolean };
 
+const FILL = { teal: "bg-teal", green: "bg-green", orange: "bg-orange" } as const;
+
+/** Vertical bars for a short series such as six months, with a table
+ *  alternative below for screen readers and print. */
 export function BarChart({
   data,
   unit = "",
@@ -25,46 +30,37 @@ export function BarChart({
   labelHeader: string;
   valueHeader?: string;
   className?: string;
-  tone?: "teal" | "green" | "orange";
+  tone?: keyof typeof FILL;
 }) {
-  const top = Math.max(max ?? 0, ...data.map((d) => d.value), 1);
-  const nice = niceCeil(top);
-  const ticks = [0, 0.25, 0.5, 0.75, 1].map((t) => t * nice);
-  const W = 100;
-  const H = 56;
-  const padB = 10;
-  const gap = 3.2;
-  const bw = (W - gap * (data.length + 1)) / data.length;
-  const fill = { teal: "var(--brand-teal)", green: "var(--brand-green)", orange: "var(--brand-orange)" }[tone];
+  const nice = niceCeil(Math.max(max ?? 0, ...data.map((d) => d.value), 1));
+  const pct = (n: number) => `${(n / nice) * 100}%`;
   return (
     <figure className={cn("flex flex-col gap-2", className)}>
-      <svg viewBox={`0 0 ${W} ${H + padB}`} className="h-auto w-full" role="img" aria-label={`${title}: ${data.map((d) => `${d.label} ${format(d.value)}${unit}`).join(", ")}`}>
-        {ticks.map((t) => {
-          const y = H - (t / nice) * H;
-          return <line key={t} x1={0} x2={W} y1={y} y2={y} stroke="var(--border)" strokeWidth={0.3} />;
-        })}
-        {data.map((d, i) => {
-          const h = (d.value / nice) * H;
-          const x = gap + i * (bw + gap);
-          const y = H - h;
-          return (
-            <g key={d.label}>
-              <rect x={x} y={y} width={bw} height={h} rx={0.8} fill={fill} opacity={d.muted ? 0.35 : 1}>
-                <title>{`${d.label}: ${format(d.value)}${unit}`}</title>
-              </rect>
-              {h > 0 && (
-                <text x={x + bw / 2} y={Math.max(y - 1.5, 3)} textAnchor="middle" fontSize={3.2} fontWeight={700} fill="var(--ink)" className="tabular">
-                  {format(d.value)}
-                </text>
-              )}
-              <text x={x + bw / 2} y={H + 6} textAnchor="middle" fontSize={3} fill="var(--muted-foreground)">
-                {d.label}
-              </text>
-            </g>
-          );
-        })}
-        <line x1={0} x2={W} y1={H} y2={H} stroke="var(--muted-foreground)" strokeWidth={0.4} />
-      </svg>
+      <div role="img" aria-label={`${title}: ${data.map((d) => `${d.sublabel ?? d.label} ${format(d.value)}${unit}`).join(", ")}`}>
+        {/* The top 1.75rem is headroom, so a full-height bar's value label still fits. */}
+        <div className="relative h-52 border-b border-muted-foreground/70">
+          <div className="absolute inset-x-0 bottom-0 top-7">
+            {[0.25, 0.5, 0.75, 1].map((t) => (
+              <div key={t} className="absolute inset-x-0 border-t border-border" style={{ bottom: pct(t * nice) }} />
+            ))}
+            <div className="absolute inset-0 flex gap-3 px-3">
+              {data.map((d) => (
+                <div key={d.label} className="relative flex-1">
+                  <div className={cn("absolute inset-x-0 bottom-0 rounded-t-md", FILL[tone], d.muted && "opacity-35")} style={{ height: pct(d.value) }} title={`${d.sublabel ?? d.label}: ${format(d.value)}${unit}`} />
+                  <span className="absolute inset-x-0 mb-1 text-center font-display text-sm font-bold text-ink tabular" style={{ bottom: pct(d.value) }}>
+                    {format(d.value)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="mt-2 flex gap-3 px-3" aria-hidden>
+          {data.map((d) => (
+            <span key={d.label} className="min-w-0 flex-1 text-center text-sm leading-tight text-muted-foreground">{d.label}</span>
+          ))}
+        </div>
+      </div>
       <details className="text-xs text-muted-foreground">
         <summary className="cursor-pointer font-semibold hover:text-ink">View as table</summary>
         <table className="mt-2 w-full text-left">
@@ -76,9 +72,46 @@ export function BarChart({
   );
 }
 
+/** Horizontal bars for named categories, such as training modules: the full
+ *  name on the left, the value on the right. It is a plain list, so it needs
+ *  no separate table alternative. */
+export function HorizontalBarChart({
+  data,
+  unit = "",
+  format = (n: number) => String(n),
+  max,
+  title,
+  className,
+  tone = "teal",
+}: {
+  data: BarDatum[];
+  unit?: string;
+  format?: (n: number) => string;
+  max?: number;
+  title: string;
+  className?: string;
+  tone?: keyof typeof FILL;
+}) {
+  const top = Math.max(max ?? 0, ...data.map((d) => d.value), 1);
+  return (
+    <ul aria-label={title} className={cn("flex flex-col gap-3", className)}>
+      {data.map((d) => (
+        <li key={d.label} className="grid grid-cols-[minmax(0,11rem)_1fr_3.5rem] items-center gap-3">
+          <span className="text-sm leading-tight text-ink">{d.label}</span>
+          <span className="h-3 overflow-hidden rounded-full bg-muted" aria-hidden>
+            <span className={cn("block h-full rounded-full", FILL[tone], d.muted && "opacity-35")} style={{ width: `${(d.value / top) * 100}%` }} />
+          </span>
+          <span className="text-right font-display text-sm font-bold text-ink tabular">{format(d.value)}{unit}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** The next round number up, so the tallest bar fills most of the height
+ *  and the quarter grid lines land on readable values. */
 function niceCeil(n: number) {
   const pow = Math.pow(10, Math.floor(Math.log10(n)));
-  const f = n / pow;
-  const nice = f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10;
-  return nice * pow;
+  const step = [1, 1.2, 1.6, 2, 2.4, 3, 4, 5, 6, 8, 10].find((s) => n <= s * pow + 1e-9)!;
+  return step * pow;
 }

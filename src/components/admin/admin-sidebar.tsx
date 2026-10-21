@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -106,19 +107,25 @@ export function AdminSidebar({
   demo: boolean;
 }) {
   const pathname = usePathname();
+  const contentRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    contentRef.current?.querySelector("[data-active]")?.scrollIntoView({ block: "nearest" });
+  }, [pathname]);
   return (
     <Sidebar collapsible="icon" className="border-r-0">
-      <SidebarHeader className="px-3 pb-2 pt-5 group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:pt-4">
-        <Link href="/admin" className="flex flex-col items-center gap-2 rounded-lg py-1" aria-label="Satisfy Food Rescue coordinator dashboard">
-          <Logo tone="white" className="h-20 group-data-[collapsible=icon]:hidden" />
+      <SidebarHeader className="px-3 pb-1 pt-4 group-data-[collapsible=icon]:px-2">
+        <Link href="/admin" className="flex flex-col items-center gap-1.5 rounded-lg py-1" aria-label="Satisfy Food Rescue coordinator dashboard">
+          <Logo tone="white" className="h-12 group-data-[collapsible=icon]:hidden" />
           <LogoIcon tone="white" className="hidden size-8 group-data-[collapsible=icon]:block" />
           <span className="rounded-full bg-white/12 px-2.5 py-0.5 font-display text-xs font-bold uppercase tracking-[0.18em] text-white group-data-[collapsible=icon]:hidden">Coordinator</span>
         </Link>
       </SidebarHeader>
-      <SidebarContent>
+      {/* Sized so every link fits a 768px-tall window; shorter ones scroll, the
+          shadows show there is more and the current page is kept in view. */}
+      <SidebarContent ref={contentRef} className="sidebar-scroll-shadows">
         {SECTIONS.map((section) => (
-          <SidebarGroup key={section.label}>
-            <SidebarGroupLabel className="eyebrow text-teal-on">{section.label}</SidebarGroupLabel>
+          <SidebarGroup key={section.label} className="py-0.5">
+            <SidebarGroupLabel className="eyebrow h-6 text-teal-on">{section.label}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {section.links.map((link) => {
@@ -129,7 +136,7 @@ export function AdminSidebar({
                       <SidebarMenuButton
                         isActive={active}
                         tooltip={link.label}
-                        className="h-10 rounded-full px-3 text-[0.95rem] data-active:bg-white data-active:font-bold data-active:text-teal data-active:hover:bg-white data-active:hover:text-teal"
+                        className="h-[2.125rem] rounded-full px-3 text-[0.95rem] data-active:bg-white data-active:font-bold data-active:text-teal data-active:hover:bg-white data-active:hover:text-teal"
                         render={<Link href={link.href} />}
                       >
                         <link.icon className="size-4" />
@@ -137,7 +144,7 @@ export function AdminSidebar({
                         {count > 0 && <span className="sr-only">, {count} {BADGE_NOUN[link.badge!]}</span>}
                       </SidebarMenuButton>
                       {count > 0 && (
-                        <SidebarMenuBadge className="right-2 rounded-full bg-orange font-display font-bold text-ink tabular peer-data-[size=default]/menu-button:top-2.5 peer-hover/menu-button:text-ink peer-data-active/menu-button:text-ink">{count}</SidebarMenuBadge>
+                        <SidebarMenuBadge className="right-2 rounded-full bg-orange font-display font-bold text-ink tabular peer-data-[size=default]/menu-button:top-[0.4375rem] peer-hover/menu-button:text-ink peer-data-active/menu-button:text-ink">{count}</SidebarMenuBadge>
                       )}
                     </SidebarMenuItem>
                   );
@@ -146,19 +153,6 @@ export function AdminSidebar({
             </SidebarGroupContent>
           </SidebarGroup>
         ))}
-        <SidebarGroup>
-          <SidebarGroupLabel className="eyebrow text-teal-on">Preview</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton tooltip="Volunteer app" className="h-10 rounded-full px-3 text-[0.95rem]" render={<Link href="/app" />}>
-                  <Smartphone className="size-4" />
-                  <span>Volunteer app</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border p-3">
         <div className="flex items-center gap-1 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:justify-center">
@@ -173,6 +167,14 @@ export function AdminSidebar({
               <span className="block truncate text-sm font-bold text-white">{fullName(user)}</span>
               <span className="block truncate text-xs text-white/85">{user.email}</span>
             </span>
+          </Link>
+          <Link
+            href="/app"
+            className="tap flex items-center justify-center rounded-full text-white/85 hover:bg-white/10 hover:text-white"
+            aria-label="Preview the volunteer app"
+            title="Preview the volunteer app"
+          >
+            <Smartphone className="size-4" aria-hidden />
           </Link>
           <form action={signOut}>
             <button type="submit" className="tap flex items-center justify-center rounded-full text-white/85 hover:bg-white/10 hover:text-white" aria-label={demo ? "Switch persona" : "Sign out"} title={demo ? "Switch persona" : "Sign out"}>

@@ -21,10 +21,33 @@ export function ShiftCard({ shift, showDate = false, hideReason = false }: { shi
   const mine = a.kind === "MINE";
   const blocked = a.kind === "BLOCKED";
   const cancelled = a.kind === "CANCELLED";
+  const status = cancelled
+    ? "Cancelled"
+    : mine
+      ? a.source === "REGULAR" ? "Your regular slot" : a.source === "COVER" ? "You're covering" : "You're on"
+      : shift.isGap
+        ? "Needs cover"
+        : shift.isFull
+          ? "Full"
+          : isAdHocKind(shift.kind) && a.kind === "BOOK"
+            ? `${shift.spotsLeft} ${shift.spotsLeft === 1 ? "place" : "places"} left`
+            : null;
+  const lock = blocked ? (a.fix === "harvestPool" ? "Join the pool" : a.fix === "role" ? "Role needed" : "Training needed") : null;
+  // The label replaces everything inside the card for screen readers, so it
+  // carries what the chips, the count and the lock reason show.
+  const label = [
+    shift.name,
+    when,
+    isAdHocKind(shift.kind) ? shift.location : null,
+    status,
+    lock,
+    `${shift.confirmedCount} of ${shift.capacity} places filled`,
+    blocked && !hideReason ? a.reason : null,
+  ].filter(Boolean).join(", ");
   return (
     <Pressable onPress={() => router.push({ pathname: "/shift/[id]", params: { id: shift.id } })}
         accessibilityRole="button"
-        accessibilityLabel={`${shift.name}, ${when}`}
+        accessibilityLabel={label}
         style={({ pressed }) => ({
           flexDirection: "row",
           gap: 12,
@@ -55,18 +78,18 @@ export function ShiftCard({ shift, showDate = false, hideReason = false }: { shi
             <Icon name="chevronRight" size={16} color={t.mutedText} />
           </View>
           <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 6 }}>
-            {cancelled ? (
-              <Chip tone="neutral" icon="cancelled" small label="Cancelled" />
+            {status && (cancelled ? (
+              <Chip tone="neutral" icon="cancelled" small label={status} />
             ) : mine ? (
-              <Chip tone="good" icon="checkCircle" small label={a.source === "REGULAR" ? "Your regular slot" : a.source === "COVER" ? "You're covering" : "You're on"} />
+              <Chip tone="good" icon="checkCircle" small label={status} />
             ) : shift.isGap ? (
-              <Chip tone="bad" icon="cover" small label="Needs cover" />
+              <Chip tone="warn" icon="cover" small label={status} />
             ) : shift.isFull ? (
-              <Chip tone="neutral" small label="Full" />
-            ) : isAdHocKind(shift.kind) && a.kind === "BOOK" ? (
-              <Chip tone="info" small label={`${shift.spotsLeft} ${shift.spotsLeft === 1 ? "place" : "places"} left`} />
-            ) : null}
-            {blocked && <Chip tone="warn" icon="lock" small label={a.fix === "harvestPool" ? "Join the pool" : a.fix === "role" ? "Role needed" : "Training needed"} />}
+              <Chip tone="neutral" small label={status} />
+            ) : (
+              <Chip tone="info" small label={status} />
+            ))}
+            {lock && <Chip tone="neutral" icon="lock" small label={lock} />}
             <View style={{ marginLeft: "auto", flexDirection: "row", alignItems: "center", gap: 4 }}>
               <Icon name="people" size={14} color={t.mutedText} />
               <Text variant="small" tone="mutedText" tabular accessibilityLabel={`${shift.confirmedCount} of ${shift.capacity} places filled`}>

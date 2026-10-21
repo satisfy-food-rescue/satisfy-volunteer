@@ -1,7 +1,8 @@
 import { useIsFocused } from "expo-router/react-navigation";
 import { router, type Href } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { Pressable, RefreshControl, ScrollView, View } from "react-native";
+import { useState } from "react";
+import { Pressable, RefreshControl, ScrollView, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import type { Home, HomeAlert, ShiftSummary } from "@satisfy/core/api";
@@ -9,6 +10,7 @@ import { formatDay, formatDayLong, formatTimeRange, relativeDays, todayISO } fro
 import { BrandWaves, FoodIcon, Logo, type FoodKind } from "@/components/brand/logo";
 import { Photo, shiftPhoto } from "@/components/photo";
 import { usePullToRefresh } from "@/components/screen";
+import { StatusBarScrim } from "@/components/status-bar-scrim";
 import { CrewLine } from "@/components/shift/crew-line";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -30,18 +32,40 @@ export function HomeScreen() {
   const pull = usePullToRefresh(home.refetch);
   useRefreshOnFocus(home.refetch);
   const me = session?.me;
+  // On iOS the status bar blurs whatever scrolls under it. Its text is white
+  // on the teal hero and turns dark once light content is behind it. At rest
+  // the scroll view is inset by the status bar height, so its offset is
+  // -insets.top.
+  const [heroBottom, setHeroBottom] = useState(0);
+  const [under, setUnder] = useState(false);
+  const [pastHero, setPastHero] = useState(false);
+  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (process.env.EXPO_OS !== "ios") return;
+    const y = e.nativeEvent.contentOffset.y + insets.top;
+    if (y > 2 !== under) setUnder(y > 2);
+    if (y > heroBottom !== pastHero) setPastHero(y > heroBottom);
+  };
 
   return (
     <>
-      {focused && <StatusBar style="light" />}
+      {focused && <StatusBar style={pastHero ? "auto" : "light"} />}
+      {/* On iOS the native tabs inset the first scroll view below the status
+          bar and above the tab bar themselves, so the hero only adds the
+          status bar height on Android. */}
       <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
         style={{ backgroundColor: t.background }}
         contentContainerStyle={{ paddingBottom: 32 }}
+        onScroll={onScroll}
+        scrollEventThrottle={32}
         refreshControl={<RefreshControl {...pull} tintColor={t.white} colors={[t.teal]} progressViewOffset={insets.top} />}
       >
         {/* Keeps the teal band behind the status bar when pulling down. */}
         <View style={{ position: "absolute", top: -1000, left: 0, right: 0, height: 1000, backgroundColor: t.hero }} />
-        <View style={{ backgroundColor: t.hero, paddingTop: insets.top + 8, paddingHorizontal: 20, paddingBottom: 68 }}>
+        <View
+          onLayout={(e) => setHeroBottom(e.nativeEvent.layout.y + e.nativeEvent.layout.height)}
+          style={{ backgroundColor: t.hero, paddingTop: process.env.EXPO_OS === "ios" ? 8 : insets.top + 8, paddingHorizontal: 20, paddingBottom: 68 }}
+        >
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
             <Logo height={52} color={t.white} />
             {me && (
@@ -78,8 +102,7 @@ export function HomeScreen() {
           </View>
         </View>
       </ScrollView>
-      {/* The teal band stays behind the status bar while the page scrolls. */}
-      <View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, right: 0, height: insets.top, backgroundColor: t.hero }} />
+      <StatusBarScrim active={under} />
     </>
   );
 }
