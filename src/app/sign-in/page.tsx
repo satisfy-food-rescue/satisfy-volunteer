@@ -31,13 +31,13 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
         <div className="flex flex-col gap-3">
           <p>
             New to {ORG.shortName}?{" "}
-            <Link href="/sign-up" className="font-semibold text-teal underline underline-offset-4">
+            <Link href="/sign-up" className="whitespace-nowrap font-semibold text-teal underline underline-offset-4">
               Sign up to volunteer
             </Link>
           </p>
           <p>
-            Already volunteer but never signed in?{" "}
-            <Link href="/forgot-password?first=1" className="font-semibold text-teal underline underline-offset-4">
+            Already volunteering but never signed in?{" "}
+            <Link href="/forgot-password?first=1" className="whitespace-nowrap font-semibold text-teal underline underline-offset-4">
               Set up your password
             </Link>
           </p>

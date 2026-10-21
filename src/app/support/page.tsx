@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { ORG } from "@/lib/brand";
-import { LegalLink, LegalList, LegalPage, Term } from "@/components/legal/legal-page";
+import { LegalEmail, LegalLink, LegalList, LegalPage, Term } from "@/components/legal/legal-page";
 
 export const metadata: Metadata = {
   title: "Support",
@@ -9,8 +9,7 @@ export const metadata: Metadata = {
 
 /** A mailto link to the volunteer coordinators, with a subject when it helps them sort the email. */
 function Email({ subject }: { subject?: string }) {
-  const query = subject ? `?subject=${encodeURIComponent(subject)}` : "";
-  return <LegalLink href={`mailto:${ORG.coordinatorEmail}${query}`}>{ORG.coordinatorEmail}</LegalLink>;
+  return <LegalEmail address={ORG.coordinatorEmail} subject={subject} />;
 }
 
 // The page the app stores link to as the support URL, so it must make sense to
