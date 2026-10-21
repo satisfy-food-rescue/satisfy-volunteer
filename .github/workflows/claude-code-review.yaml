@@ -27,13 +27,76 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          # The PR head rather than the merge commit, so file line numbers match the diff the comments go on.
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 1
       - uses: anthropics/claude-code-action@v1
+        env:
+          # Subagents otherwise start in the background and the run ends before they report back.
+          CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: "1"
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          plugin_marketplaces: "https://github.com/anthropics/claude-code.git"
-          plugins: "code-review@claude-code-plugins"
-          # --comment posts findings as inline PR comments instead of only the run log.
-          prompt: "/code-review:code-review --comment ${{ github.repository }}/pull/${{ github.event.pull_request.number }}"
-          # The action only starts the inline comment server when this tool is allowed here.
-          claude_args: '--allowedTools "mcp__github_inline_comment__create_inline_comment"'
+          # Our own prompt rather than the code-review plugin, which stops once Claude has commented on a PR,
+          # so it never reviewed a second push.
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+            HEAD SHA: ${{ github.event.pull_request.head.sha }}
+
+            Review this pull request for bugs and CLAUDE.md violations. The PR head is checked out in the
+            working directory. This runs on every push, so earlier runs may already have commented.
+
+            Every subagent you launch must be told: all tools work, so do not test them or make exploratory
+            calls; the PR title, description and the diff (or how to fetch it with `gh pr diff`); and that the
+            checked-out files can be read for context.
+
+            1. Gather context yourself, without subagents:
+               - `gh pr view ${{ github.event.pull_request.number }} --json title,body,files`
+               - `gh pr diff ${{ github.event.pull_request.number }}`
+               - Comments from earlier runs of this review:
+                 `gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/comments --paginate --jq '.[] | select(.user.type == "Bot") | {path, line, body}'`
+               - The CLAUDE.md and AGENTS.md files that apply: the root CLAUDE.md, and any in a directory
+                 that contains a changed file or one of its parents.
+
+            2. Launch 4 review agents in parallel. Each returns a list of issues, each with the file, the
+               line in the new version of the file, a description, and why it was flagged ("bug" or the
+               CLAUDE.md rule quoted exactly).
+               - Agents 1 and 2 (model: sonnet): CLAUDE.md compliance. Only apply a CLAUDE.md or AGENTS.md
+                 to files in its directory or below.
+               - Agent 3 (model: opus): obvious bugs in the diff itself. Flag only significant bugs.
+               - Agent 4 (model: opus): problems in the introduced code, such as incorrect logic, security
+                 issues, or broken contracts with code the diff calls or is called by.
+
+               Flag only HIGH SIGNAL issues:
+               - code that will fail to compile, parse or type check
+               - code that will produce wrong results for normal inputs (clear logic errors)
+               - clear CLAUDE.md violations where the exact rule can be quoted
+
+               Do not flag: pre-existing issues; style or quality concerns; subjective suggestions; issues
+               a linter or the type checker in CI will catch; issues that depend on unusual inputs or state;
+               things CLAUDE.md asks for but the code explicitly silences. If unsure, do not flag.
+
+            3. For each issue, launch a validation agent in parallel (model: opus for bugs, sonnet for
+               CLAUDE.md) with the PR title, description and the issue. It reads the code and confirms the
+               issue is real with high confidence, or rejects it. Drop every issue that is not confirmed.
+
+            4. Drop any confirmed issue that an earlier comment from step 1 already covers, whether or not
+               that comment was resolved. Only one comment per unique issue, ever.
+
+            5. Post each remaining issue as an inline comment with
+               `mcp__github_inline_comment__create_inline_comment` and `confirmed: true`. Keep it brief:
+               what is wrong and why. Add a committable suggestion block only for a small fix that fully
+               resolves the issue. For a CLAUDE.md issue, quote the rule and link the file as
+               https://github.com/${{ github.repository }}/blob/${{ github.event.pull_request.head.sha }}/CLAUDE.md#L<start>-L<end>
+
+            6. Update the summary comment, which is edited in place on every run:
+               `gh pr comment ${{ github.event.pull_request.number }} --edit-last --create-if-none --body "<summary>"`
+               The summary starts with "## Code review", then says which commit was reviewed (the short HEAD
+               SHA), then either "No new issues found. Checked for bugs and CLAUDE.md compliance." or the
+               number of new issues posted with one line each. Add "Earlier comments still apply." when step
+               4 dropped any. Write plain New Zealand English with no em dashes. Post nothing else.
+          # Opus runs the review; the prompt picks a model for each subagent. Subagents share these tool rules,
+          # so they need the gh commands too, not only the main session.
+          claude_args: >-
+            --model claude-opus-5-5
+            --allowedTools "Read,Glob,Grep,Agent,Bash(gh pr view *),Bash(gh pr diff *),Bash(gh pr comment *),Bash(gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/comments *),mcp__github_inline_comment__create_inline_comment"
