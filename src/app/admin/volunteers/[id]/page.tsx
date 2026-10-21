@@ -11,6 +11,7 @@ import { AvatarBadge } from "@/components/shared/avatar-badge";
 import { Chip, TrainingChip } from "@/components/shared/status-chip";
 import { AccountControls, BookInitialVisitButton, ContactLogForm, NotesEditor, ProfileEditor, RecordCompletionButton, RolesEditor } from "@/components/admin/volunteer-admin-controls";
 import { ContactTimeline } from "@/components/admin/contact-timeline";
+import { Disclosure } from "@/components/admin/disclosure";
 import { RecordAbsenceForm } from "@/components/admin/record-absence-form";
 import { AbsenceReasonChip } from "@/components/admin/absence-reason-chip";
 import { cn } from "@/lib/utils";
@@ -228,10 +229,9 @@ export default async function VolunteerProfilePage({ params, searchParams }: { p
                 {v.absences.slice(0, 6).map((a) => <li key={a.id} className="flex items-center justify-between gap-2"><span className="tabular">{formatDayRange(dateToISO(a.startDate), dateToISO(a.endDate))}</span><AbsenceReasonChip reason={a.reason} /></li>)}
               </ul>
             )}
-            <details className="mt-3">
-              <summary className="cursor-pointer text-sm font-semibold text-teal">Record an absence for {v.firstName}</summary>
+            <Disclosure label={`Record an absence for ${v.firstName}`} className="mt-3">
               <div className="mt-3"><RecordAbsenceForm today={today} defaultVolunteerId={v.id} volunteers={[{ id: v.id, name: fullName(v) }]} /></div>
-            </details>
+            </Disclosure>
           </section>
 
           <section className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4" aria-labelledby="acct-h">

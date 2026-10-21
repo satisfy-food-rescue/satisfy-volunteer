@@ -32,7 +32,7 @@ export default async function AnnouncementsPage({ searchParams }: { searchParams
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-8">
       <PageHeader
-        eyebrow="People"
+        eyebrow="Messages"
         title="Announcements"
         description="Send news or a change of plans to everyone, a group of roles, or the crew of one shift. It goes by email, and as a push notification to phones with the app."
       />

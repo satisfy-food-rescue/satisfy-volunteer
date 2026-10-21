@@ -153,7 +153,7 @@ export function AnnouncementForm({ shifts, initialShiftId, from }: { shifts: Shi
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="an-body">Message</Label>
-          <Textarea id="an-body" required minLength={10} maxLength={5000} rows={8} value={body} onChange={(e) => setBody(e.target.value)} aria-describedby="an-body-hint" className="text-base leading-relaxed" />
+          <Textarea id="an-body" required minLength={10} maxLength={5000} rows={8} value={body} onChange={(e) => setBody(e.target.value)} aria-describedby="an-body-hint" className="min-h-48 text-base leading-relaxed" />
           <p id="an-body-hint" className="text-xs text-muted-foreground">Leave a blank line between paragraphs. &ldquo;Kia ora&rdquo; and your sign-off are added for you.</p>
         </div>
         <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border p-3">

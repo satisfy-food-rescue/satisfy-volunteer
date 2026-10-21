@@ -2,20 +2,22 @@ import Link from "next/link";
 import { AlertTriangle, Ban, ChevronLeft, ChevronRight, PencilLine } from "lucide-react";
 import type { ShiftView } from "@/lib/roster";
 import { addDays, formatDayShort, formatMonth, monthEnd, monthStart, weekdayOf, workWeek, WEEKDAY_SHORT, isoToDate, dateToISO, formatDay, formatTime } from "@/lib/dates";
+import { SHIFT_KIND_LABEL } from "@/lib/domain";
+import { ShiftKindIcon } from "@/components/app/shift-card";
 import { cn } from "@/lib/utils";
 
 export function WeekView({ monday, shifts, today }: { monday: string; shifts: ShiftView[]; today: string }) {
   const days = workWeek(monday);
   return (
-    <div className="grid grid-cols-1 gap-4 @4xl/admin:grid-cols-5">
+    <div className="grid grid-cols-1 gap-4 @2xl/admin:grid-cols-5 @2xl/admin:gap-2 @6xl/admin:gap-3">
       {days.map((iso) => {
         const items = shifts.filter((s) => s.iso === iso);
         const gaps = items.filter((s) => s.isGap).length;
         return (
-          <section key={iso} className={cn("flex flex-col gap-2 rounded-2xl border bg-card/50 p-3", iso === today ? "border-teal" : "border-border")}>
-            <header className="flex items-baseline justify-between">
+          <section key={iso} className={cn("flex min-w-0 flex-col gap-2 rounded-2xl border bg-card/50 p-3 @2xl/admin:p-2 @6xl/admin:p-2.5", iso === today ? "border-teal" : "border-border")}>
+            <header className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1 px-0.5">
               <h2 className={cn("text-lg text-ink", iso === today && "text-teal")}>{WEEKDAY_SHORT[weekdayOf(iso)]} <span className="font-sans text-sm text-muted-foreground tabular">{formatDayShort(iso)}</span></h2>
-              {gaps > 0 && <span className="inline-flex items-center gap-1 rounded-full bg-status-warn-bg px-2 py-0.5 text-xs font-bold text-status-warn"><AlertTriangle className="size-3" aria-hidden />{gaps} gap{gaps === 1 ? "" : "s"}</span>}
+              {gaps > 0 && <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-status-warn-bg px-2 py-0.5 text-xs font-bold text-status-warn"><AlertTriangle className="size-3" aria-hidden />{gaps} gap{gaps === 1 ? "" : "s"}</span>}
             </header>
             {items.length === 0 ? (
               <p className="rounded-xl border border-dashed border-border px-3 py-4 text-center text-sm text-muted-foreground">No shifts</p>
@@ -29,15 +31,23 @@ export function WeekView({ monday, shifts, today }: { monday: string; shifts: Sh
   );
 }
 
+/** A route shift is known by its route, with the kind beside its time;
+ *  anything else by its own name. Keeps the narrow week columns readable. */
+function shortName(view: ShiftView) {
+  return view.shift.template.route?.name ?? view.name;
+}
+
 function CompactShift({ view }: { view: ShiftView }) {
   const cancelled = view.shift.status === "CANCELLED";
   const draft = view.isDraft;
+  const route = view.shift.template.route;
   const fill = Math.min(100, Math.round((view.confirmedCount / Math.max(1, view.shift.capacity)) * 100));
   return (
     <Link
       href={`/admin/roster/${view.shift.id}`}
+      title={view.name}
       className={cn(
-        "@container flex flex-col gap-1.5 rounded-xl p-2.5 shadow-sm transition-colors",
+        "flex flex-col gap-1 rounded-xl p-2 shadow-sm transition-colors @6xl/admin:p-2.5",
         cancelled
           ? "border border-dashed border-border bg-card/60"
           : draft
@@ -47,15 +57,32 @@ function CompactShift({ view }: { view: ShiftView }) {
             : "bg-card ring-1 ring-border hover:ring-teal/60",
       )}
     >
-      {/* Side by side when the card has room; in the narrow week columns the
-          badge drops under the name instead of overflowing the card. */}
-      <span className="flex flex-col items-start gap-1 @[9.5rem]:flex-row @[9.5rem]:justify-between @[9.5rem]:gap-2">
-        <span className={cn("min-w-0 text-sm font-bold leading-tight text-ink", cancelled && "text-muted-foreground line-through")}>
-          {view.name.replace("Volunteer driver: ", "Driver: ")}
+      {/* The name gets the full width; long route names hyphenate rather than
+          spill out of the narrow week columns. */}
+      <span lang="en-NZ" className={cn("hyphens-auto break-words text-sm font-bold leading-tight text-ink", cancelled && "text-muted-foreground line-through")}>
+        {shortName(view)}
+        {route && <span className="sr-only">, {SHIFT_KIND_LABEL[view.kind]}</span>}
+      </span>
+      <span className="flex items-start gap-1 text-xs text-muted-foreground">
+        <ShiftKindIcon kind={view.kind} className={cn("mt-px size-3.5 shrink-0", cancelled ? "text-muted-foreground" : view.kind === "WAREHOUSE" || view.kind === "HARVEST" ? "text-green-deep" : "text-sky-text")} />
+        <span className="tabular">
+          {formatTime(view.shift.startTime)}
+          {route && <span aria-hidden> · {SHIFT_KIND_LABEL[view.kind]}</span>}
+        </span>
+      </span>
+      {!cancelled && !draft && (
+        <span className="text-xs leading-snug text-ink-soft">
+          {view.confirmed.map((a) => a.volunteer.firstName).join(", ") || "Nobody rostered"}
+        </span>
+      )}
+      <span className="mt-0.5 flex items-center gap-2">
+        {/* Fill level of the shift, beside its count. */}
+        <span className="block h-1 min-w-0 flex-1 overflow-hidden rounded-full bg-muted" aria-hidden>
+          {!cancelled && !draft && <span className={cn("block h-full rounded-full", view.isGap ? "bg-orange" : "bg-green")} style={{ width: `${fill}%` }} />}
         </span>
         <span
           className={cn(
-            "inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 font-display text-xs font-bold leading-none tabular",
+            "inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-1.5 py-0.5 font-display text-xs font-bold leading-none tabular",
             cancelled ? "bg-muted text-muted-foreground" : draft ? "bg-teal-tint text-teal-deep" : view.isGap ? "bg-orange-tint text-orange-text" : "bg-green-tint-soft text-green-text",
           )}
         >
@@ -75,22 +102,12 @@ function CompactShift({ view }: { view: ShiftView }) {
               Short {view.shortBy}
             </>
           ) : (
-            `${view.confirmedCount}/${view.shift.capacity}`
+            <>
+              {view.confirmedCount}/{view.shift.capacity}
+              <span className="sr-only"> booked</span>
+            </>
           )}
         </span>
-      </span>
-      <span className="flex min-w-0 items-baseline gap-1.5 text-xs text-muted-foreground">
-        <span className="shrink-0 tabular">{formatTime(view.shift.startTime)}</span>
-        {!cancelled && !draft && (
-          <span className="line-clamp-1 text-ink-soft">
-            {view.isGap && <span className="tabular">{view.confirmedCount}/{view.shift.needed} · </span>}
-            {view.confirmed.map((a) => a.volunteer.firstName).join(", ") || "Nobody rostered"}
-          </span>
-        )}
-      </span>
-      {/* Fill level of the shift, in place of a coloured edge. */}
-      <span className="mt-0.5 block h-1 overflow-hidden rounded-full bg-muted" aria-hidden>
-        {!cancelled && !draft && <span className={cn("block h-full rounded-full", view.isGap ? "bg-orange" : "bg-green")} style={{ width: `${fill}%` }} />}
       </span>
     </Link>
   );
@@ -127,8 +144,8 @@ export function MonthView({ anchor, shifts, today }: { anchor: string; shifts: S
                   </Link>
                 )}
                 {gaps.slice(0, 2).map((g) => (
-                  <Link key={g.shift.id} href={`/admin/roster/${g.shift.id}`} className="mt-1 block truncate rounded bg-orange-tint px-1.5 py-0.5 text-xs font-semibold text-orange-text hover:underline">
-                    {g.name}
+                  <Link key={g.shift.id} href={`/admin/roster/${g.shift.id}`} title={g.name} className="mt-1 block truncate rounded bg-orange-tint px-1.5 py-0.5 text-xs font-semibold text-orange-text hover:underline">
+                    {shortName(g)}
                   </Link>
                 ))}
               </div>
