@@ -11,15 +11,15 @@ export type NavItem = {
   exact?: boolean;
   /** Other sections that light this item up. */
   also?: string[];
-  /** What the count badge counts, for screen readers. */
-  badgeNoun?: string;
+  /** What the count badge counts, for screen readers: one, then many. */
+  badgeNoun?: [string, string];
 };
 
 export const PRIMARY_NAV: NavItem[] = [
   { href: "/app", label: "Home", icon: Home, exact: true },
   { href: "/app/shifts", label: "Shifts", icon: CalendarDays },
-  { href: "/app/gaps", label: "Cover", icon: HandHelping, badgeNoun: "shifts need cover" },
-  { href: "/app/training", label: "Training", icon: GraduationCap, badgeNoun: "modules need doing" },
+  { href: "/app/gaps", label: "Cover", icon: HandHelping, badgeNoun: ["shift you can cover", "shifts you can cover"] },
+  { href: "/app/training", label: "Training", icon: GraduationCap, badgeNoun: ["module needs doing", "modules need doing"] },
 ];
 
 /** The phone's fifth tab, which leads to the pages in YOU_NAV. */
@@ -34,6 +34,11 @@ export const YOU_NAV: NavItem[] = [
 
 export function isActive(item: NavItem, pathname: string) {
   return item.exact ? pathname === item.href : [item.href, ...(item.also ?? [])].some((p) => pathname.startsWith(p));
+}
+
+/** "2 shifts you can cover", for the screen reader text beside a badge. */
+export function badgeLabel(item: NavItem, count: number) {
+  return `${count} ${item.badgeNoun?.[count === 1 ? 0 : 1] ?? ""}`.trim();
 }
 
 /** Badge counts keyed by href. */

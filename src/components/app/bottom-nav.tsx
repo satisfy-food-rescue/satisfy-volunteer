@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ME_TAB, PRIMARY_NAV, isActive, type NavBadges } from "./nav";
+import { ME_TAB, PRIMARY_NAV, badgeLabel, isActive, type NavBadges } from "./nav";
 import { cn } from "@/lib/utils";
 
 const TABS = [...PRIMARY_NAV, ME_TAB];
@@ -43,7 +43,7 @@ export function BottomNav({ badges = {}, className }: { badges?: NavBadges; clas
                   ) : null}
                 </span>
                 {t.label}
-                {badge ? <span className="sr-only">, {badge} {t.badgeNoun}</span> : null}
+                {badge ? <span className="sr-only">, {badgeLabel(t, badge)}</span> : null}
               </Link>
             </li>
           );

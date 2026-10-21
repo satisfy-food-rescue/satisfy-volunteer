@@ -6,14 +6,14 @@ import type { Home, HomeAlert } from "@satisfy/core/api";
 import { db } from "./db";
 import { formatInstant } from "./dates";
 import { INITIAL_VISIT_CODE, inHarvestPool } from "./domain";
-import { coverableGaps, myUpcomingShifts, myYear, trainingContext, upcomingHarvests } from "./volunteer-data";
+import { coverGaps, coverableGaps, myUpcomingShifts, myYear, trainingContext, upcomingHarvests } from "./volunteer-data";
 
 type Summary = { overdue: number; notStarted: number; dueSoon: number };
 /** The volunteer's booked initial visit, if any. */
 type Visit = { startsAt: Date; location: string } | null;
 
 export function homeAlert(s: Summary, needsVisit: boolean, visit: Visit): HomeAlert | null {
-  if (s.overdue > 0) return { tone: "bad", title: `${s.overdue} training ${s.overdue === 1 ? "refresher is" : "refreshers are"} overdue`, text: "Route shifts are blocked until it is done. Most refreshers take ten minutes online." };
+  if (s.overdue > 0) return { tone: "bad", title: `${s.overdue} training ${s.overdue === 1 ? "refresher is" : "refreshers are"} overdue`, text: `New bookings for shifts that need ${s.overdue === 1 ? "it are blocked until it is" : "them are blocked until they are"} done. Most refreshers take ten minutes online.` };
   if (needsVisit && visit) return { tone: "info", title: `Your initial visit: ${formatInstant(visit.startsAt)}`, text: `At ${visit.location}. Shifts open up once your in-person training is done.` };
   if (needsVisit) return { tone: "info", title: "Your initial visit comes first", text: "Our coordinator will call to arrange your first visit to the warehouse, or you can book an open time. Shifts open up once your in-person training is done." };
   if (s.notStarted > 0) return { tone: "info", title: "Finish your training to start booking shifts", text: "Tick off the remaining modules. The online ones take about ten minutes each." };
@@ -32,10 +32,10 @@ export function homeEmpty(s: Summary, needsVisit: boolean, visit: Visit): Home["
 }
 
 export async function loadHome(me: Volunteer, today: string) {
-  const [upcoming, training, coverable, harvests, visitRsvp, year] = await Promise.all([
+  const [upcoming, training, gaps, harvests, visitRsvp, year] = await Promise.all([
     myUpcomingShifts(me.id, today),
     trainingContext(me, today),
-    coverableGaps(me.id, today),
+    coverGaps(me.id, today),
     inHarvestPool(me) ? upcomingHarvests(today) : Promise.resolve([]),
     db.sessionRsvp.findFirst({ where: { volunteerId: me.id, status: "GOING", session: { startsAt: { gte: new Date() }, module: { code: INITIAL_VISIT_CODE } } }, include: { session: true } }),
     myYear(me.id, today),
@@ -48,7 +48,8 @@ export async function loadHome(me: Volunteer, today: string) {
     later: upcoming.slice(1, 5),
     year,
     training,
-    coverable,
+    /** Gaps the volunteer could take now, for the cover card. */
+    coverable: coverableGaps(gaps, { me, statuses: training.statuses, today }),
     /** The next harvest, for pool members: their own if booked, else the
      *  soonest with a place left. */
     harvest: harvests.find((h) => h.confirmed.some((a) => a.volunteerId === me.id)) ?? harvests.find((h) => !h.isFull) ?? null,

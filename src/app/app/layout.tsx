@@ -1,7 +1,7 @@
 import { requireVolunteer } from "@/lib/session";
 import { dateToISO, formatMonth, todayISO } from "@/lib/dates";
 import { ORG } from "@/lib/brand";
-import { coverableGaps, trainingContext } from "@/lib/volunteer-data";
+import { coverGaps, coverableGaps, trainingContext } from "@/lib/volunteer-data";
 import { BottomNav } from "@/components/app/bottom-nav";
 import { AppHeader } from "@/components/app/app-header";
 import { AppSidebar } from "@/components/app/app-sidebar";
@@ -15,7 +15,8 @@ export const dynamic = "force-dynamic";
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const me = await requireVolunteer();
   const today = todayISO();
-  const [coverable, training] = await Promise.all([coverableGaps(me.id, today), trainingContext(me, today)]);
+  const [gaps, training] = await Promise.all([coverGaps(me.id, today), trainingContext(me, today)]);
+  const coverable = coverableGaps(gaps, { me, statuses: training.statuses, today });
   const attention = training.summary.overdue + training.summary.notStarted;
   const badges = { "/app/gaps": coverable.length || undefined, "/app/training": attention || undefined };
   return (

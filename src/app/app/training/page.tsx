@@ -93,19 +93,24 @@ export default async function TrainingPage() {
               const actionable = s.status !== "COMPLETE";
               const Inner = (
                 <>
+                  {/* The chip shares a row with the title only, so the lines
+                      below keep the card's full width. */}
                   <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="font-bold text-ink">{s.module.name}</p>
-                      <p className="mt-0.5 text-sm text-muted-foreground">
-                        {s.module.validityMonths ? `Valid ${s.module.validityMonths} months` : "Once only"} · {DELIVERY_LABEL[s.module.delivery]}
-                      </p>
-                    </div>
+                    <p className="min-w-0 font-bold text-ink">{s.module.name}</p>
                     <TrainingChip status={s.status} size="sm" className="shrink-0" />
                   </div>
+                  <p className="mt-0.5 text-sm text-muted-foreground">
+                    {s.module.validityMonths ? `Valid ${s.module.validityMonths} months` : "Once only"} · {DELIVERY_LABEL[s.module.delivery]}
+                  </p>
                   <p className="mt-2 text-sm text-ink-soft tabular">
                     {s.status === "NOT_STARTED" && (s.module.mandatoryBeforeFirstShift ? "Required before your first shift." : "Not yet completed.")}
-                    {s.status === "COMPLETE" && s.expiresISO && `Completed ${formatDate(s.completedISO!)} · expires ${formatDate(s.expiresISO)}`}
-                    {s.status === "COMPLETE" && !s.expiresISO && `Completed ${formatDate(s.completedISO!)} · does not expire`}
+                    {/* Each half keeps its date whole when the line wraps. */}
+                    {s.status === "COMPLETE" && (
+                      <>
+                        <span className="whitespace-nowrap">Completed {formatDate(s.completedISO!)}</span> ·{" "}
+                        <span className="whitespace-nowrap">{s.expiresISO ? `expires ${formatDate(s.expiresISO)}` : "does not expire"}</span>
+                      </>
+                    )}
                     {s.status === "DUE_SOON" && `Expires ${formatDate(s.expiresISO!)} (${relativeDays(s.expiresISO!, today)})`}
                     {s.status === "OVERDUE" && `Expired ${formatDate(s.expiresISO!)} (${relativeDays(s.expiresISO!, today)})`}
                   </p>

@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { Mail } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { AvatarBadge } from "@/components/shared/avatar-badge";
-import { PRIMARY_NAV, YOU_NAV, isActive, type NavBadges, type NavItem } from "./nav";
+import { PRIMARY_NAV, YOU_NAV, badgeLabel, isActive, type NavBadges, type NavItem } from "./nav";
 import { cn } from "@/lib/utils";
 
 function NavLink({ item, pathname, badge }: { item: NavItem; pathname: string; badge?: number }) {
@@ -28,7 +28,7 @@ function NavLink({ item, pathname, badge }: { item: NavItem; pathname: string; b
             <span aria-hidden className="flex h-6 min-w-6 items-center justify-center rounded-full bg-orange px-1.5 text-xs font-bold text-ink tabular">
               {badge}
             </span>
-            <span className="sr-only">, {badge} {item.badgeNoun}</span>
+            <span className="sr-only">, {badgeLabel(item, badge)}</span>
           </>
         ) : null}
       </Link>
