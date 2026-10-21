@@ -61,11 +61,11 @@ export function AuthShell({
   return (
     <SignedOutFrame>
       <div className="rounded-3xl border border-border bg-card p-6 shadow-sm sm:p-8">
-        <h1 className="text-2xl text-ink sm:text-3xl">{title}</h1>
+        <h1 className="text-balance text-2xl text-ink sm:text-3xl">{title}</h1>
         {description && <div className="mt-2 text-ink-soft">{description}</div>}
         <div className="mt-6">{children}</div>
       </div>
-      {footer && <div className="mt-6 text-center text-sm text-ink-soft">{footer}</div>}
+      {footer && <div className="mt-6 text-center text-ink-soft">{footer}</div>}
     </SignedOutFrame>
   );
 }

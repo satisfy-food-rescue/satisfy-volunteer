@@ -202,7 +202,7 @@ function Section({ title, hint, id, invalid, children }: { title: string; hint?:
   return (
     <fieldset id={id} tabIndex={id ? -1 : undefined} aria-invalid={invalid || undefined} aria-describedby={hint ? hintId : undefined} className="min-w-0 outline-none">
       <legend className="font-display text-sm font-bold uppercase tracking-wide text-teal">{title}</legend>
-      {hint && <p id={hintId} className="mt-1 text-sm text-muted-foreground">{hint}</p>}
+      {hint && <p id={hintId} className="mt-1 text-base text-muted-foreground">{hint}</p>}
       <div className="mt-4 flex flex-col gap-4">{children}</div>
     </fieldset>
   );
@@ -222,16 +222,19 @@ function TextField({ id, label, hint, optional, multiline, children, "aria-descr
   const described = [describedBy, hint && hintId].filter(Boolean).join(" ") || undefined;
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
-      <Label htmlFor={id} className="text-base">
-        {label}
-        {optional && <span className="font-normal text-muted-foreground">(optional)</span>}
+      {/* One span, so a long label and "(optional)" wrap together as text. */}
+      <Label htmlFor={id} className="text-base leading-snug">
+        <span>
+          {label}
+          {optional && <span className="font-normal text-muted-foreground"> (optional)</span>}
+        </span>
       </Label>
       {multiline ? (
         <Textarea id={id} rows={3} className="min-h-24 text-base" aria-describedby={described} {...rest} />
       ) : (
         <Input id={id} className="h-12 text-base" aria-describedby={described} {...rest} />
       )}
-      {hint && <p id={hintId} className="text-sm text-muted-foreground">{hint}</p>}
+      {hint && <p id={hintId} className="text-base text-muted-foreground">{hint}</p>}
       {children}
     </div>
   );
@@ -249,7 +252,7 @@ function RoleOption({ role, checked, onChange }: { role: VolunteerRole; checked:
       <TickBox checked={checked} />
       <span className="min-w-0">
         <span className={cn("block font-semibold", checked ? "text-teal-deep" : "text-ink")}>{ROLE_LABEL[role]}</span>
-        <span className="block text-sm text-ink-soft">{ROLE_DESCRIPTION[role]}</span>
+        <span className="block text-ink-soft">{ROLE_DESCRIPTION[role]}</span>
       </span>
     </label>
   );
