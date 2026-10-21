@@ -27,14 +27,14 @@ export function SetPasswordForm({ token, email, submitLabel }: { token: string; 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="password" className="text-base">New password</Label>
         <PasswordInput ref={passwordRef} id="password" name="password" autoComplete="new-password" required minLength={PASSWORD_MIN} aria-invalid={Boolean(fe.password) || undefined} aria-describedby="password-help" />
-        <p id="password-help" className={fe.password ? "text-sm text-status-bad" : "text-sm text-muted-foreground"}>
+        <p id="password-help" className={fe.password ? "text-status-bad" : "text-muted-foreground"}>
           {fe.password ?? `At least ${PASSWORD_MIN} characters. A short phrase you will remember works well.`}
         </p>
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="confirm" className="text-base">Type it again</Label>
         <PasswordInput id="confirm" name="confirm" autoComplete="new-password" required aria-invalid={Boolean(fe.confirm) || undefined} aria-describedby={fe.confirm ? "confirm-error" : undefined} />
-        {fe.confirm && <p id="confirm-error" className="text-sm text-status-bad">{fe.confirm}</p>}
+        {fe.confirm && <p id="confirm-error" className="text-status-bad">{fe.confirm}</p>}
       </div>
       <Button type="submit" size="lg" className="h-12 text-base" disabled={pending}>
         {pending ? <Loader2 className="size-5 animate-spin" aria-hidden /> : <KeyRound className="size-5" aria-hidden />}
