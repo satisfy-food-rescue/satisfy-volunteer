@@ -1,24 +1,37 @@
 import { requireVolunteer } from "@/lib/session";
-import { todayISO } from "@/lib/dates";
+import { dateToISO, formatMonth, todayISO } from "@/lib/dates";
+import { ORG } from "@/lib/brand";
 import { coverableGaps, trainingContext } from "@/lib/volunteer-data";
 import { BottomNav } from "@/components/app/bottom-nav";
 import { AppHeader } from "@/components/app/app-header";
+import { AppSidebar } from "@/components/app/app-sidebar";
 import { BrandFooter } from "@/components/brand/logo";
 
 export const dynamic = "force-dynamic";
 
+// Phones get the teal header and the tab bar. From 1024px the sidebar takes
+// over. Pages lay themselves out against the width of <main> (@container/app),
+// not the window, so they read the same beside the sidebar or without it.
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const me = await requireVolunteer();
   const today = todayISO();
   const [coverable, training] = await Promise.all([coverableGaps(me.id, today), trainingContext(me, today)]);
   const attention = training.summary.overdue + training.summary.notStarted;
+  const badges = { "/app/gaps": coverable.length || undefined, "/app/training": attention || undefined };
   return (
-    <div className="flex flex-1 justify-center bg-app-backdrop">
-      <div className="relative flex min-h-dvh w-full max-w-[30rem] flex-col bg-background pb-[calc(6rem+env(safe-area-inset-bottom))] md:border-x md:border-border">
-        <AppHeader person={me} />
-        <main id="main" className="flex flex-1 flex-col">{children}</main>
+    <div className="flex min-h-dvh flex-1">
+      <AppSidebar
+        person={me}
+        since={`Volunteer since ${formatMonth(dateToISO(me.joinedAt))}`}
+        badges={badges}
+        coordinatorEmail={ORG.coordinatorEmail}
+        className="hidden lg:flex"
+      />
+      <div className="flex min-w-0 flex-1 flex-col pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-0">
+        <AppHeader person={me} className="lg:hidden" />
+        <main id="main" className="@container/app flex flex-1 flex-col">{children}</main>
         <BrandFooter className="mt-4 pb-4" />
-        <BottomNav badges={{ "/app/gaps": coverable.length || undefined, "/app/training": attention || undefined }} />
+        <BottomNav badges={badges} className="lg:hidden" />
       </div>
     </div>
   );

@@ -29,7 +29,6 @@ const ICONS = {
   trash: ["trash", "delete"],
   sparkles: ["sparkles", "auto_awesome"],
   leaf: ["leaf.fill", "eco"],
-  sync: ["arrow.triangle.2.circlepath", "sync"],
   signOut: ["rectangle.portrait.and.arrow.right", "logout"],
   warehouse: ["shippingbox.fill", "warehouse"],
   truck: ["truck.box.fill", "local_shipping"],

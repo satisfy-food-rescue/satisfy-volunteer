@@ -48,6 +48,3 @@ export function Photo({
 export function shiftPhoto(kind: string): PhotoKey {
   return SHIFT_KIND_PHOTO[kind as ShiftKind] ?? "team";
 }
-
-/** `sizes` for a photo spanning the volunteer app's column (30rem, 1.25rem gutters). */
-export const APP_COLUMN_SIZES = "(min-width: 30rem) 27.5rem, calc(100vw - 2.5rem)";

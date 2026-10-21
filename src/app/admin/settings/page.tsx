@@ -1,8 +1,7 @@
-import { Clock, Mail, Palette, Plug, ShieldCheck, Type } from "lucide-react";
+import { CheckCircle2, Clock, Import, Mail, Palette, ShieldCheck, Type } from "lucide-react";
 import { requireAdmin } from "@/lib/session";
 import { isDemo } from "@/lib/env";
 import { db } from "@/lib/db";
-import { formatInstant } from "@/lib/dates";
 import { EMAIL_KIND_LABEL, type EmailKind } from "@/lib/domain";
 import { PageHeader } from "@/components/shared/page-header";
 import { Chip } from "@/components/shared/status-chip";
@@ -30,8 +29,8 @@ const TINTS = [
 export default async function SettingsPage() {
   await requireAdmin();
   const demo = isDemo();
-  const [lastSync, templates] = await Promise.all([
-    db.volunteer.findFirst({ where: { infoodleSyncedAt: { not: null } }, orderBy: { infoodleSyncedAt: "desc" }, select: { infoodleSyncedAt: true } }),
+  const [imported, templates] = await Promise.all([
+    db.volunteer.count({ where: { infoodleId: { not: null } } }),
     db.email.groupBy({ by: ["kind"], _count: { _all: true } }),
   ]);
   return (
@@ -83,35 +82,19 @@ export default async function SettingsPage() {
 
       <section className="rounded-2xl border border-border bg-card p-5" aria-labelledby="inf-h">
         <div className="flex flex-wrap items-start gap-3">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-status-info-bg text-status-info"><Plug className="size-5" aria-hidden /></span>
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-status-info-bg text-status-info"><Import className="size-5" aria-hidden /></span>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 id="inf-h" className="text-2xl text-ink">Infoodle integration</h2>
-              <Chip tone="warn" icon={Clock}>API: pending confirmation</Chip>
+              <h2 id="inf-h" className="text-2xl text-ink">Infoodle import</h2>
+              {imported > 0 ? (
+                <Chip tone="good" icon={CheckCircle2}>{imported} {imported === 1 ? "volunteer" : "volunteers"} imported</Chip>
+              ) : (
+                <Chip tone="neutral" icon={Clock}>Not imported yet</Chip>
+              )}
             </div>
-            <p className="mt-1 text-ink-soft">Infoodle stays the system of record for contacts and donations. This app owns rostering, training and absences. Once Infoodle confirms API access, the sync below runs nightly and on demand.</p>
+            <p className="mt-1 text-ink-soft">Existing volunteers are brought across from Infoodle once, when this app goes live. After that, volunteer details live here: there is no ongoing sync, and new volunteers join through the sign-up form. Each imported volunteer keeps their Infoodle record number on their profile.</p>
           </div>
         </div>
-        <div className="mt-5 grid gap-4 @2xl/admin:grid-cols-2">
-          <div className="rounded-xl border border-border p-4">
-            <p className="font-display text-xs font-bold uppercase tracking-wide text-teal">Infoodle to this app</p>
-            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-ink">
-              <li>Contact changes made in Infoodle overwrite the copy here.</li>
-            </ul>
-          </div>
-          <div className="rounded-xl border border-border p-4">
-            <p className="font-display text-xs font-bold uppercase tracking-wide text-teal">This app to Infoodle</p>
-            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-ink">
-              <li>Phone, emergency contact and availability edits made by volunteers.</li>
-              <li>Volunteer status (active, inactive) and role tags.</li>
-              <li>Optionally: hours volunteered per month, for funder reporting.</li>
-            </ul>
-          </div>
-        </div>
-        <p className="mt-4 text-sm text-muted-foreground">
-          {demo ? `Mocked in this demo: last sync shown as ${lastSync?.infoodleSyncedAt ? formatInstant(lastSync.infoodleSyncedAt) : "never"}. ` : "Not connected yet: contact details are kept here until the sync is in place. "}
-          If Infoodle has no API, the fallback is a scheduled CSV import/export with the same field mapping.
-        </p>
       </section>
 
       <section className="rounded-2xl border border-border bg-card p-5" aria-labelledby="tpl-h">
@@ -143,7 +126,7 @@ export default async function SettingsPage() {
           <ul className="mt-2 list-disc space-y-1 pl-5">
             <li>Sign-in: pick a persona. Production uses a password, Google, Apple or a passkey.</li>
             <li>Email and push notifications: nothing is sent; every message is captured in the Outbox.</li>
-            <li>Infoodle: sync status and record ids are sample data.</li>
+            <li>Infoodle: the imported volunteers and their record numbers are sample data.</li>
             <li>Data: regenerated every day relative to today.</li>
           </ul>
         </section>

@@ -24,7 +24,8 @@ const light = {
   cardSunk: "#eef5f7",
   muted: "#eaf1f3",
   border: "#d6e3e7",
-  input: "#c3d4da",
+  /** Field borders and checkbox outlines: 3.3:1 on a card, as on the web. */
+  input: "#7a929b",
   ink: "#10303a",
   inkSoft: "#48616a",
   mutedText: "#52676f",
@@ -67,7 +68,8 @@ const dark: Palette = {
   cardSunk: "#0f252d",
   muted: "#1a3640",
   border: "#24444f",
-  input: "#2f525d",
+  /** 3.4:1 on a card. */
+  input: "#5a7d88",
   ink: "#eef5f7",
   inkSoft: "#c2d4d9",
   mutedText: "#9fb6bd",

@@ -2,39 +2,21 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, GraduationCap, HandHelping, Home, UserRound } from "lucide-react";
+import { ME_TAB, PRIMARY_NAV, isActive, type NavBadges } from "./nav";
 import { cn } from "@/lib/utils";
 
-type Tab = {
-  href: string;
-  label: string;
-  icon: typeof Home;
-  exact?: boolean;
-  /** Other sections that belong to this tab. */
-  also?: string[];
-  /** What the count badge counts, for screen readers. */
-  badgeNoun?: string;
-};
+const TABS = [...PRIMARY_NAV, ME_TAB];
 
-const TABS: Tab[] = [
-  { href: "/app", label: "Home", icon: Home, exact: true },
-  { href: "/app/shifts", label: "Shifts", icon: CalendarDays },
-  { href: "/app/gaps", label: "Cover", icon: HandHelping, badgeNoun: "shifts need cover" },
-  { href: "/app/training", label: "Training", icon: GraduationCap, badgeNoun: "modules need doing" },
-  // Reached from the Me tab, so it stays lit there.
-  { href: "/app/profile", label: "Me", icon: UserRound, also: ["/app/slot", "/app/harvest", "/app/security"] },
-];
-
-export function BottomNav({ badges = {} }: { badges?: Partial<Record<string, number>> }) {
+export function BottomNav({ badges = {}, className }: { badges?: NavBadges; className?: string }) {
   const pathname = usePathname();
   return (
     <nav
       aria-label="Main"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur"
+      className={cn("fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur", className)}
     >
-      <ul className="mx-auto grid w-full max-w-[30rem] grid-cols-5">
+      <ul className="mx-auto grid w-full max-w-[36rem] grid-cols-5">
         {TABS.map((t) => {
-          const active = t.exact ? pathname === t.href : [t.href, ...(t.also ?? [])].some((p) => pathname.startsWith(p));
+          const active = isActive(t, pathname);
           const Icon = t.icon;
           const badge = badges[t.href];
           return (

@@ -1,6 +1,6 @@
 # Satisfy Volunteers
 
-Volunteer management for Satisfy Food Rescue (Rangiora, North Canterbury), built by Awhina Tech. Three surfaces: a mobile-first volunteer web app (`/app`), a desktop coordinator admin (`/admin`), and the native volunteer app in `mobile/` (Expo), which talks to the same server. Volunteers book shifts and cover gaps, keep their training current and mark themselves away; coordinators run the roster, training, harvests, applications and communication.
+Volunteer management for Satisfy Food Rescue (Rangiora, North Canterbury), built by Awhina Tech. Three surfaces: a volunteer web app (`/app`) that works from a phone to a desktop, a desktop coordinator admin (`/admin`), and the native volunteer app in `mobile/` (Expo), which talks to the same server. Volunteers book shifts and cover gaps, keep their training current and mark themselves away; coordinators run the roster, training, harvests, applications and communication.
 
 The same code runs production and the sales demo. `DEMO_MODE=1` turns on the persona picker, regenerates demo data every day and sends no email. See [DEMO.md](DEMO.md) for the walkthrough and [DEPLOY.md](DEPLOY.md) for running it on Coolify.
 
@@ -116,7 +116,7 @@ src/instrumentation.ts       startup bootstrap
 src/app/sign-in, forgot-password, reset-password, auth/google, auth/apple   sign-in
 src/app/sign-up              signing up to volunteer (an application)
 src/app/.well-known          passkey association for the native app
-src/app/app/*                volunteer app (bottom tab bar, max width 30rem)
+src/app/app/*                volunteer app (tab bar on a phone, sidebar from 1024px)
 src/app/admin/*              coordinator admin (sidebar)
 src/app/api/mobile/*         native app API (route handlers)
 src/app/api/cron/tick        hourly jobs; api/health (+ /ready) for probes

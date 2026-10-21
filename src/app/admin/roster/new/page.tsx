@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { requireAdmin } from "@/lib/session";
 import { todayISO } from "@/lib/dates";
+import { isAdHocKind } from "@/lib/domain";
 import { shiftFormTemplates } from "@/lib/roster";
 import { PageHeader } from "@/components/shared/page-header";
 import { ShiftForm } from "@/components/admin/shift-form";
@@ -13,7 +14,9 @@ export default async function NewShiftPage({ searchParams }: { searchParams: Pro
   const sp = await searchParams;
   const today = todayISO();
   const templates = await shiftFormTemplates();
-  const t = templates.find((x) => x.kind === sp.kind) ?? templates[0];
+  // Without a kind (the roster's New shift button) start on a regular shift
+  // type; harvests have their own button on the Harvests page.
+  const t = templates.find((x) => x.kind === sp.kind) ?? templates.find((x) => !isAdHocKind(x.kind)) ?? templates[0];
   const date = sp.date && /^\d{4}-\d{2}-\d{2}$/.test(sp.date) && sp.date >= today ? sp.date : today;
   const harvest = t.kind === "HARVEST";
   const back = sp.from === "harvests" ? { href: "/admin/harvests", label: "Harvests" } : { href: "/admin/roster", label: "Roster" };

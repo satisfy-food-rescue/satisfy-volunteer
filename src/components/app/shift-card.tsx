@@ -57,72 +57,84 @@ export function ShiftCard({
   const cancelled = view.shift.status === "CANCELLED";
   const others = view.confirmed.filter((a) => a.volunteerId !== meId);
   const locked = !cancelled && !mine && !eligible && !past;
+  const crewCount = (className: string) => (
+    <span className={cn("items-center gap-1.5 text-sm text-muted-foreground tabular", className)}>
+      <Users className="size-4" aria-hidden />
+      {view.confirmedCount}/{view.shift.capacity}
+    </span>
+  );
   return (
+    // Sized by its column, not the screen: in a narrow board column the kind
+    // tile goes (the name already says the kind) so the text keeps its width.
     <Link
       href={`/app/shifts/${view.shift.id}`}
       className={cn(
-        "group flex items-stretch gap-3 rounded-2xl border p-4 transition-colors hover:border-teal/60",
+        "group @container/card block rounded-2xl border transition-colors hover:border-teal/60",
         past ? "bg-card/60" : "bg-card shadow-sm",
         mine && !past ? "border-green/60" : "border-border",
         view.isGap && !mine && !past && "border-orange/60",
       )}
     >
-      <span className={cn("flex w-11 shrink-0 items-center justify-center rounded-xl", kindTileClass(view.kind))}>
-        <ShiftKindIcon kind={view.kind} className="size-6" />
-      </span>
-      <span className="flex min-w-0 flex-1 flex-col gap-1.5">
-        <span className="flex items-start justify-between gap-2">
-          <span className="min-w-0">
-            <span className="line-clamp-2 font-bold text-ink">{view.name}</span>
-            <span className="block text-sm text-muted-foreground tabular">
-              {showDate && `${formatDay(view.iso)}, `}
-              {formatTimeRange(view.shift.startTime, view.shift.endTime)}
-            </span>
-            {isAdHocKind(view.kind) && (
-              <span className="mt-0.5 flex items-start gap-1 text-sm text-muted-foreground">
-                <MapPin className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-                <span className="line-clamp-1">{view.location}</span>
+      <span className="flex items-stretch gap-3 p-3.5 @min-[17rem]/card:p-4">
+        <span className={cn("hidden w-11 shrink-0 items-center justify-center rounded-xl @min-[17rem]/card:flex", kindTileClass(view.kind))}>
+          <ShiftKindIcon kind={view.kind} className="size-6" />
+        </span>
+        <span className="flex min-w-0 flex-1 flex-col gap-1.5">
+          <span className="flex items-start justify-between gap-2">
+            <span className="min-w-0">
+              <span className="line-clamp-3 font-bold text-ink @min-[17rem]/card:line-clamp-2">{view.name}</span>
+              <span className="block text-sm text-muted-foreground tabular">
+                {showDate && `${formatDay(view.iso)}, `}
+                {formatTimeRange(view.shift.startTime, view.shift.endTime)}
               </span>
-            )}
-          </span>
-          <ChevronRight className="mt-1 size-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" aria-hidden />
-        </span>
-        <span className="flex flex-wrap items-center gap-2">
-          {cancelled ? (
-            <Chip tone="neutral" icon={Ban} size="sm">Cancelled</Chip>
-          ) : past ? (
-            <Chip tone="neutral" icon={History} size="sm">{mine ? "You were on" : "Finished"}</Chip>
-          ) : mine ? (
-            <Chip tone="good" icon={CheckCircle2} size="sm">{mine.source === "REGULAR" ? "Your regular slot" : "You're on"}</Chip>
-          ) : view.isGap ? (
-            <Chip tone="warn" icon={HandHelping} size="sm">Needs cover</Chip>
-          ) : view.isFull ? (
-            <Chip tone="neutral" size="sm">Full</Chip>
-          ) : isAdHocKind(view.kind) && eligible ? (
-            <Chip tone="info" size="sm">{view.spotsLeft} {view.spotsLeft === 1 ? "place" : "places"} left</Chip>
-          ) : null}
-          {locked && <Chip tone="neutral" icon={Lock} size="sm">{needsRole ? (view.kind === "HARVEST" ? "Join the pool" : "Role needed") : "Training needed"}</Chip>}
-          <span className="ml-auto inline-flex items-center gap-1.5 text-sm text-muted-foreground tabular">
-            <Users className="size-4" aria-hidden />
-            {view.confirmedCount}/{view.shift.capacity}
-          </span>
-        </span>
-        {others.length > 0 && (
-          <span className="flex items-center gap-1.5 pt-0.5">
-            <span className="flex -space-x-1">
-              {others.slice(0, 3).map((a) => (
-                <AvatarBadge key={a.id} person={a.volunteer} size="sm" className="ring-2 ring-card" />
-              ))}
+              {isAdHocKind(view.kind) && (
+                <span className="mt-0.5 flex items-start gap-1 text-sm text-muted-foreground">
+                  <MapPin className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+                  <span className="line-clamp-1">{view.location}</span>
+                </span>
+              )}
             </span>
-            <span className="text-xs text-muted-foreground">
-              {others.slice(0, 2).map((a) => a.volunteer.firstName).join(", ")}
-              {others.length > 2 ? ` and\u00a0${others.length - 2}\u00a0more` : ""}
-            </span>
+            <ChevronRight className="mt-1 hidden size-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 @min-[17rem]/card:block" aria-hidden />
           </span>
-        )}
-        {locked && showReason && reason && (
-          <span className="text-sm leading-snug text-status-warn">{reason}</span>
-        )}
+          <span className="flex flex-wrap items-center gap-2">
+            {cancelled ? (
+              <Chip tone="neutral" icon={Ban} size="sm">Cancelled</Chip>
+            ) : past ? (
+              <Chip tone="neutral" icon={History} size="sm">{mine ? "You were on" : "Finished"}</Chip>
+            ) : mine ? (
+              <Chip tone="good" icon={CheckCircle2} size="sm">{mine.source === "REGULAR" ? "Your regular slot" : "You're on"}</Chip>
+            ) : view.isGap ? (
+              <Chip tone="warn" icon={HandHelping} size="sm">Needs cover</Chip>
+            ) : view.isFull ? (
+              <Chip tone="neutral" size="sm">Full</Chip>
+            ) : isAdHocKind(view.kind) && eligible ? (
+              <Chip tone="info" size="sm">{view.spotsLeft} {view.spotsLeft === 1 ? "place" : "places"} left</Chip>
+            ) : null}
+            {locked && <Chip tone="neutral" icon={Lock} size="sm">{needsRole ? (view.kind === "HARVEST" ? "Join the pool" : "Role needed") : "Training needed"}</Chip>}
+            {crewCount("ml-auto hidden @min-[17rem]/card:inline-flex")}
+          </span>
+          {/* In a narrow card the count moves down beside the faces, and the
+              names are left to screen readers. */}
+          {others.length > 0 ? (
+            <span className="flex items-center gap-1.5 pt-0.5">
+              <span className="flex -space-x-1">
+                {others.slice(0, 3).map((a) => (
+                  <AvatarBadge key={a.id} person={a.volunteer} size="sm" className="ring-2 ring-card" />
+                ))}
+              </span>
+              <span className="sr-only text-xs text-muted-foreground @min-[17rem]/card:not-sr-only">
+                {others.slice(0, 2).map((a) => a.volunteer.firstName).join(", ")}
+                {others.length > 2 ? ` and\u00a0${others.length - 2}\u00a0more` : ""}
+              </span>
+              {crewCount("ml-auto inline-flex @min-[17rem]/card:hidden")}
+            </span>
+          ) : (
+            crewCount("inline-flex self-end @min-[17rem]/card:hidden")
+          )}
+          {locked && showReason && reason && (
+            <span className="text-sm leading-snug text-status-warn">{reason}</span>
+          )}
+        </span>
       </span>
     </Link>
   );

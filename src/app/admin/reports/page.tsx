@@ -5,7 +5,7 @@ import { addDays, dateToISO, durationHours, formatMonth, formatMonthShort, isoTo
 import { moduleStatuses, trainingSummary } from "@/lib/training";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatTile } from "@/components/admin/stat-tile";
-import { BarChart } from "@/components/admin/bar-chart";
+import { BarChart, HorizontalBarChart } from "@/components/admin/bar-chart";
 
 export const metadata = { title: "Reports" };
 
@@ -55,7 +55,7 @@ export default async function ReportsPage() {
     .map((m) => {
       const rel = active.map((v) => moduleStatuses(v, modules, v.trainingRecords, today).find((s) => s.module.id === m.id)!).filter((s) => s.required);
       const cur = rel.filter((s) => s.status === "COMPLETE" || s.status === "DUE_SOON").length;
-      return { label: m.name.replace("Food Safety and Hygiene", "Food Safety").replace("Slips, Trips and Falls", "Slips/Trips").replace("Route and Vehicle Safety", "Route Safety").replace("Driver Licence Check", "Licence"), sublabel: m.name, value: rel.length ? Math.round((cur / rel.length) * 100) : 100 };
+      return { label: m.name, value: rel.length ? Math.round((cur / rel.length) * 100) : 100 };
     });
 
   return (
@@ -87,7 +87,7 @@ export default async function ReportsPage() {
         <section className="rounded-2xl border border-border bg-card p-5">
           <h2 className="text-xl text-ink">Training compliance by module</h2>
           <p className="mb-4 text-sm text-muted-foreground">Share of volunteers who need the module and are current on it.</p>
-          <BarChart title="Training compliance by module" labelHeader="Module" valueHeader="Current" tone="green" data={moduleCompliance} unit="%" max={100} />
+          <HorizontalBarChart title="Training compliance by module" tone="green" data={moduleCompliance} unit="%" max={100} />
         </section>
       </div>
     </div>

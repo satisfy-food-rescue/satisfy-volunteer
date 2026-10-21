@@ -1,9 +1,11 @@
 import { StatusBar } from "expo-status-bar";
+import { useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BrandWaves, FoodIcon, Logo } from "@/components/brand/logo";
 import { LegalLinks } from "@/components/legal-links";
+import { StatusBarScrim } from "@/components/status-bar-scrim";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { radius, useTheme } from "@/theme";
@@ -16,12 +18,15 @@ import { radius, useTheme } from "@/theme";
 export function SignedOutFrame({ children, back }: { children: React.ReactNode; back?: { label: string; onPress: () => void } }) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
+  const [under, setUnder] = useState(false);
   return (
     <View style={{ flex: 1, backgroundColor: t.hero }}>
       <StatusBar style="light" />
       <ScrollView
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
+        onScroll={(e) => setUnder(e.nativeEvent.contentOffset.y > 2)}
+        scrollEventThrottle={32}
         contentContainerStyle={{ paddingTop: insets.top + (back ? 4 : 24), paddingBottom: insets.bottom + 16, paddingHorizontal: 20, gap: 24, flexGrow: 1 }}
       >
         {back && (
@@ -51,6 +56,7 @@ export function SignedOutFrame({ children, back }: { children: React.ReactNode; 
           ))}
         </View>
       </ScrollView>
+      <StatusBarScrim active={under} />
     </View>
   );
 }
