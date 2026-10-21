@@ -38,7 +38,6 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           # TEST ONLY: the app token is refused while the workflow differs from main.
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          show_full_output: true
           # Our own prompt rather than the code-review plugin, which stops once Claude has commented on a PR,
           # so it never reviewed a second push.
           prompt: |
