@@ -30,6 +30,35 @@ export function ShiftKindIcon({ kind, className }: { kind: string; className?: s
   );
 }
 
+/** A shift the volunteer cannot book, kept small and grey so the ones they
+ *  can take stand out. The page says why once, in its lock banner. */
+export function LockedShiftCard({ view, needsRole, showDate = false }: { view: ShiftView; needsRole: boolean; showDate?: boolean }) {
+  return (
+    <Link
+      href={`/app/shifts/${view.shift.id}`}
+      className="group @container/card flex items-center gap-3 rounded-xl border border-border bg-card/60 px-3.5 py-2.5 text-sm transition-colors hover:border-teal/60"
+    >
+      <span className="hidden size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground @min-[17rem]/card:flex">
+        <ShiftKindIcon kind={view.kind} className="size-4.5" />
+      </span>
+      {/* In a narrow board column the lock goes under the time. */}
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5 @min-[20rem]/card:flex-row @min-[20rem]/card:items-center @min-[20rem]/card:gap-3">
+        <span className="min-w-0 flex-1">
+          <span className="line-clamp-2 font-semibold text-ink-soft">{view.name}</span>
+          <span className="block text-muted-foreground tabular">
+            {showDate && `${formatDay(view.iso)}, `}
+            {formatTimeRange(view.shift.startTime, view.shift.endTime)}
+          </span>
+        </span>
+        <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-status-neutral">
+          <Lock className="size-3.5" aria-hidden />
+          {needsRole ? (view.kind === "HARVEST" ? "Join the pool" : "Role needed") : "Training needed"}
+        </span>
+      </span>
+    </Link>
+  );
+}
+
 export function ShiftCard({
   view,
   meId,
@@ -38,7 +67,6 @@ export function ShiftCard({
   reason,
   showDate = false,
   past = false,
-  showReason = true,
 }: {
   view: ShiftView;
   meId: string;
@@ -50,8 +78,6 @@ export function ShiftCard({
   showDate?: boolean;
   /** A shift on a day gone by: no calls to action, just what happened. */
   past?: boolean;
-  /** Off where the page explains the lock once for every card. */
-  showReason?: boolean;
 }) {
   const mine = view.confirmed.find((a) => a.volunteerId === meId);
   const cancelled = view.shift.status === "CANCELLED";
@@ -131,9 +157,7 @@ export function ShiftCard({
           ) : (
             crewCount("inline-flex self-end @min-[17rem]/card:hidden")
           )}
-          {locked && showReason && reason && (
-            <span className="text-sm leading-snug text-status-warn">{reason}</span>
-          )}
+          {locked && reason && <span className="text-sm leading-snug text-status-neutral">{reason}</span>}
         </span>
       </span>
     </Link>

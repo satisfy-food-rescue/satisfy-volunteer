@@ -13,7 +13,8 @@ export function ShiftStatusChip({ view }: { view: ShiftView }) {
   if (view.isDraft) return <Chip tone="info" icon={PencilLine} size="sm">Draft</Chip>;
   if (view.isGap) return <Chip tone="warn" icon={HandHelping} size="sm">Needs {view.shortBy}</Chip>;
   // An ad hoc shift short of crew is open, not a gap to cover.
-  if (isAdHocKind(view.kind) && view.shortBy > 0) return <Chip tone="warn" icon={Users} size="sm">{view.shortBy} to fill</Chip>;
+  // Green outline, as on the dashboard's coverage board key.
+  if (isAdHocKind(view.kind) && view.shortBy > 0) return <Chip tone="good" icon={Users} size="sm" className="border border-green/70 bg-card text-green-deep">{view.shortBy} to fill</Chip>;
   return <Chip tone="good" icon={CheckCircle2} size="sm">{isAdHocKind(view.kind) ? "Filled" : "Covered"}</Chip>;
 }
 

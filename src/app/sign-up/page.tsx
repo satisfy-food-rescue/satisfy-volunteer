@@ -16,9 +16,9 @@ export default async function SignUpPage() {
   return (
     <SignedOutFrame width="form">
       <SignUpForm />
-      <p className="mt-6 text-center text-sm text-ink-soft">
-        Already volunteer with {ORG.shortName}?{" "}
-        <Link href="/sign-in" className="font-semibold text-teal underline underline-offset-4">
+      <p className="mt-6 text-center text-ink-soft">
+        Already volunteering with {ORG.shortName}?{" "}
+        <Link href="/sign-in" className="whitespace-nowrap font-semibold text-teal underline underline-offset-4">
           Sign in
         </Link>
       </p>

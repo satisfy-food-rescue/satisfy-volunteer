@@ -32,7 +32,7 @@ export function SignInForm({ next, initialEmail }: { next: string | null; initia
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="password" className="text-base">Password</Label>
         <PasswordInput ref={passwordRef} id="password" name="password" autoComplete="current-password" required aria-invalid={invalid} aria-describedby={describedBy} />
-        <Link href={forgotHref} className="-mt-1.5 -mb-2 inline-flex min-h-11 items-center self-end text-sm font-semibold text-teal underline-offset-4 hover:underline">Forgot your password?</Link>
+        <Link href={forgotHref} className="-mt-1.5 -mb-2 inline-flex min-h-11 items-center self-end font-semibold text-teal underline-offset-4 hover:underline">Forgot your password?</Link>
       </div>
       <Button type="submit" size="lg" className="h-12 text-base" disabled={pending}>
         {pending ? <Loader2 className="size-5 animate-spin" aria-hidden /> : <LogIn className="size-5" aria-hidden />}

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { ORG } from "@/lib/brand";
-import { LegalLink, LegalList, LegalPage, Term } from "@/components/legal/legal-page";
+import { LegalEmail, LegalLink, LegalList, LegalPage, Term } from "@/components/legal/legal-page";
 
 export const metadata: Metadata = {
   title: "Privacy policy",
@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 const UPDATED = "19 October 2026";
 
 export default function PrivacyPage() {
-  const contact = <LegalLink href={`mailto:${ORG.coordinatorEmail}?subject=Privacy%20request`}>{ORG.coordinatorEmail}</LegalLink>;
+  const contact = <LegalEmail address={ORG.coordinatorEmail} subject="Privacy request" />;
   return (
     <LegalPage
       eyebrow="Tō tūmataitinga · Your privacy"

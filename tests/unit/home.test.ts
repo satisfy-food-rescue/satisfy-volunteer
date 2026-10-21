@@ -12,6 +12,10 @@ describe("homeAlert", () => {
     expect(homeAlert({ overdue: 2, notStarted: 1, dueSoon: 1 }, true, visit)).toMatchObject({ tone: "bad", title: "2 training refreshers are overdue" });
     expect(homeAlert({ ...none, overdue: 1 }, false, null)?.title).toBe("1 training refresher is overdue");
   });
+  it("does not say only route shifts are blocked: any shift needing the module is", () => {
+    expect(homeAlert({ ...none, overdue: 1 }, false, null)?.text).toBe("New bookings for shifts that need it are blocked until it is done. Most refreshers take ten minutes online.");
+    expect(homeAlert({ ...none, overdue: 2 }, false, null)?.text).toMatch(/^New bookings for shifts that need them are blocked until they are done\./);
+  });
   it("shows a booked initial visit in NZ time", () => {
     expect(homeAlert({ ...none, notStarted: 3 }, true, visit)).toEqual({ tone: "info", title: "Your initial visit: Wed 14 Oct, 10:30am", text: "At Satisfy warehouse. Shifts open up once your in-person training is done." });
   });

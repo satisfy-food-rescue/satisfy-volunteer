@@ -1,8 +1,9 @@
 import type { Volunteer } from "@/generated/prisma/client";
 import { db } from "./db";
 import { addDays, durationHours, isoToDate, todayISO } from "./dates";
-import { moduleStatuses, trainingSummary, type ModuleStatus } from "./training";
+import { eligibilityFor, moduleStatuses, trainingSummary, type ModuleStatus } from "./training";
 import { decorateShift, gapsBetween, shiftInclude, type ShiftView } from "./roster";
+import { shiftAction, type ShiftContext } from "./mobile-api/shifts";
 
 export async function trainingContext(volunteer: Volunteer, today = todayISO()) {
   const [modules, records] = await Promise.all([
@@ -13,11 +14,22 @@ export async function trainingContext(volunteer: Volunteer, today = todayISO()) 
   return { modules, records, statuses, summary: trainingSummary(statuses) };
 }
 
-/** Open gaps in the next four weeks the volunteer could cover: every gap
- *  except those their own absence caused. */
-export async function coverableGaps(volunteerId: string, today = todayISO()): Promise<ShiftView[]> {
+/** Open gaps in the next four weeks, as the Cover tab lists them: every gap
+ *  except those the volunteer's own absence caused, including any locked to
+ *  them by role or training. */
+export async function coverGaps(volunteerId: string, today = todayISO()): Promise<ShiftView[]> {
   const gaps = await gapsBetween(today, addDays(today, 28));
   return gaps.filter((g) => !g.released.some((r) => r.volunteerId === volunteerId));
+}
+
+/** The gaps the volunteer could take right now, where their button would say
+ *  "I can cover this". The Cover badge and the home cover card count these,
+ *  so neither nags about shifts that are locked to them. */
+export function coverableGaps(gaps: ShiftView[], ctx: ShiftContext): ShiftView[] {
+  return gaps.filter((g) => {
+    const action = shiftAction(g, ctx.me.id, eligibilityFor(ctx.me, g.kind, ctx.statuses), ctx.today);
+    return action.kind === "BOOK";
+  });
 }
 
 /** Upcoming shifts the volunteer is confirmed on, soonest first. */

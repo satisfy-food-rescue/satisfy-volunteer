@@ -98,20 +98,20 @@ function PasswordSection({ hasPassword }: { hasPassword: boolean }) {
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="current" className="text-base">Current password</Label>
             <PasswordInput ref={currentRef} id="current" name="current" autoComplete="current-password" required aria-invalid={Boolean(errors.current) || undefined} aria-describedby={errors.current ? "current-error" : undefined} />
-            {errors.current && <p id="current-error" className="text-sm text-status-bad">{errors.current}</p>}
+            {errors.current && <p id="current-error" className="text-status-bad">{errors.current}</p>}
           </div>
         )}
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="new-password" className="text-base">New password</Label>
           <PasswordInput ref={passwordRef} id="new-password" name="password" autoComplete="new-password" required minLength={PASSWORD_MIN} aria-invalid={Boolean(errors.password) || undefined} aria-describedby="new-password-help" />
-          <p id="new-password-help" className={errors.password ? "text-sm text-status-bad" : "text-sm text-muted-foreground"}>
+          <p id="new-password-help" className={errors.password ? "text-status-bad" : "text-muted-foreground"}>
             {errors.password ?? `At least ${PASSWORD_MIN} characters.`}
           </p>
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="confirm-password" className="text-base">Type it again</Label>
           <PasswordInput ref={confirmRef} id="confirm-password" name="confirm" autoComplete="new-password" required aria-invalid={Boolean(errors.confirm) || undefined} aria-describedby={errors.confirm ? "confirm-password-error" : undefined} />
-          {errors.confirm && <p id="confirm-password-error" className="text-sm text-status-bad">{errors.confirm}</p>}
+          {errors.confirm && <p id="confirm-password-error" className="text-status-bad">{errors.confirm}</p>}
         </div>
         <Button type="submit" size="lg" className="h-12 self-start px-5 text-base" disabled={pending}>
           {pending ? <Loader2 className="size-5 animate-spin" aria-hidden /> : <KeyRound className="size-5" aria-hidden />}

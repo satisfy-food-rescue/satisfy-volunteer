@@ -7,6 +7,7 @@ import {
   BarChart3,
   CalendarOff,
   CalendarRange,
+  FileText,
   GraduationCap,
   Inbox,
   LayoutDashboard,
@@ -14,7 +15,6 @@ import {
   LogOut,
   Mail,
   Megaphone,
-  Settings,
   ShieldCheck,
   Smartphone,
   Sprout,
@@ -85,7 +85,7 @@ const SECTIONS: { label: string; links: NavLink[] }[] = [
     links: [
       { href: "/admin/shift-types", label: "Shift types", icon: ListChecks },
       { href: "/admin/coordinators", label: "Coordinators", icon: ShieldCheck },
-      { href: "/admin/settings", label: "Settings", icon: Settings },
+      { href: "/admin/settings", label: "Emails and import", icon: FileText },
     ],
   },
 ];

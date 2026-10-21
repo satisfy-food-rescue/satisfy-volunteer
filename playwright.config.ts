@@ -8,7 +8,8 @@ import { E2E_DATABASE_URL } from "./tests/e2e/support/database-url";
 // Locally the app is built first; CI builds in an earlier step and sets
 // E2E_SKIP_BUILD.
 
-const PORT = 3200;
+// E2E_PORT lets runs in parallel worktrees keep to their own servers.
+const PORT = Number(process.env.E2E_PORT ?? 3200);
 const BASE_URL = `http://localhost:${PORT}`;
 
 export default defineConfig({

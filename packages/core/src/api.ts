@@ -146,7 +146,8 @@ export type MobileSession = {
   /** True on the demo deployment: the app shows "Switch persona". */
   demo: boolean;
   badges: {
-    /** Open gaps in the next four weeks the volunteer did not cause. */
+    /** Open gaps in the next four weeks the volunteer could take now: not
+     *  ones they caused, are already on, or are locked to them. */
     cover: number;
     /** Required modules overdue or not started. */
     training: number;
@@ -241,6 +242,7 @@ export type Home = {
   /** Shown instead of the next shift when nothing is booked. */
   empty: { text: string; cta: string; target: "training" | "shifts" };
   alert: HomeAlert | null;
+  /** The gaps counted by the Cover badge, and the soonest of them. */
   cover: { count: number; next: { iso: string; name: string } | null };
   /** For harvest pool members: the next harvest they are on, else the
    *  soonest with a place left. `id` is the shift id. */

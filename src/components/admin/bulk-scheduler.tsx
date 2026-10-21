@@ -55,50 +55,58 @@ export function BulkScheduler({ templates, today }: { templates: TemplateLite[];
   return (
     <div className="grid grid-cols-1 gap-6 @4xl/admin:grid-cols-5">
       <div className="flex flex-col gap-6 @4xl/admin:col-span-2">
-        <fieldset className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-4">
-          <legend className="font-display px-1 text-sm font-bold uppercase tracking-wide text-muted-foreground">Shift templates</legend>
-          {templates.map((t) => (
-            <label key={t.id} className={cn("flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors", selected.has(t.id) ? "border-teal bg-teal-tint-soft" : "border-border hover:bg-muted")}>
-              <Checkbox className="mt-0.5 size-5" checked={selected.has(t.id)} onCheckedChange={() => { invalidate(); setSelected(toggle(selected, t.id)); }} />
-              <span className="min-w-0 flex-1">
-                <span className="block text-sm font-bold text-ink">{t.name}</span>
-                <span className="block text-xs text-muted-foreground tabular">
-                  {formatTimeRange(t.startTime, t.endTime)} · {t.weekdays.map((d) => WEEKDAY_SHORT[d]).join(" ")} · capacity {t.capacity}, min {t.needed} · {plural(t.regulars, "regular", "regulars")}
+        {/* The card is a wrapper rather than the fieldset's own border, so the
+            legend reads as a heading instead of notching into the border. */}
+        <div className="rounded-2xl border border-border bg-card p-4">
+          <fieldset className="flex min-w-0 flex-col gap-2">
+            <legend className="display mb-3 text-xl text-ink">Shift types</legend>
+            {templates.map((t) => (
+              <label key={t.id} className={cn("flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors", selected.has(t.id) ? "border-teal bg-teal-tint-soft" : "border-border hover:bg-muted")}>
+                <Checkbox className="mt-0.5 size-5" checked={selected.has(t.id)} onCheckedChange={() => { invalidate(); setSelected(toggle(selected, t.id)); }} />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-bold text-ink">{t.name}</span>
+                  <span className="block text-xs text-muted-foreground tabular">
+                    {formatTimeRange(t.startTime, t.endTime)} · {t.weekdays.map((d) => WEEKDAY_SHORT[d]).join(" ")} · capacity {t.capacity}, min {t.needed} · {plural(t.regulars, "regular", "regulars")}
+                  </span>
                 </span>
-              </span>
-            </label>
-          ))}
-        </fieldset>
-
-        <fieldset className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-4">
-          <legend className="font-display px-1 text-sm font-bold uppercase tracking-wide text-muted-foreground">Date range</legend>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="bs-start">From</Label>
-              <DatePicker id="bs-start" min={today} value={startDate} onChange={(d) => { invalidate(); setStartDate(d); if (d > endDate) setEndDate(d); }} />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="bs-end">To</Label>
-              <DatePicker id="bs-end" min={startDate} value={endDate} onChange={(d) => { invalidate(); setEndDate(d); }} />
-            </div>
-          </div>
-          <fieldset aria-describedby="bs-weekdays-hint">
-            <legend className="mb-1.5 text-sm font-medium">Repeat on</legend>
-            <div className="grid grid-cols-5 gap-1.5">
-              {[1, 2, 3, 4, 5].map((d) => (
-                <label key={d} className={cn("flex h-11 cursor-pointer items-center justify-center rounded-lg border text-sm font-bold transition-colors has-focus-visible:outline-3 has-focus-visible:outline-ring", weekdays.has(d) ? "border-teal bg-teal-tint text-teal-deep" : "border-border text-muted-foreground hover:bg-muted")}>
-                  <input type="checkbox" className="sr-only" checked={weekdays.has(d)} onChange={() => { invalidate(); setWeekdays(toggle(weekdays, d)); }} />
-                  {WEEKDAY_SHORT[d]}
-                </label>
-              ))}
-            </div>
-            <p id="bs-weekdays-hint" className="mt-1.5 text-xs text-muted-foreground">Satisfy runs Monday to Friday, so weekends are never offered.</p>
+              </label>
+            ))}
           </fieldset>
-          <label className="flex cursor-pointer items-start gap-3">
-            <Checkbox className="mt-0.5 size-5" checked={assignRegulars} onCheckedChange={(c) => { invalidate(); setAssignRegulars(c); }} />
-            <span className="text-sm text-ink">Roster regular volunteers onto their usual weekday automatically</span>
-          </label>
-        </fieldset>
+        </div>
+
+        <div className="@container/dates rounded-2xl border border-border bg-card p-4">
+          <fieldset className="flex min-w-0 flex-col gap-4">
+            <legend className="display mb-3 text-xl text-ink">Date range</legend>
+            {/* Side by side only where a full date like "Thu 14 Jan 2027" fits. */}
+            <div className="grid grid-cols-1 gap-3 @sm/dates:grid-cols-2">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="bs-start">From</Label>
+                <DatePicker id="bs-start" min={today} value={startDate} onChange={(d) => { invalidate(); setStartDate(d); if (d > endDate) setEndDate(d); }} />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="bs-end">To</Label>
+                <DatePicker id="bs-end" min={startDate} value={endDate} onChange={(d) => { invalidate(); setEndDate(d); }} />
+              </div>
+            </div>
+            <fieldset aria-describedby="bs-weekdays-hint">
+              <legend className="mb-1.5 text-sm font-medium">Repeat on</legend>
+              <div className="grid grid-cols-5 gap-1.5">
+                {[1, 2, 3, 4, 5].map((d) => (
+                  <label key={d} className={cn("flex h-11 cursor-pointer items-center justify-center gap-1 rounded-lg border text-sm font-bold transition-colors has-focus-visible:outline-3 has-focus-visible:outline-offset-2 has-focus-visible:outline-ring", weekdays.has(d) ? "border-teal bg-teal text-white hover:bg-teal-deep" : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-ink")}>
+                    <input type="checkbox" className="sr-only" checked={weekdays.has(d)} onChange={() => { invalidate(); setWeekdays(toggle(weekdays, d)); }} />
+                    {weekdays.has(d) && <Check className="size-3.5" aria-hidden />}
+                    {WEEKDAY_SHORT[d]}
+                  </label>
+                ))}
+              </div>
+              <p id="bs-weekdays-hint" className="mt-1.5 text-xs text-muted-foreground">Satisfy runs Monday to Friday, so weekends are never offered.</p>
+            </fieldset>
+            <label className="flex cursor-pointer items-start gap-3">
+              <Checkbox className="mt-0.5 size-5" checked={assignRegulars} onCheckedChange={(c) => { invalidate(); setAssignRegulars(c); }} />
+              <span className="text-sm text-ink">Roster regular volunteers onto their usual weekday automatically</span>
+            </label>
+          </fieldset>
+        </div>
 
         <div className="flex flex-wrap gap-2">
           <Button size="lg" variant={preview ? "outline" : "default"} disabled={!canRun || pending} onClick={() => run(true)}>

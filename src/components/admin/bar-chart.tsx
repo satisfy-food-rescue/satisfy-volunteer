@@ -3,6 +3,7 @@
 // with HTML rather than a scaled SVG so the text stays at body size however
 // wide the card is, and long labels wrap instead of running into each other.
 import { cn } from "@/lib/utils";
+import { Disclosure } from "@/components/admin/disclosure";
 
 export type BarDatum = { label: string; value: number; sublabel?: string; muted?: boolean };
 
@@ -61,13 +62,12 @@ export function BarChart({
           ))}
         </div>
       </div>
-      <details className="text-xs text-muted-foreground">
-        <summary className="cursor-pointer font-semibold hover:text-ink">View as table</summary>
+      <Disclosure label="View as table" size="sm" className="mt-1 text-xs text-muted-foreground">
         <table className="mt-2 w-full text-left">
           <thead><tr><th scope="col" className="py-1 font-semibold">{labelHeader}</th><th scope="col" className="py-1 text-right font-semibold">{valueHeader}</th></tr></thead>
           <tbody>{data.map((d) => <tr key={d.label} className="border-t border-border"><td className="py-1">{d.sublabel ?? d.label}</td><td className="py-1 text-right tabular">{format(d.value)}{unit}</td></tr>)}</tbody>
         </table>
-      </details>
+      </Disclosure>
     </figure>
   );
 }
