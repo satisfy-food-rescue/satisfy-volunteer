@@ -54,7 +54,7 @@ export function weekdayOf(iso: string): number {
 }
 
 export function isWeekday(iso: string): boolean {
-  return weekdayOf(iso) <= 5;
+  return weekdayOf(iso) < 5;
 }
 
 /** Monday of the week containing `iso`. */
