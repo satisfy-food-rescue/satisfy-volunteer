@@ -18,7 +18,7 @@ minimumReleaseAgeExclude:
   - '@expo/metro-runtime@57.0.17'
   - '@expo/ui@57.0.24 || 57.0.25 || 57.0.26'
   - expo-linking@57.0.13
-  - expo-notifications@57.0.23
+  - expo-notifications@57.0.23 || 57.0.24
   - expo-router@57.0.27 || 57.0.28 || 57.0.29
   - '@expo/router-server@57.0.13 || 57.0.14'
   - babel-preset-expo@57.0.16
