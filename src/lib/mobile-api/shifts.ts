@@ -47,7 +47,8 @@ export function shiftSummary(view: ShiftView, ctx: ShiftContext): ShiftSummary {
     isFull: view.isFull,
     isGap: view.isGap,
     shortBy: view.shortBy,
-    causes: view.causes,
+    // Only a gap is explained, as on the web, and never with the reason.
+    causes: view.isGap ? view.crewCauses : [],
     crew,
     action: shiftAction(view, ctx.me.id, eligibilityFor(ctx.me, view.kind, ctx.statuses), ctx.today),
   };

@@ -19,17 +19,20 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const coverable = coverableGaps(gaps, { me, statuses: training.statuses, today });
   const attention = training.summary.overdue + training.summary.notStarted;
   const badges = { "/app/gaps": coverable.length || undefined, "/app/training": attention || undefined };
+  // Only what the chrome shows: a client component's props are sent to the
+  // browser whole, and the full record holds the coordinator's notes.
+  const person = { firstName: me.firstName, lastName: me.lastName };
   return (
     <div className="flex min-h-dvh flex-1">
       <AppSidebar
-        person={me}
+        person={person}
         since={`Volunteer since ${formatMonth(dateToISO(me.joinedAt))}`}
         badges={badges}
         coordinatorEmail={ORG.coordinatorEmail}
         className="hidden lg:flex"
       />
       <div className="flex min-w-0 flex-1 flex-col pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-0">
-        <AppHeader person={me} className="lg:hidden" />
+        <AppHeader person={person} className="lg:hidden" />
         <main id="main" className="@container/app flex flex-1 flex-col">{children}</main>
         <BrandFooter className="mt-4 pb-4" />
         <BottomNav badges={badges} className="lg:hidden" />

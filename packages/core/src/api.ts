@@ -208,7 +208,8 @@ export type ShiftSummary = {
   /** Confirmed crew below the minimum needed. */
   isGap: boolean;
   shortBy: number;
-  /** Why the gap exists, e.g. "Brian Tweedie away (holiday)". */
+  /** Why the gap exists, e.g. "Brian Tweedie away". Empty unless isGap. Never
+   *  says why someone is away. */
   causes: string[];
   crew: CrewMember[];
   action: ShiftAction;

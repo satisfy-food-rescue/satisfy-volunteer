@@ -41,7 +41,7 @@ Or set `DEMO_MODE=1` in `.env` for the one-click persona picker. Without `RESEND
 | `pnpm test:smoke` | Every page as every persona and every native app endpoint, against a running demo server (see CI) |
 | `pnpm db:migrate` | Create and apply a migration after editing `prisma/schema.prisma` |
 | `pnpm db:deploy` | Apply pending migrations (what the container does on start) |
-| `pnpm db:seed` | Replace the local database with the demo data. Refuses to run against production. |
+| `pnpm db:seed` | Replace the local database with the demo data. Refuses to run against production, or to replace people it did not create (`pnpm db:reset` starts from scratch). |
 | `pnpm db:reset` | Drop, migrate and seed |
 
 ## CI
@@ -91,7 +91,7 @@ The Expo app in `mobile/` talks to `/api/mobile/*`. Volunteer features only: coo
 
 ## Domain rules worth knowing
 
-- A shift has a `capacity` (maximum) and a `needed` (minimum crew). Confirmed below needed is a gap. An absence releases the volunteer's regular assignments; released assignments are what the gap explains ("Brian away, holiday").
+- A shift has a `capacity` (maximum) and a `needed` (minimum crew). Confirmed below needed is a gap. An absence releases the volunteer's regular assignments; released assignments are what the gap explains: coordinators see "Brian away (holiday)", volunteers only "Brian away", since a reason such as sick is private.
 - The training gate: to book a shift kind, a volunteer must hold the matching role and every module required for that role must be Complete or Due soon. Overdue or Not started blocks booking with a message naming the module. Regular slots already on the roster are not affected.
 - Due soon is 30 days before expiry. Online modules are completed in-app: the confirmation stays locked until the volunteer has scrolled to the end of the content and opened every video or link (`completionGate` in `packages/core/src/training.ts`, shared with the native app). It is a nudge, not proof, since nobody can see a video being watched. Confirming lifts the gate immediately. Coordinators edit the content and links, and add modules, from Admin > Training.
 - Harvests are shifts of an ad hoc kind (`HARVEST`): created one at a time, never cover gaps, no last-minute pushes. The harvest pool is the `HARVEST` role, which volunteers join and leave themselves; harvest shifts stay locked until every module required for that role is current. The Initial Visit is not required, since the induction happens at the first harvest.
