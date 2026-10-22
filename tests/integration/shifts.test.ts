@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import * as mailer from "@/lib/mailer";
 import { addDays, isoToDate, todayISO, weekMonday } from "@/lib/dates";
 import { createMobileSession } from "@/lib/mobile-auth";
-import { cancelBooking } from "@/lib/volunteer-actions";
+import { cancelBooking, markAway, removeAbsence } from "@/lib/volunteer-actions";
 import { GET as getShifts } from "@/app/api/mobile/shifts/route";
 import { makeVolunteer, resetDb } from "./helpers";
 
@@ -59,6 +59,29 @@ describe("cancelling a booking", () => {
 
     expect(await cancelBooking(me, theirs.id)).toMatchObject({ ok: false, notFound: true });
     expect((await db.assignment.findUniqueOrThrow({ where: { id: theirs.id } })).status).toBe("CONFIRMED");
+  });
+});
+
+describe("marking away", () => {
+  beforeEach(async () => {
+    await resetDb();
+    vi.spyOn(mailer, "sendEmail").mockResolvedValue("re");
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  it("alerts the coordinator about each new gap, even over a shift released before", async () => {
+    const me = await makeVolunteer();
+    const iso = addDays(todayISO(), 7);
+    const shift = await shiftOn(iso, 1);
+    await db.assignment.create({ data: { shiftId: shift.id, volunteerId: me.id, source: "REGULAR" } });
+    const away = { startDate: iso, endDate: iso, reason: "HOLIDAY" as const };
+
+    expect(await markAway(me, away)).toMatchObject({ ok: true });
+    const first = await db.absence.findFirstOrThrow();
+    expect(await removeAbsence(me, first.id)).toMatchObject({ ok: true });
+    expect(await markAway(me, away)).toMatchObject({ ok: true });
+
+    expect(await db.email.count({ where: { kind: "GAP_ALERT" } })).toBe(2);
   });
 });
 

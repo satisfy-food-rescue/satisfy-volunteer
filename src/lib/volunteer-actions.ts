@@ -60,7 +60,8 @@ export async function cancelBooking(me: Volunteer, assignmentId: string): Promis
   // coordinator has marked.
   const { count } = await db.assignment.updateMany({ where: { id: assignmentId, volunteerId: me.id, status: "CONFIRMED" }, data: { status: "CANCELLED" } });
   if (count === 0) return { ok: false, error: a.status === "CANCELLED" ? "That booking is already cancelled." : "That booking can no longer be cancelled." };
-  await afterShiftReleased(a.shiftId, { cause: `${fullName(me)} cancelled`, assignmentId });
+  // A cancelled booking is never confirmed again, so its id names the release.
+  await afterShiftReleased(a.shiftId, { cause: `${fullName(me)} cancelled`, key: assignmentId });
   revalidateAll();
   return { ok: true, message: "Booking cancelled." };
 }
@@ -94,7 +95,7 @@ export async function markAway(me: Volunteer, input: z.infer<typeof awaySchema>)
   });
   await queueEmail(me, T.absenceConfirmed({ firstName: me.firstName, startISO: startDate, endISO: endDate, reasonLabel: ABSENCE_REASON_LABEL[reason], releasedCount: affected.length }));
   for (const a of affected) {
-    await afterShiftReleased(a.shiftId, { cause: `${fullName(me)} marked away (${ABSENCE_REASON_LABEL[reason].toLowerCase()})`, assignmentId: a.id });
+    await afterShiftReleased(a.shiftId, { cause: `${fullName(me)} marked away (${ABSENCE_REASON_LABEL[reason].toLowerCase()})`, key: `${a.id}:${absence.id}` });
   }
   revalidateAll();
   return { ok: true, message: affected.length === 0 ? "Marked away. No regular shifts fall in that period." : `Marked away. ${affected.length} ${affected.length === 1 ? "shift" : "shifts"} released for cover.` };

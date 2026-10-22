@@ -53,8 +53,10 @@ export async function escalateIfUncovered(view: ShiftView, now = new Date()): Pr
 }
 
 /** A volunteer releasing their own place: what to tell the coordinator, and
- *  the assignment released, so each release alerts them once. */
-export type Release = { cause: string; assignmentId: string };
+ *  a key naming this release, so each release alerts them exactly once. An
+ *  assignment can be released more than once (marked away, the absence
+ *  removed, marked away again), so the key is more than its id. */
+export type Release = { cause: string; key: string };
 
 /** Call after anything that may have opened a gap: a cancellation, an absence
  *  or a coordinator removing someone. `release` set means the coordinator did
@@ -66,7 +68,7 @@ export async function afterShiftReleased(shiftId: string, release: Release | nul
   await notifyLastMinute(view, now);
   if (!release) return true;
   const escalated = await escalateIfUncovered(view, now);
-  const ref = `gap-alert:${release.assignmentId}`;
+  const ref = `gap-alert:${release.key}`;
   if (!escalated && !(await db.email.findFirst({ where: { ref }, select: { id: true } }))) {
     await queueEmail(null, T.gapAlert({ shiftName: view.name, dateISO: view.iso, start: view.shift.startTime, end: view.shift.endTime, cause: release.cause, shiftId: view.shift.id }), ref);
   }
