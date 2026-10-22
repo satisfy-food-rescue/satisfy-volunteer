@@ -76,7 +76,7 @@ export default async function GapsPage() {
                           <p className="text-sm text-muted-foreground tabular">{formatTimeRange(view.shift.startTime, view.shift.endTime)} · {view.location}</p>
                           <p className="mt-1.5 inline-flex items-start gap-1.5 text-sm font-semibold text-orange-text">
                             <HandHelping className="mt-0.5 size-4 shrink-0" aria-hidden />
-                            <span>Needs {view.shortBy} more. {view.causes[0]}.</span>
+                            <span>Needs {view.shortBy} more. {view.crewCauses[0]}.</span>
                           </p>
                         </div>
                       </div>

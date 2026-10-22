@@ -1,7 +1,9 @@
 // Renders every page against a running demo server (DEMO_MODE=1) as every
 // persona and fails on anything but a 200. Pages are discovered from src/app,
 // so a new page is covered without touching this file; a new dynamic segment
-// needs a resolver below. Then signs in to the native app API as every
+// needs a resolver below. Every page is also checked for things that must
+// never reach a browser, such as a password hash or the coordinator's notes
+// about the volunteer viewing it. Then signs in to the native app API as every
 // volunteer persona and reads every endpoint. Run against the same database
 // the server uses, after `pnpm build` and starting it with DEMO_MODE=1:
 //   BASE_URL=http://localhost:3000 pnpm test:smoke
@@ -30,7 +32,19 @@ async function webSession(v: Volunteer): Promise<string> {
   return token;
 }
 
-type Check = { path: string; persona: string | null; cookie?: string; expect: number; location?: string };
+type Check = { path: string; persona: string | null; cookie?: string; expect: number; location?: string; secrets?: string[] };
+
+/** A bcrypt hash, as stored in Volunteer.passwordHash. */
+const BCRYPT = /\$2[aby]\$\d{2}\$/;
+
+/** What a page must not contain: password hashes anywhere, and on the
+ *  volunteer app the viewer's own coordinator notes (a whole Volunteer record
+ *  handed to a client component would carry both). */
+function leaks(html: string, secrets: string[]): string | null {
+  if (BCRYPT.test(html) || html.includes("passwordHash")) return "a password hash";
+  const secret = secrets.find((s) => html.includes(s));
+  return secret ? `private text "${secret.slice(0, 40)}"` : null;
+}
 
 // Values to try for each dynamic route. Shifts are limited to a fortnight
 // around today, which covers past, current, cancelled and upcoming shifts,
@@ -88,7 +102,10 @@ async function main() {
       if (!vs.length) throw new Error(`The seed has no rows for ${route}`);
       paths = vs.map((v) => route.replace(/\[[^\]]+\]/, encodeURIComponent(v)));
     }
-    for (const p of area) for (const path of paths) checks.push({ path, persona: keyOf(p), cookie: cookies.get(p.id), expect: 200 });
+    for (const p of area) {
+      const secrets = area === volunteers && p.notes ? [p.notes] : [];
+      for (const path of paths) checks.push({ path, persona: keyOf(p), cookie: cookies.get(p.id), expect: 200, secrets });
+    }
   }
 
   const failures: string[] = [];
@@ -102,10 +119,12 @@ async function main() {
         });
         const location = res.headers.get("location");
         const who = c.persona ?? "signed out";
+        const html = await res.text();
         if (res.status !== c.expect) failures.push(`${c.path} as ${who}: expected ${c.expect}, got ${res.status}`);
         else if (c.location && location && new URL(location, base).pathname !== c.location)
           failures.push(`${c.path} as ${who}: redirected to ${location}, expected ${c.location}`);
-        await res.arrayBuffer();
+        const leak = leaks(html, c.secrets ?? []);
+        if (leak) failures.push(`${c.path} as ${who}: the page contains ${leak}`);
       }
     }),
   );

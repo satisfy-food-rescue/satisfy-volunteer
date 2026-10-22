@@ -104,7 +104,7 @@ A second application from the same repository with:
 | `DEMO_MODE` | `1` |
 | `CRON_SECRET` | Any random value |
 
-No email or Google settings are needed: the demo never sends email. Push notifications do reach phones signed in to the demo in the native app, which is how it is shown to people. It regenerates its data on every start, and the same hourly scheduled task regenerates it when the New Zealand date changes. The seed refuses to run against a database unless `DEMO_MODE` is on, so pointing the demo at production data by mistake fails rather than wiping it.
+No email or Google settings are needed: the demo never sends email. Push notifications do reach phones signed in to the demo in the native app, which is how it is shown to people. It regenerates its data on every start, and the same hourly scheduled task regenerates it when the New Zealand date changes. The seed only replaces a database that holds nothing but demo data (one it seeded before, or one with no volunteers or applications yet), so pointing the demo at production data by mistake stops the demo from starting rather than wiping it. Without `DEMO_MODE`, production never runs the seed at all.
 
 ## Operations
 

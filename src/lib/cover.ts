@@ -52,18 +52,23 @@ export async function escalateIfUncovered(view: ShiftView, now = new Date()): Pr
   return true;
 }
 
+/** A volunteer releasing their own place: what to tell the coordinator, and
+ *  the assignment released, so each release alerts them once. */
+export type Release = { cause: string; assignmentId: string };
+
 /** Call after anything that may have opened a gap: a cancellation, an absence
- *  or a coordinator removing someone. `cause` set means the coordinator did not
- *  make the change and should hear about the gap. Resolves whether the shift
- *  is now short. */
-export async function afterShiftReleased(shiftId: string, cause: string | null, now = new Date()): Promise<boolean> {
+ *  or a coordinator removing someone. `release` set means the coordinator did
+ *  not make the change and should hear about the gap. Resolves whether the
+ *  shift is now short. */
+export async function afterShiftReleased(shiftId: string, release: Release | null, now = new Date()): Promise<boolean> {
   const view = await shiftById(shiftId);
   if (!view?.isGap) return false;
   await notifyLastMinute(view, now);
-  if (!cause) return true;
+  if (!release) return true;
   const escalated = await escalateIfUncovered(view, now);
-  if (!escalated) {
-    await queueEmail(null, T.gapAlert({ shiftName: view.name, dateISO: view.iso, start: view.shift.startTime, end: view.shift.endTime, cause, shiftId: view.shift.id }));
+  const ref = `gap-alert:${release.assignmentId}`;
+  if (!escalated && !(await db.email.findFirst({ where: { ref }, select: { id: true } }))) {
+    await queueEmail(null, T.gapAlert({ shiftName: view.name, dateISO: view.iso, start: view.shift.startTime, end: view.shift.endTime, cause: release.cause, shiftId: view.shift.id }), ref);
   }
   return true;
 }

@@ -55,8 +55,12 @@ export async function cancelBooking(me: Volunteer, assignmentId: string): Promis
   if (!a || a.volunteerId !== me.id) return { ok: false, error: "Booking not found.", notFound: true };
   if (a.source === "REGULAR") return { ok: false, error: "This is your regular slot. Use Mark me away instead." };
   if (dateToISO(a.shift.date) < todayISO()) return { ok: false, error: "That shift has already happened." };
-  await db.assignment.update({ where: { id: assignmentId }, data: { status: "CANCELLED" } });
-  await afterShiftReleased(a.shiftId, `${fullName(me)} cancelled`);
+  // Only a confirmed booking can be cancelled, and only once: not one already
+  // cancelled (which would alert the coordinator again), nor attendance the
+  // coordinator has marked.
+  const { count } = await db.assignment.updateMany({ where: { id: assignmentId, volunteerId: me.id, status: "CONFIRMED" }, data: { status: "CANCELLED" } });
+  if (count === 0) return { ok: false, error: a.status === "CANCELLED" ? "That booking is already cancelled." : "That booking can no longer be cancelled." };
+  await afterShiftReleased(a.shiftId, { cause: `${fullName(me)} cancelled`, assignmentId });
   revalidateAll();
   return { ok: true, message: "Booking cancelled." };
 }
@@ -90,7 +94,7 @@ export async function markAway(me: Volunteer, input: z.infer<typeof awaySchema>)
   });
   await queueEmail(me, T.absenceConfirmed({ firstName: me.firstName, startISO: startDate, endISO: endDate, reasonLabel: ABSENCE_REASON_LABEL[reason], releasedCount: affected.length }));
   for (const a of affected) {
-    await afterShiftReleased(a.shiftId, `${fullName(me)} marked away (${ABSENCE_REASON_LABEL[reason].toLowerCase()})`);
+    await afterShiftReleased(a.shiftId, { cause: `${fullName(me)} marked away (${ABSENCE_REASON_LABEL[reason].toLowerCase()})`, assignmentId: a.id });
   }
   revalidateAll();
   return { ok: true, message: affected.length === 0 ? "Marked away. No regular shifts fall in that period." : `Marked away. ${affected.length} ${affected.length === 1 ? "shift" : "shifts"} released for cover.` };

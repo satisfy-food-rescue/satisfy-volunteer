@@ -2,9 +2,10 @@
 // demo data. Run through tsx with the react-server condition so the app's
 // server-only modules can be imported outside Next.js.
 //
-// It refuses to run with NODE_ENV=production unless DEMO_MODE is set, so it
-// cannot wipe real data. Production gets its starting configuration from
-// src/lib/bootstrap.ts instead.
+// It refuses to run with NODE_ENV=production unless DEMO_MODE is set, and to
+// replace a database holding people it did not create, so it cannot wipe real
+// data. Production gets its starting configuration from src/lib/bootstrap.ts
+// instead.
 import "dotenv/config";
 import { seedDemo } from "../src/lib/demo/seed";
 import { db } from "../src/lib/db";

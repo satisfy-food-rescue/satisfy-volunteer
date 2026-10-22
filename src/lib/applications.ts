@@ -2,12 +2,15 @@ import "server-only";
 // Signing up to volunteer, shared by the website's /sign-up action and the
 // native app's POST /api/mobile/apply so both follow the same rules. Signing
 // up never creates an account: it sends an application to the coordinator,
-// and approving it (approveApplication in src/app/admin/actions.ts) does.
+// and approving it (approveSignUp, from Admin > Applications) does.
 import { z } from "zod";
 import type { SignUpField, SignUpInput } from "@satisfy/core/api";
+import type { Volunteer } from "@/generated/prisma/client";
 import { db } from "./db";
 import { todayISO } from "./dates";
-import { ROLE_LABEL, VOLUNTEER_ROLES, normaliseEmail, sortRoles, type ApplicationSource } from "./domain";
+import { INITIAL_VISIT_CODE, ROLE_LABEL, VOLUNTEER_ROLES, fullName, normaliseEmail, sortRoles, type ApplicationSource } from "./domain";
+import { sendSignInLink } from "./auth";
+import type { ActionResult } from "./volunteer-actions";
 import { queueEmail } from "./emails";
 import * as T from "./email-templates";
 import { LIMITS, take } from "./rate-limit";
@@ -120,4 +123,46 @@ export async function submitSignUp(raw: unknown, source: ApplicationSource, ip: 
     `application-new:${application.id}`,
   );
   return { ok: true, message };
+}
+
+type Actor = Pick<Volunteer, "id" | "firstName">;
+
+/** Approves a pending application: a new account, or a returning volunteer's
+ *  old one reactivated with its history and training. Someone who signs up
+ *  comes back as a volunteer, never as a coordinator: a former coordinator's
+ *  access is only given back from Admin > Coordinators. Emails them a link to
+ *  set a password. */
+export async function approveSignUp(actor: Actor, id: string): Promise<ActionResult> {
+  const app = await db.application.findUnique({ where: { id } });
+  if (!app || app.status !== "PENDING") return { ok: false, error: "Application already reviewed." };
+  const email = normaliseEmail(app.email);
+  const existing = await db.volunteer.findUnique({ where: { email } });
+  if (existing?.status === "ACTIVE") return { ok: false, error: `${fullName(existing)} already has an active account with this email. Decline this application and update their profile instead.` };
+  const induction = await db.trainingSession.findFirst({ where: { startsAt: { gte: new Date() }, module: { code: INITIAL_VISIT_CODE } }, include: { rsvps: { where: { status: "GOING" } } }, orderBy: { startsAt: "asc" } });
+  // Undefined leaves a returning volunteer's existing value alone.
+  const details = {
+    firstName: app.firstName, lastName: app.lastName, phone: app.phone ?? undefined, suburb: app.suburb ?? undefined, birthYear: app.birthYear ?? undefined,
+    roles: app.interests.length ? sortRoles(app.interests) : ["WAREHOUSE" as const], availabilityNote: app.availability,
+    emergencyName: app.emergencyName ?? undefined, emergencyPhone: app.emergencyPhone ?? undefined,
+  };
+  const wasCoordinator = existing?.role === "ADMIN";
+  // Someone coming back keeps their account, history and training records.
+  const volunteer = existing
+    ? await db.volunteer.update({ where: { id: existing.id }, data: { ...details, status: "ACTIVE", role: "VOLUNTEER" } })
+    : await db.volunteer.create({ data: { ...details, email, joinedAt: new Date() } });
+  const visit = induction && (induction.rsvps.length < induction.capacity || induction.rsvps.some((r) => r.volunteerId === volunteer.id)) ? induction : null;
+  if (visit) {
+    await db.sessionRsvp.upsert({ where: { sessionId_volunteerId: { sessionId: visit.id, volunteerId: volunteer.id } }, create: { sessionId: visit.id, volunteerId: volunteer.id, status: "GOING" }, update: { status: "GOING" } });
+  }
+  await db.application.update({ where: { id }, data: { status: "APPROVED", reviewedAt: new Date(), volunteerId: volunteer.id } });
+  // What they were sent as an applicant joins their communication history.
+  await db.email.updateMany({ where: { applicationId: id, volunteerId: null }, data: { volunteerId: volunteer.id } });
+  await db.contactLog.create({
+    data: existing
+      ? { volunteerId: volunteer.id, authorId: actor.id, kind: "STATUS_CHANGED", summary: `Signed up again. Application approved and account reactivated${wasCoordinator ? " as a volunteer, without coordinator access" : ""}.` }
+      : { volunteerId: volunteer.id, authorId: actor.id, kind: "ACCOUNT_CREATED", summary: "Application approved." },
+  });
+  await queueEmail(volunteer, T.applicationApproved({ firstName: volunteer.firstName, inductionAt: visit?.startsAt, inductionLocation: visit?.location }));
+  const invited = await sendSignInLink(volunteer, volunteer.passwordHash || volunteer.lastSignInAt ? "PASSWORD_RESET" : "INVITE");
+  return { ok: true, message: `${app.firstName} approved. ${existing ? `Their old account is active again${wasCoordinator ? ", as a volunteer" : ""}` : "Account created"}${visit ? " and pencilled into the next initial visit" : ""}.${invited ? "" : " The sign-in invite could not be sent; resend it from their profile."}` };
 }

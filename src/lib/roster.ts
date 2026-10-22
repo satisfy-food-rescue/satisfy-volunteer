@@ -28,8 +28,11 @@ export type ShiftView = {
    *  shifts (harvests) are never gaps: an unfilled place is just open. */
   isGap: boolean;
   shortBy: number;
-  /** Why the gap exists, e.g. "Brian Tweedie away (holiday)". */
+  /** Why the gap exists, for coordinators, e.g. "Brian Tweedie away (holiday)". */
   causes: string[];
+  /** The same for volunteers: who is away, never why, since a reason such as
+   *  sick is the absent volunteer's own business. */
+  crewCauses: string[];
   location: string;
 };
 
@@ -55,9 +58,13 @@ export function decorateShift(shift: ShiftFull): ShiftView {
     const reason = r.absence ? ABSENCE_REASON_LABEL[r.absence.reason].toLowerCase() : "away";
     return `${fullName(r.volunteer)} away (${reason})`;
   });
+  const crewCauses = released.map((r) => `${fullName(r.volunteer)} away`);
   const kind = shift.template.kind;
   const adHoc = isAdHocKind(kind);
-  if (shortBy > 0 && causes.length === 0 && !adHoc) causes.push("No regular volunteer for this slot");
+  if (shortBy > 0 && causes.length === 0 && !adHoc) {
+    causes.push("No regular volunteer for this slot");
+    crewCauses.push("No regular volunteer for this slot");
+  }
   return {
     shift,
     iso: dateToISO(shift.date),
@@ -72,6 +79,7 @@ export function decorateShift(shift: ShiftFull): ShiftView {
     isGap: shift.status === "SCHEDULED" && shortBy > 0 && !adHoc,
     shortBy,
     causes,
+    crewCauses,
     location: shiftLocation(shift),
   };
 }

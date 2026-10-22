@@ -21,7 +21,7 @@ export default async function ApplicationsPage() {
   const pending = apps.filter((a) => a.status === "PENDING");
   const reviewed = apps.filter((a) => a.status !== "PENDING");
   // Someone signing up again after they stopped volunteering.
-  const known = await db.volunteer.findMany({ where: { email: { in: pending.map((a) => a.email) } }, select: { id: true, email: true, status: true } });
+  const known = await db.volunteer.findMany({ where: { email: { in: pending.map((a) => a.email) } }, select: { id: true, email: true, status: true, role: true } });
   const accountFor = new Map(known.map((v) => [v.email, v]));
   const signUpUrl = new URL("/sign-up", env().APP_URL).toString();
   return (
@@ -63,7 +63,9 @@ export default async function ApplicationsPage() {
                   <p className="mt-3 flex items-start gap-2 rounded-xl bg-status-info-bg px-3 py-2 text-sm text-status-info">
                     <History className="mt-0.5 size-4 shrink-0" aria-hidden />
                     <span>
-                      {accountFor.get(a.email)!.status === "ACTIVE" ? "Already has an active account with this email." : "Volunteered with Satisfy before. Approving reactivates their account, with their history and training."}{" "}
+                      {accountFor.get(a.email)!.status === "ACTIVE" ? "Already has an active account with this email." : accountFor.get(a.email)!.role === "ADMIN"
+                        ? "Was a coordinator. Approving reactivates their account as a volunteer, with their history and training. Coordinator access is only given back from Coordinators."
+                        : "Volunteered with Satisfy before. Approving reactivates their account, with their history and training."}{" "}
                       <Link href={`/admin/volunteers/${accountFor.get(a.email)!.id}`} className="font-semibold underline underline-offset-2">Their profile</Link>
                     </span>
                   </p>

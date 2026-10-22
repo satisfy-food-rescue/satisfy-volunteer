@@ -140,11 +140,15 @@ const VOLUNTEERS: VolSpec[] = [
 ];
 
 // ---------------------------------------------------------------------------
-/** Replaces everything in the database with fresh demo data for today. */
+/** Replaces everything in the database with fresh demo data for today. Only
+ *  wipes a database that holds nothing but demo data: one this seed wrote, or
+ *  one with no people in it yet. DEMO_MODE alone is not enough, since a demo
+ *  deployment given production's DATABASE_URL by mistake has it set. */
 export async function seedDemo() {
   if (env().NODE_ENV === "production" && !isDemo()) {
     throw new Error("Refusing to wipe a production database: the demo seed only runs with DEMO_MODE=1.");
   }
+  await assertDemoDatabase();
   TODAY = todayISO();
   seedState = PRNG_SEED;
   console.log(`Seeding Satisfy demo relative to ${TODAY}`);
@@ -551,6 +555,18 @@ export async function seedDemo() {
 }
 
 const DEMO_SEEDED_ON = "demoSeededOn";
+
+/** Throws unless the database is empty of people or was last written by this
+ *  seed, so real volunteers are never wiped. */
+export async function assertDemoDatabase() {
+  if (await db.meta.findUnique({ where: { key: DEMO_SEEDED_ON } })) return;
+  const people = (await db.volunteer.count()) + (await db.application.count());
+  if (people === 0) return;
+  throw new Error(
+    "Refusing to replace this database with demo data: it has volunteers or applications the demo seed did not create. " +
+      "Check DATABASE_URL. To start a local database again from scratch, run `pnpm db:reset`.",
+  );
+}
 
 /** Regenerates the demo when the NZ date has moved on since the last seed, or
  *  always when `force` is set. Returns whether it reseeded. */
