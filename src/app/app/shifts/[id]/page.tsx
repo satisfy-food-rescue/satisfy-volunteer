@@ -56,7 +56,7 @@ export default async function ShiftDetailPage({ params }: { params: Promise<{ id
 
   // Upcoming shifts get a summary beside the button on wider screens, which
   // then carries the date, time and places instead of the details card.
-  const summary = (view.isGap && view.causes.length > 0) || view.iso >= today;
+  const summary = (view.isGap && view.crewCauses.length > 0) || view.iso >= today;
 
   // On a phone everything runs in one column. With room, the photo and the
   // details sit on the left and what to do and who is on stay in view on the
@@ -127,9 +127,9 @@ export default async function ShiftDetailPage({ params }: { params: Promise<{ id
                   {view.isGap && <Chip tone="warn" icon={HandHelping} size="sm">Needs {view.shortBy} more</Chip>}
                 </p>
               </div>
-              {view.isGap && view.causes.length > 0 && (
+              {view.isGap && view.crewCauses.length > 0 && (
                 <p className="rounded-xl bg-orange-tint px-4 py-3 text-sm font-semibold text-orange-text">
-                  {view.causes.join(". ")}.
+                  {view.crewCauses.join(". ")}.
                 </p>
               )}
               {actions}

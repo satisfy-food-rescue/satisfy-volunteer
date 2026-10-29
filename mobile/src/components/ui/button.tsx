@@ -27,7 +27,8 @@ const STYLES: Record<ButtonVariant, { bg: keyof Palette | null; pressed: keyof P
   primary: { bg: "primary", pressed: "primaryPressed", fg: "white", border: null },
   cover: { bg: "orange", pressed: "orangePressed", fg: "onOrange", border: null },
   outline: { bg: "card", pressed: "muted", fg: "ink", border: "input" },
-  ghost: { bg: null, pressed: "muted", fg: "mutedText", border: null },
+  /** A text button, teal like a link or an iOS bar button. */
+  ghost: { bg: null, pressed: "muted", fg: "tealText", border: null },
   onHero: { bg: "white", pressed: "tealTint", fg: "teal", border: null },
 };
 

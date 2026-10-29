@@ -76,7 +76,7 @@ function RootNavigator({ fontsReady }: { fontsReady: boolean }) {
             options={{
               presentation: "formSheet",
               sheetGrabberVisible: true,
-              sheetAllowedDetents: [0.92],
+              sheetAllowedDetents: "fitToContents",
               sheetCornerRadius: 28,
               headerShown: false,
               contentStyle: { backgroundColor: t.background },

@@ -40,7 +40,7 @@ export function Chip({ tone = "neutral", icon, label, small }: { tone?: ChipTone
       }}
     >
       {icon && <Icon name={icon} size={small ? 13 : 15} color={t[c.fg]} />}
-      <Text variant={small ? "caption" : "smallSemibold"} tone={c.fg} style={small && { fontFamily: "Montserrat_600SemiBold" }}>
+      <Text variant={small ? "label" : "smallSemibold"} tone={c.fg}>
         {label}
       </Text>
     </View>

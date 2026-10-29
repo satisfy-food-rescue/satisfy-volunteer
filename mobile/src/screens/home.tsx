@@ -2,7 +2,7 @@ import { useIsFocused } from "expo-router/react-navigation";
 import { router, type Href } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useState } from "react";
-import { Pressable, RefreshControl, ScrollView, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { Pressable, RefreshControl, ScrollView, useWindowDimensions, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import type { Home, HomeAlert, ShiftSummary } from "@satisfy/core/api";
@@ -21,7 +21,7 @@ import { Text } from "@/components/ui/text";
 import { compactCount, formatCount, greeting, plural } from "@/lib/format";
 import { TAB } from "@/lib/links";
 import { useHome, useRefreshOnFocus, useSession } from "@/lib/queries";
-import { radius, useTheme, type Palette } from "@/theme";
+import { font, radius, useTheme, type Palette } from "@/theme";
 
 export function HomeScreen() {
   const t = useTheme();
@@ -136,7 +136,7 @@ function NextShift({ shift, today }: { shift: ShiftSummary; today: string }) {
               <Text variant="display" style={{ marginTop: 6 }}>
                 {formatDay(shift.iso)}
               </Text>
-              <Text variant="heading" tone="inkSoft" tabular style={{ fontFamily: "Montserrat_500Medium" }}>
+              <Text variant="heading" tone="inkSoft" tabular style={{ fontFamily: font.medium }}>
                 {formatTimeRange(shift.startTime, shift.endTime)}
               </Text>
             </View>
@@ -230,21 +230,25 @@ const QUICK: { label: string; icon: IconName; href: Href }[] = [
 
 function QuickActions() {
   const t = useTheme();
+  // Three tiles side by side fit their labels up to about 130% text. Larger
+  // text stacks them as full-width rows so no label breaks mid-phrase.
+  const stacked = useWindowDimensions().fontScale > 1.3;
   return (
-    <View style={{ flexDirection: "row", gap: 10 }} accessibilityLabel="Quick actions">
+    <View style={{ flexDirection: stacked ? "column" : "row", gap: 10 }} accessibilityLabel="Quick actions">
       {QUICK.map((q) => (
         <Pressable
           key={q.label}
           accessibilityRole="button"
           onPress={() => router.navigate(q.href)}
           style={({ pressed }) => ({
-            flex: 1,
-            minHeight: 104,
+            flex: stacked ? undefined : 1,
+            minHeight: stacked ? 64 : 104,
+            flexDirection: stacked ? "row" : "column",
             alignItems: "center",
-            gap: 10,
-            paddingTop: 16,
-            paddingBottom: 12,
-            paddingHorizontal: 6,
+            gap: stacked ? 14 : 10,
+            paddingTop: stacked ? 10 : 16,
+            paddingBottom: stacked ? 10 : 12,
+            paddingHorizontal: stacked ? 14 : 6,
             borderRadius: radius.card,
             borderCurve: "continuous",
             borderWidth: 1,
@@ -257,9 +261,10 @@ function QuickActions() {
               <View style={{ width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: pressed ? t.primary : t.tealTint }}>
                 <Icon name={q.icon} size={20} color={pressed ? t.white : t.tealText} />
               </View>
-              <Text variant="smallBold" center>
+              <Text variant={stacked ? "bodyBold" : "smallBold"} center={!stacked} style={stacked && { flex: 1 }}>
                 {q.label}
               </Text>
+              {stacked && <Icon name="chevronRight" size={16} color={t.mutedText} />}
             </>
           )}
         </Pressable>
@@ -337,7 +342,7 @@ function Impact({ impact }: { impact: Home["impact"] }) {
   const stats: [FoodKind, string, string][] = [
     ["broccoli", compactCount(impact.kgRescued), "kg of kai rescued"],
     ["carrot", compactCount(impact.meals), "meals shared"],
-    ["apple", `${formatCount(impact.co2Tonnes)} t`, `CO2e avoided in ${impact.co2Period}`],
+    ["apple", `${formatCount(impact.co2Tonnes)} t`, `CO₂e avoided in ${impact.co2Period}`],
   ];
   return (
     <View accessibilityLabel="Impact" style={{ backgroundColor: t.hero, borderRadius: radius.card, borderCurve: "continuous", padding: 20 }}>
@@ -350,7 +355,7 @@ function Impact({ impact }: { impact: Home["impact"] }) {
             <View style={{ width: 40, height: 40, borderRadius: 20, borderWidth: 2, borderColor: "rgba(255,255,255,0.8)", alignItems: "center", justifyContent: "center" }}>
               <FoodIcon kind={icon} size={36} />
             </View>
-            <Text variant="title" tone="white" tabular style={{ marginTop: 10 }}>
+            <Text variant="title" tone="white" tabular numberOfLines={1} adjustsFontSizeToFit style={{ marginTop: 10 }}>
               {n}
             </Text>
             <Text variant="caption" tone="white" style={{ opacity: 0.85, marginTop: 2 }}>

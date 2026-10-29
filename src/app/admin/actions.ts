@@ -9,6 +9,7 @@ import { addDays, addMonths, dateToISO, isoToDate, isWeekday, nzInstant, todayIS
 import { ABSENCE_REASON_LABEL, INITIAL_VISIT_CODE, ROLE_LABEL, VOLUNTEER_ROLES, fullName, isAdHocKind, normaliseEmail, sortRoles } from "@/lib/domain";
 import { sendSignInLink } from "@/lib/auth";
 import { grantAdminAccess, revokeAdminAccess, type GrantAdminResult, type NewAdminInput } from "@/lib/admin-access";
+import { approveSignUp } from "@/lib/applications";
 import { shiftById } from "@/lib/roster";
 import { sendShiftCallout } from "@/lib/callouts";
 import { announcementSchema, audienceSchema, resolveAudience, sendAnnouncement, type AnnouncementInput, type AudienceInput } from "@/lib/announcements";
@@ -452,38 +453,9 @@ export async function runRemindersNow(): Promise<ActionResult> {
 // --- Applications ---
 export async function approveApplication(id: string): Promise<ActionResult> {
   const admin = await requireAdmin();
-  const app = await db.application.findUnique({ where: { id } });
-  if (!app || app.status !== "PENDING") return { ok: false, error: "Application already reviewed." };
-  const email = normaliseEmail(app.email);
-  const existing = await db.volunteer.findUnique({ where: { email } });
-  if (existing?.status === "ACTIVE") return { ok: false, error: `${fullName(existing)} already has an active account with this email. Decline this application and update their profile instead.` };
-  const induction = await db.trainingSession.findFirst({ where: { startsAt: { gte: new Date() }, module: { code: INITIAL_VISIT_CODE } }, include: { rsvps: { where: { status: "GOING" } } }, orderBy: { startsAt: "asc" } });
-  // Undefined leaves a returning volunteer's existing value alone.
-  const details = {
-    firstName: app.firstName, lastName: app.lastName, phone: app.phone ?? undefined, suburb: app.suburb ?? undefined, birthYear: app.birthYear ?? undefined,
-    roles: app.interests.length ? sortRoles(app.interests) : ["WAREHOUSE" as const], availabilityNote: app.availability,
-    emergencyName: app.emergencyName ?? undefined, emergencyPhone: app.emergencyPhone ?? undefined,
-  };
-  // Someone coming back keeps their account, history and training records.
-  const volunteer = existing
-    ? await db.volunteer.update({ where: { id: existing.id }, data: { ...details, status: "ACTIVE" } })
-    : await db.volunteer.create({ data: { ...details, email, joinedAt: new Date() } });
-  const visit = induction && (induction.rsvps.length < induction.capacity || induction.rsvps.some((r) => r.volunteerId === volunteer.id)) ? induction : null;
-  if (visit) {
-    await db.sessionRsvp.upsert({ where: { sessionId_volunteerId: { sessionId: visit.id, volunteerId: volunteer.id } }, create: { sessionId: visit.id, volunteerId: volunteer.id, status: "GOING" }, update: { status: "GOING" } });
-  }
-  await db.application.update({ where: { id }, data: { status: "APPROVED", reviewedAt: new Date(), volunteerId: volunteer.id } });
-  // What they were sent as an applicant joins their communication history.
-  await db.email.updateMany({ where: { applicationId: id, volunteerId: null }, data: { volunteerId: volunteer.id } });
-  await db.contactLog.create({
-    data: existing
-      ? { volunteerId: volunteer.id, authorId: admin.id, kind: "STATUS_CHANGED", summary: "Signed up again. Application approved and account reactivated." }
-      : { volunteerId: volunteer.id, authorId: admin.id, kind: "ACCOUNT_CREATED", summary: "Application approved." },
-  });
-  await queueEmail(volunteer, T.applicationApproved({ firstName: volunteer.firstName, inductionAt: visit?.startsAt, inductionLocation: visit?.location }));
-  const invited = await sendSignInLink(volunteer, volunteer.passwordHash || volunteer.lastSignInAt ? "PASSWORD_RESET" : "INVITE");
-  revalidateAll();
-  return { ok: true, message: `${app.firstName} approved. ${existing ? "Their old account is active again" : "Account created"}${visit ? " and pencilled into the next initial visit" : ""}.${invited ? "" : " The sign-in invite could not be sent; resend it from their profile."}` };
+  const r = await approveSignUp(admin, id);
+  if (r.ok) revalidateAll();
+  return r;
 }
 
 export async function declineApplication(id: string, note: string): Promise<ActionResult> {

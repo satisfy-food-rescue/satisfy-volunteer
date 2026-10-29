@@ -22,9 +22,6 @@ export function HarvestScreen() {
     <QueryScreen query={query}>
       {(harvest) => (
         <>
-          <Text variant="eyebrow" tone="tealText">
-            Seasonal
-          </Text>
           <Pool harvest={harvest} />
           {harvest.training.length > 0 && <Training harvest={harvest} />}
           <Section title="Upcoming harvests">
