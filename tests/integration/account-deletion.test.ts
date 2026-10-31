@@ -39,8 +39,8 @@ async function wholeLife() {
   const attended = await db.assignment.create({ data: { shiftId: past.id, volunteerId: me.id, source: "REGULAR", status: "ATTENDED" } });
   await db.regularSlot.create({ data: { volunteerId: me.id, templateId: upcoming.templateId, weekday: 2 } });
   await db.absence.create({ data: { volunteerId: me.id, startDate: isoToDate(addDays(todayISO(), 20)), endDate: isoToDate(addDays(todayISO(), 21)), reason: "SICK", note: "Hospital appointment" } });
-  const module = await db.trainingModule.create({ data: { code: "MH", name: "Manual handling", description: "", requiredRoles: ["WAREHOUSE"], delivery: "ONLINE_CONFIRM" } });
-  const record = await db.trainingRecord.create({ data: { volunteerId: me.id, moduleId: module.id, completedAt: isoToDate(todayISO()), method: "ONLINE" } });
+  const manualHandling = await db.trainingModule.create({ data: { code: "MH", name: "Manual handling", description: "", requiredRoles: ["WAREHOUSE"], delivery: "ONLINE_CONFIRM" } });
+  const record = await db.trainingRecord.create({ data: { volunteerId: me.id, moduleId: manualHandling.id, completedAt: isoToDate(todayISO()), method: "ONLINE" } });
   await db.passkey.create({ data: { volunteerId: me.id, credentialId: "cred-1", publicKey: Buffer.from("key"), name: "iPhone" } });
   await db.oAuthAccount.create({ data: { volunteerId: me.id, provider: "google", providerAccountId: "g-1", email: "margaret@gmail.example" } });
   await db.pushToken.create({ data: { volunteerId: me.id, token: "ExponentPushToken[abc]", platform: "ios" } });
