@@ -1,5 +1,5 @@
-import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { ProviderLink } from "./provider-link";
 
 /** Google's multicolour "G", as their branding guidelines require. */
 export function GoogleMark({ className }: { className?: string }) {
@@ -13,13 +13,11 @@ export function GoogleMark({ className }: { className?: string }) {
   );
 }
 
-/** A plain link: the OAuth round trip is a full-page navigation. */
 export function GoogleButton({ next, label = "Continue with Google" }: { next: string | null; label?: string }) {
   const href = next ? `/auth/google?next=${encodeURIComponent(next)}` : "/auth/google";
   return (
-    <a href={href} className={cn(buttonVariants({ variant: "outline", size: "lg" }), "h-12 text-base")}>
-      <GoogleMark />
+    <ProviderLink href={href} mark={<GoogleMark />}>
       {label}
-    </a>
+    </ProviderLink>
   );
 }

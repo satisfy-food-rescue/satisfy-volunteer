@@ -1,5 +1,5 @@
-import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { ProviderLink } from "./provider-link";
 
 /** Apple's logo, in the text colour, as Apple's sign-in button guidelines
  *  allow for the white outlined style. */
@@ -11,13 +11,11 @@ export function AppleMark({ className }: { className?: string }) {
   );
 }
 
-/** A plain link: the round trip is a full-page navigation. */
 export function AppleButton({ next, label = "Continue with Apple" }: { next: string | null; label?: string }) {
   const href = next ? `/auth/apple?next=${encodeURIComponent(next)}` : "/auth/apple";
   return (
-    <a href={href} className={cn(buttonVariants({ variant: "outline", size: "lg" }), "h-12 text-base")}>
-      <AppleMark className="text-ink" />
+    <ProviderLink href={href} mark={<AppleMark className="text-ink" />}>
       {label}
-    </a>
+    </ProviderLink>
   );
 }

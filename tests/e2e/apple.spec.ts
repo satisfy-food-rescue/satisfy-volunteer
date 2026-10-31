@@ -50,6 +50,20 @@ test.describe("Sign in with Apple", () => {
     await expect(page).toHaveURL(/\/sign-in\?error=apple_cancelled$/);
   });
 
+  test("shows it is on its way once clicked", async ({ page }) => {
+    await page.goto("/sign-in");
+    // The passkey button only shows once the page has hydrated; before then
+    // the link is a plain link.
+    await expect(page.getByRole("button", { name: "Sign in with a passkey" })).toBeVisible();
+    // Playwright reads nothing while a navigation is under way, so the
+    // browser is stopped from following the link once the page has handled
+    // the click.
+    await page.evaluate(() => window.addEventListener("click", (event) => event.preventDefault()));
+    const link = page.getByRole("link", { name: "Continue with Apple" });
+    await link.click();
+    await expect(link).toHaveAttribute("aria-disabled", "true");
+  });
+
   test("keeps its round trip across Apple's cross-site post", async ({ page }) => {
     // A cancel with the right state reads as cancelled. Had the round-trip
     // cookies been lost on the way back, the state would not match and it
