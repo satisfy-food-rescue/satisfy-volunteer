@@ -53,7 +53,7 @@ export function isAdHocKind(kind: ShiftKind): boolean {
 }
 
 export type AccountRole = "ADMIN" | "VOLUNTEER";
-export type VolunteerStatus = "ACTIVE" | "INACTIVE";
+export type VolunteerStatus = "ACTIVE" | "INACTIVE" | "DELETED";
 
 export type ShiftStatus = "DRAFT" | "SCHEDULED" | "CANCELLED";
 
@@ -135,7 +135,8 @@ export type EmailKind =
   | "ADMIN_ACCESS"
   | "APPLICATION_RECEIVED"
   | "APPLICATION_NEW"
-  | "ALREADY_REGISTERED";
+  | "ALREADY_REGISTERED"
+  | "ACCOUNT_DELETED";
 
 export const EMAIL_KIND_LABEL: Record<EmailKind, string> = {
   TRAINING_DUE_SOON: "Training due soon",
@@ -163,6 +164,7 @@ export const EMAIL_KIND_LABEL: Record<EmailKind, string> = {
   APPLICATION_RECEIVED: "Application received",
   APPLICATION_NEW: "New application",
   ALREADY_REGISTERED: "Already has an account",
+  ACCOUNT_DELETED: "Account deleted",
 };
 
 export type Channel = "EMAIL" | "PUSH";

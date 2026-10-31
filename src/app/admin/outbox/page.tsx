@@ -15,7 +15,7 @@ export const metadata = { title: "Outbox" };
 
 // Orange is for anything about cover; red only for training that has lapsed.
 const TONE: Record<EmailKind, "good" | "warn" | "bad" | "info" | "neutral"> = {
-  TRAINING_OVERDUE: "bad", TRAINING_OVERDUE_COORDINATOR: "bad", TRAINING_DUE_SOON: "warn", GAP_ALERT: "warn", COVER_CONFIRMED: "good", TRAINING_COMPLETED: "good", APPLICATION_APPROVED: "good", ACCOUNT_INVITE: "info", PASSWORD_RESET: "info", SESSION_CONFIRMED: "info", HARVEST_CALLOUT: "info", SHIFT_REMINDER: "neutral", ABSENCE_CONFIRMED: "neutral", LAST_MINUTE_CALLOUT: "warn", GAP_ESCALATION: "warn", ROLES_CHANGED: "info", ROLE_CHANGE_REQUEST: "info", SHIFT_CANCELLED: "warn", SHIFT_ADDED: "good", SHIFT_PUBLISHED: "info", ANNOUNCEMENT: "info", ADMIN_ACCESS: "info", APPLICATION_RECEIVED: "neutral", APPLICATION_NEW: "info", ALREADY_REGISTERED: "neutral",
+  TRAINING_OVERDUE: "bad", TRAINING_OVERDUE_COORDINATOR: "bad", TRAINING_DUE_SOON: "warn", GAP_ALERT: "warn", COVER_CONFIRMED: "good", TRAINING_COMPLETED: "good", APPLICATION_APPROVED: "good", ACCOUNT_INVITE: "info", PASSWORD_RESET: "info", SESSION_CONFIRMED: "info", HARVEST_CALLOUT: "info", SHIFT_REMINDER: "neutral", ABSENCE_CONFIRMED: "neutral", LAST_MINUTE_CALLOUT: "warn", GAP_ESCALATION: "warn", ROLES_CHANGED: "info", ROLE_CHANGE_REQUEST: "info", SHIFT_CANCELLED: "warn", SHIFT_ADDED: "good", SHIFT_PUBLISHED: "info", ANNOUNCEMENT: "info", ADMIN_ACCESS: "info", APPLICATION_RECEIVED: "neutral", APPLICATION_NEW: "info", ALREADY_REGISTERED: "neutral", ACCOUNT_DELETED: "neutral",
 };
 
 const FAILED = "failed";

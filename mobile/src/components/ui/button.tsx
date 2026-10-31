@@ -6,7 +6,7 @@ import { radius, TAP, useTheme, type Palette } from "@/theme";
 import { Icon, type IconName } from "./icon";
 import { Text } from "./text";
 
-export type ButtonVariant = "primary" | "cover" | "outline" | "ghost" | "onHero";
+export type ButtonVariant = "primary" | "cover" | "outline" | "ghost" | "onHero" | "destructive";
 
 type Props = {
   label: string;
@@ -30,6 +30,8 @@ const STYLES: Record<ButtonVariant, { bg: keyof Palette | null; pressed: keyof P
   /** A text button, teal like a link or an iOS bar button. */
   ghost: { bg: null, pressed: "muted", fg: "tealText", border: null },
   onHero: { bg: "white", pressed: "tealTint", fg: "teal", border: null },
+  /** For what cannot be undone: red on its tint, never the only cue. */
+  destructive: { bg: "badTint", pressed: "muted", fg: "bad", border: null },
 };
 
 export function Button({ label, onPress, variant = "primary", icon, leading, loading, disabled, block, size = "lg", accessibilityHint }: Props) {

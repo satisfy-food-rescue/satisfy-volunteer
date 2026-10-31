@@ -177,8 +177,10 @@ export default function PrivacyPage() {
             <p>
               We keep your information while you volunteer with us and afterwards only as long as we need it for our legal, safety and
               reporting duties. A browser is signed out after 30 days without use, and after 180 days at most; the app after 180 days without use. When you stop
-              volunteering a coordinator closes your account, which signs you out everywhere. You can ask us to delete your
-              information at any time; we may need to keep some records where the law requires it.
+              volunteering a coordinator closes your account, which signs you out everywhere. You can also delete your account
+              yourself, from Me in the app or your profile on the website: your name, contact details, emergency contact and notes
+              are removed straight away and you are signed out everywhere. We keep a record of the shifts you did and the training
+              you completed that no longer names you, and anything else only where the law requires it.
             </p>
           ),
         },
@@ -200,8 +202,8 @@ export default function PrivacyPage() {
             <p>
               You can ask to see the information we hold about you and ask us to correct it. You can update most of it yourself in{" "}
               <LegalLink href="/app/profile">your profile</LegalLink> and{" "}
-              <LegalLink href="/app/security">Sign-in and security</LegalLink>. For anything else, including deleting your
-              information, email {contact}. If you are not happy with how we have handled your information, you can complain to the{" "}
+              <LegalLink href="/app/security">Sign-in and security</LegalLink>, and delete your account yourself from Me in the
+              app or <LegalLink href="/app/profile">your profile</LegalLink> on the website. For anything else, email {contact}. If you are not happy with how we have handled your information, you can complain to the{" "}
               <LegalLink href="https://www.privacy.org.nz">Office of the Privacy Commissioner</LegalLink>.
             </p>
           ),

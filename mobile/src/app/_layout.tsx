@@ -93,6 +93,17 @@ function RootNavigator({ fontsReady }: { fontsReady: boolean }) {
               contentStyle: { backgroundColor: t.background },
             }}
           />
+          <Stack.Screen
+            name="delete-account"
+            options={{
+              presentation: "formSheet",
+              sheetGrabberVisible: true,
+              sheetAllowedDetents: "fitToContents",
+              sheetCornerRadius: 28,
+              headerShown: false,
+              contentStyle: { backgroundColor: t.background },
+            }}
+          />
         </Stack.Protected>
         <Stack.Protected guard={!signedIn}>
           <Stack.Screen name="sign-in" />

@@ -699,3 +699,24 @@ export function roleChangeRequest(p: {
     ctaHref: `/admin/volunteers/${p.volunteerId}`,
   };
 }
+
+/** To the coordinator when a volunteer deletes their own account. Their
+ *  details are already gone, so this names them one last time. */
+export function accountDeleted(p: { volunteerName: string; releasedShifts: number; releasedSlots: number }): EmailDraft {
+  const released = [
+    p.releasedSlots > 0 && `${p.releasedSlots} regular ${p.releasedSlots === 1 ? "slot" : "slots"}`,
+    p.releasedShifts > 0 && `${p.releasedShifts} upcoming ${p.releasedShifts === 1 ? "shift, which now needs" : "shifts, which now need"} cover`,
+  ].filter(Boolean);
+  return {
+    kind: "ACCOUNT_DELETED",
+    subject: `${p.volunteerName} deleted their volunteer account`,
+    preview: released.length ? `They came off ${released.join(" and ")}.` : "They were not rostered on anything upcoming.",
+    body: paragraphs(
+      `${p.volunteerName} deleted their Satisfy volunteer account, from the app or the website.`,
+      released.length ? `They came off ${released.join(" and ")}.` : `They were not on a regular slot or any upcoming shift.`,
+      `Their personal details have been removed and they have been signed out everywhere. The shifts and training they completed stay in the records without their name. If they would like to volunteer again, they can sign up afresh.`,
+      COORDINATOR_SIGN_OFF,
+    ),
+    ...(p.releasedShifts > 0 ? { ctaLabel: "Open the roster", ctaHref: "/admin/roster" } : {}),
+  };
+}

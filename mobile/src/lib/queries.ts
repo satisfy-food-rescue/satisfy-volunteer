@@ -112,6 +112,7 @@ export const actions = {
   updateProfile: (input: ProfileInput) => api<MutationOk>("/profile", { method: "PATCH", body: input }),
   requestRoleChange: (message: string) => api<MutationOk>("/profile/role-request", { method: "POST", body: { message } }),
   disconnectApple: () => api<MutationOk>("/apple", { method: "DELETE" }),
+  deleteAccount: () => api<MutationOk>("/account", { method: "DELETE" }),
   removePasskey: (id: string) => api<MutationOk>(`/passkeys/${encodeURIComponent(id)}`, { method: "DELETE" }),
   requestSignInLink: (email: string) => api<MutationOk>("/auth/link", { method: "POST", body: { email } }),
   signUp: (input: SignUpInput) => api<MutationOk>("/apply", { method: "POST", body: input }),

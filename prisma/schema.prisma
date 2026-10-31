@@ -28,9 +28,14 @@ enum AccountRole {
   VOLUNTEER
 }
 
+// DELETED: the volunteer deleted their own account. Personal details are
+// gone from the row (see deleteMyAccount in src/lib/volunteer-actions.ts) and
+// it cannot be reactivated; it stays so the roster and training history add
+// up.
 enum VolunteerStatus {
   ACTIVE
   INACTIVE
+  DELETED
 }
 
 // What a volunteer can do, and the kind of a shift type. Holding the role is
@@ -124,6 +129,7 @@ enum EmailKind {
   APPLICATION_RECEIVED
   APPLICATION_NEW
   ALREADY_REGISTERED
+  ACCOUNT_DELETED
 }
 
 // PENDING: recorded, not yet handed to the mail or push provider (retried by

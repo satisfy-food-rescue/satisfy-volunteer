@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { PEOPLE, signIn, signInAs } from "./support/auth";
-import { issueSignInLink } from "./support/db";
+import { createVolunteer, issueSignInLink } from "./support/db";
 
 test.describe("password sign-in", () => {
   test("rejects a wrong password without saying whether the account exists", async ({ page }) => {
@@ -32,6 +32,31 @@ test.describe("password sign-in", () => {
     await expect(page).toHaveURL(/\/sign-in$/);
     await page.goto("/app");
     await expect(page).toHaveURL(/\/sign-in/);
+  });
+
+  test("volunteers can delete their own account", async ({ page }) => {
+    const email = "leaving.soon@example.nz";
+    await createVolunteer("Leaving", email);
+    await page.goto(await issueSignInLink(email, "INVITE"));
+    await page.getByLabel("New password").fill("a-short-phrase");
+    await page.getByLabel("Type it again").fill("a-short-phrase");
+    await page.getByRole("button", { name: "Set password and sign in" }).click();
+    await expect(page).toHaveURL(/\/app$/);
+
+    await page.goto("/app/profile");
+    await page.getByRole("button", { name: "Delete my account" }).click();
+    const dialog = page.getByRole("dialog", { name: "Delete your account?" });
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("button", { name: "Delete my account" }).click();
+
+    await expect(page).toHaveURL(/\/sign-in\?deleted=1$/);
+    await expect(page.getByRole("status")).toContainText("Your account has been deleted");
+    await page.goto("/app");
+    await expect(page).toHaveURL(/\/sign-in/);
+
+    // Nothing to sign in with any more, and no hint that there ever was.
+    await signIn(page, email, "a-short-phrase");
+    await expect(page.getByRole("alert").filter({ hasText: "That email and password do not match" })).toBeVisible();
   });
 });
 

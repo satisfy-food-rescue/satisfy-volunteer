@@ -52,6 +52,7 @@ function Profile({ session }: { session: MobileSession }) {
       <ProfileForm me={me} />
       <SignOut demo={session.demo} />
       <LegalLinks />
+      {!session.demo && <DeleteAccountLink />}
     </>
   );
 }
@@ -373,5 +374,24 @@ function SignOut({ demo }: { demo: boolean }) {
         </Text>
       )}
     </View>
+  );
+}
+
+/** Last on the page, after the legal links: the one thing here that cannot
+ *  be undone, so it is never next to Sign out. The sheet explains and asks. */
+function DeleteAccountLink() {
+  const t = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Delete my account"
+      onPress={() => router.push("/delete-account")}
+      style={({ pressed }) => ({ alignSelf: "center", flexDirection: "row", alignItems: "center", gap: 6, minHeight: 44, paddingHorizontal: 12, opacity: pressed ? 0.6 : 1 })}
+    >
+      <Icon name="trash" size={16} color={t.mutedText} />
+      <Text variant="smallBold" tone="mutedText">
+        Delete my account
+      </Text>
+    </Pressable>
   );
 }

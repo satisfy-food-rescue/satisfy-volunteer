@@ -20,7 +20,9 @@ export default async function VolunteersPage({ searchParams }: { searchParams: P
   const sp = await searchParams;
   const today = todayISO();
   const [volunteers, modules] = await Promise.all([
-    db.volunteer.findMany({ where: { role: "VOLUNTEER" }, include: { trainingRecords: true, regularSlots: { include: { template: true } } }, orderBy: [{ firstName: "asc" }, { lastName: "asc" }] }),
+    // Deleted accounts are left out: there is nothing to see or do, and they
+    // are still reachable from the roster history they appear on.
+    db.volunteer.findMany({ where: { role: "VOLUNTEER", status: { not: "DELETED" } }, include: { trainingRecords: true, regularSlots: { include: { template: true } } }, orderBy: [{ firstName: "asc" }, { lastName: "asc" }] }),
     db.trainingModule.findMany(),
   ]);
   const q = (sp.q ?? "").toLowerCase().trim();

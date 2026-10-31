@@ -15,8 +15,8 @@ import { SignInForm } from "@/components/auth/sign-in-form";
 export const metadata: Metadata = { title: "Sign in" };
 export const dynamic = "force-dynamic";
 
-export default async function SignInPage({ searchParams }: { searchParams: Promise<{ next?: string; error?: string; email?: string }> }) {
-  const { next: rawNext, error, email } = await searchParams;
+export default async function SignInPage({ searchParams }: { searchParams: Promise<{ next?: string; error?: string; email?: string; deleted?: string }> }) {
+  const { next: rawNext, error, email, deleted } = await searchParams;
   const next = safeNextPath(rawNext);
   const user = await currentUser();
   if (user) redirect(postSignInPath(user.role, next));
@@ -46,6 +46,7 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
     >
       <div className="flex flex-col gap-5">
         {notice && <FormNotice tone="error">{notice}</FormNotice>}
+        {deleted === "1" && !notice && <FormNotice tone="success">Your account has been deleted. Thank you for volunteering with {ORG.shortName}.</FormNotice>}
         <SignInForm next={next} />
         <OtherSignInMethods google={googleConfigured()} apple={appleConfigured()} next={next} />
       </div>

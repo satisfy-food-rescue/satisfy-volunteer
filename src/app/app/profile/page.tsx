@@ -9,6 +9,7 @@ import { Chip } from "@/components/shared/status-chip";
 import { ProfileForm } from "@/components/app/profile-form";
 import { LegalLinks } from "@/components/auth/auth-shell";
 import { RoleChangeRequest } from "@/components/app/role-change-request";
+import { DeleteAccount } from "@/components/app/delete-account";
 import { signOut } from "@/app/sign-in/actions";
 import { Button } from "@/components/ui/button";
 import { AppPage } from "@/components/app/app-page-header";
@@ -67,6 +68,8 @@ export default async function ProfilePage() {
           </form>
 
           <LegalLinks className="order-last @4xl/app:order-none @4xl/app:justify-start" />
+
+          {!demo && <DeleteAccount />}
         </div>
 
         <div className="@4xl/app:col-span-7 @6xl/app:col-span-8">
