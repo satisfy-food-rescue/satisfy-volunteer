@@ -17,16 +17,14 @@ const CONSEQUENCES: { icon: IconName; text: string }[] = [
 
 /** The volunteer closes their own account. The server does it at once, so
  *  the sheet explains first and asks twice. On success the token is already
- *  dead; forgetting it takes the app back to sign-in. */
+ *  dead: the refresh that follows every action answers 401, which signs the
+ *  app out and unmounts this sheet, so there is nothing to navigate back
+ *  from. Forgetting the session here only covers the case where it has not
+ *  happened yet. */
 export function DeleteAccountSheet() {
   const t = useTheme();
   const { forgetSession } = useAuth();
-  const remove = useAction(actions.deleteAccount, {
-    onSuccess: () => {
-      router.back();
-      void forgetSession();
-    },
-  });
+  const remove = useAction(actions.deleteAccount, { onSuccess: () => void forgetSession() });
   const confirm = () =>
     Alert.alert("Delete your account?", "This cannot be undone. To volunteer again, you would sign up afresh.", [
       { text: "Keep my account", style: "cancel" },
