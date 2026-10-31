@@ -427,6 +427,11 @@ export type SecurityOverview = {
  *  iOS app's native sign-in; DELETE disconnects it. Both return MutationOk. */
 export type AppleConnectInput = { identityToken: string; nonce: string };
 
+/** DELETE /api/mobile/account deletes the signed-in volunteer's account, at
+ *  once and for good: signed out everywhere, personal details removed, taken
+ *  off upcoming shifts. Returns MutationOk; the token that made the request
+ *  is gone, so the app forgets it. 422 for a coordinator or a demo persona. */
+
 // Push notifications --------------------------------------------------------
 
 /** POST /api/mobile/push-tokens registers this device; DELETE with the same

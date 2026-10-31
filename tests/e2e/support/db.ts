@@ -42,3 +42,14 @@ export async function latestEmailTo(email: string, kind?: string) {
     return rows[0] ?? null;
   });
 }
+
+/** A volunteer of our own to do irreversible things to, so the demo people
+ *  the other tests rely on are left alone. No password: sign in with a link. */
+export async function createVolunteer(firstName: string, email: string): Promise<void> {
+  await withClient(async (c) => {
+    await c.query(
+      `INSERT INTO "Volunteer" (id, "firstName", "lastName", email, roles, "updatedAt") VALUES ($1, $2, 'Test', $3, ARRAY['WAREHOUSE']::"VolunteerRole"[], now())`,
+      [`e2e_${randomBytes(6).toString("hex")}`, firstName, email],
+    );
+  });
+}

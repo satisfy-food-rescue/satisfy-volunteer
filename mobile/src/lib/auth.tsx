@@ -25,6 +25,9 @@ type Auth = {
   /** Demo deployment only. */
   signInAsPersona: (personaKey: string) => Promise<void>;
   signOut: () => Promise<void>;
+  /** After the server has already ended the session, as deleting the
+   *  account does: forget the token and go back to sign-in. */
+  forgetSession: () => Promise<void>;
 };
 
 const AuthContext = createContext<Auth | null>(null);
@@ -91,7 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await clearLocal();
   }, [clearLocal]);
 
-  const value = useMemo(() => ({ status, ...methods, signOut }), [status, methods, signOut]);
+  const value = useMemo(() => ({ status, ...methods, signOut, forgetSession: clearLocal }), [status, methods, signOut, clearLocal]);
   return <AuthContext value={value}>{children}</AuthContext>;
 }
 

@@ -87,6 +87,7 @@ export default async function VolunteerProfilePage({ params, searchParams }: { p
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
             {v.status === "INACTIVE" && <Chip tone="muted" size="sm" icon={Power}>Inactive</Chip>}
+            {v.status === "DELETED" && <Chip tone="muted" size="sm" icon={Power}>Deleted</Chip>}
             <TrainingChip status={summary.worst} size="sm" />
             {v.isRegular && <Chip tone="good" size="sm" icon={CalendarCheck}>Regular</Chip>}
             {inHarvestPool(v) && <Chip tone="info" size="sm" icon={Sprout}>Harvest pool</Chip>}
@@ -241,7 +242,7 @@ export default async function VolunteerProfilePage({ params, searchParams }: { p
             <h2 id="acct-h" className="text-xl text-ink">Account</h2>
             <dl className="grid grid-cols-[7.5rem_1fr] gap-x-3 gap-y-2 text-sm">
               <dt className="font-semibold text-muted-foreground">Status</dt>
-              <dd className="text-ink">{v.status === "ACTIVE" ? "Active" : "Inactive: cannot sign in"}</dd>
+              <dd className="text-ink">{v.status === "ACTIVE" ? "Active" : v.status === "DELETED" ? "Deleted at their own request: personal details removed, history kept" : "Inactive: cannot sign in"}</dd>
               {v.role === "ADMIN" && (
                 <>
                   <dt className="font-semibold text-muted-foreground">Access</dt>
@@ -253,12 +254,16 @@ export default async function VolunteerProfilePage({ params, searchParams }: { p
               <dt className="font-semibold text-muted-foreground">Signs in with</dt>
               <dd className="text-ink">{signInMethods.length ? signInMethods.join(", ") : <span className="text-muted-foreground">Nothing set up yet</span>}</dd>
             </dl>
-            <AccountControls
-              volunteer={{ id: v.id, firstName: v.firstName, active: v.status === "ACTIVE", hasSignedIn: Boolean(v.lastSignInAt || v.passwordHash) }}
-              isSelf={v.id === admin.id}
-              upcomingShifts={v.assignments.filter((a) => a.status === "CONFIRMED" && dateToISO(a.shift.date) >= today).length}
-              regularSlots={v.regularSlots.length}
-            />
+            {v.status === "DELETED" ? (
+              <p className="text-sm text-muted-foreground">A deleted account cannot be reactivated. If they would like to volunteer again, they can sign up afresh.</p>
+            ) : (
+              <AccountControls
+                volunteer={{ id: v.id, firstName: v.firstName, active: v.status === "ACTIVE", hasSignedIn: Boolean(v.lastSignInAt || v.passwordHash) }}
+                isSelf={v.id === admin.id}
+                upcomingShifts={v.assignments.filter((a) => a.status === "CONFIRMED" && dateToISO(a.shift.date) >= today).length}
+                regularSlots={v.regularSlots.length}
+              />
+            )}
           </section>
 
           {v.infoodleId && (

@@ -13,6 +13,7 @@ import { shiftById } from "./roster";
 import { afterShiftReleased } from "./cover";
 import { trainingContext } from "./volunteer-data";
 import { queueEmail } from "./emails";
+import { isDemo } from "./env";
 import * as T from "./email-templates";
 
 /** `notFound` lets the API answer 404 instead of 422; the web ignores it. */
@@ -199,4 +200,79 @@ export async function requestRoleChange(me: Volunteer, message: string): Promise
   await queueEmail(null, T.roleChangeRequest({ volunteerName: fullName(me), volunteerId: me.id, message: text }));
   revalidateAll();
   return { ok: true, message: "Sent to the coordinator. They will be in touch." };
+}
+
+/** What a deleted account is left as: a row that keeps the roster and
+ *  training history adding up without saying who it was. The address is
+ *  unique (the column is) and undeliverable, and it frees the real one. */
+export function deletedVolunteerData(id: string) {
+  return {
+    firstName: "Deleted",
+    lastName: "volunteer",
+    email: `deleted-${id}@deleted.invalid`,
+    phone: null,
+    suburb: null,
+    birthYear: null,
+    emergencyName: null,
+    emergencyPhone: null,
+    availabilityNote: null,
+    notes: null,
+    infoodleId: null,
+    infoodleSyncedAt: null,
+    passwordHash: null,
+    emailVerifiedAt: null,
+    lastSignInAt: null,
+    status: "DELETED" as const,
+    isRegular: false,
+    lastMinuteOk: false,
+  };
+}
+
+/** The volunteer closes their own account, for good. The app stores let
+ *  volunteers sign up, so they require this to be possible in the app, and
+ *  the Privacy Act gives people the right anyway. It happens at once: every
+ *  session, passkey, connected account and phone goes, so do their absences,
+ *  messages and the coordinator's notes about them, and the row is left as
+ *  "Deleted volunteer" so past shifts and training still add up. Upcoming
+ *  shifts and regular slots are released like a deactivation. The
+ *  coordinator is told by email, which is the one place the name remains. */
+export async function deleteMyAccount(me: Volunteer): Promise<ActionResult> {
+  if (isDemo()) return { ok: false, error: "Demo accounts cannot be deleted. They are reset every day." };
+  if (me.role === "ADMIN") return { ok: false, error: "Coordinators cannot delete their own account. Ask another coordinator to remove your access first." };
+  if (me.status !== "ACTIVE") return { ok: false, error: "This account is not active." };
+  const today = isoToDate(todayISO());
+  const now = new Date();
+  const released = await db.$transaction(async (tx) => {
+    const upcoming = await tx.assignment.findMany({
+      where: { volunteerId: me.id, status: "CONFIRMED", shift: { date: { gte: today } } },
+      select: { id: true, shiftId: true },
+    });
+    const slots = await tx.regularSlot.count({ where: { volunteerId: me.id } });
+    await tx.assignment.updateMany({ where: { id: { in: upcoming.map((a) => a.id) } }, data: { status: "CANCELLED" } });
+    await tx.regularSlot.deleteMany({ where: { volunteerId: me.id } });
+    await tx.absence.deleteMany({ where: { volunteerId: me.id } });
+    await tx.sessionRsvp.deleteMany({ where: { volunteerId: me.id, session: { startsAt: { gte: now } } } });
+    await tx.session.deleteMany({ where: { volunteerId: me.id } });
+    await tx.authToken.deleteMany({ where: { volunteerId: me.id } });
+    await tx.passkey.deleteMany({ where: { volunteerId: me.id } });
+    await tx.passkeyChallenge.deleteMany({ where: { volunteerId: me.id } });
+    await tx.oAuthAccount.deleteMany({ where: { volunteerId: me.id } });
+    await tx.pushToken.deleteMany({ where: { volunteerId: me.id } });
+    await tx.email.deleteMany({ where: { volunteerId: me.id } });
+    await tx.contactLog.deleteMany({ where: { volunteerId: me.id } });
+    // Their application, if it is still on file, said as much as the profile.
+    await tx.application.updateMany({
+      where: { OR: [{ volunteerId: me.id }, { email: me.email }] },
+      data: { firstName: "Deleted", lastName: "volunteer", email: `deleted-${me.id}@deleted.invalid`, phone: null, suburb: null, birthYear: null, emergencyName: null, emergencyPhone: null, message: null, availability: "", reviewNote: null },
+    });
+    await tx.volunteer.update({ where: { id: me.id }, data: deletedVolunteerData(me.id) });
+    await tx.contactLog.create({
+      data: { volunteerId: me.id, kind: "STATUS_CHANGED", summary: "Deleted their own account. Personal details removed; shifts and training kept without them." },
+    });
+    return { shiftIds: [...new Set(upcoming.map((a) => a.shiftId))], shifts: upcoming.length, slots };
+  });
+  for (const shiftId of released.shiftIds) await afterShiftReleased(shiftId, null, now);
+  await queueEmail(null, T.accountDeleted({ volunteerName: fullName(me), releasedShifts: released.shifts, releasedSlots: released.slots }));
+  revalidateAll();
+  return { ok: true, message: "Your account has been deleted. Thank you for volunteering with Satisfy." };
 }

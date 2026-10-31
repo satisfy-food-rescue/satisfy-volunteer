@@ -125,9 +125,9 @@ export default function TermsPage() {
           title: "Ending your access",
           body: (
             <p>
-              You can stop using the website and app at any time and ask us to close your account. {ORG.shortName} may close an
-              account when someone stops volunteering, or if these terms are not followed. Closing an account signs it out
-              everywhere.
+              You can stop using the website and app at any time and delete your account yourself, from Me in the app or your
+              profile on the website. {ORG.shortName} may close an account when someone stops volunteering, or if these terms are
+              not followed. Closing or deleting an account signs it out everywhere.
             </p>
           ),
         },
