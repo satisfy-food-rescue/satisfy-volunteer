@@ -15,8 +15,10 @@ export async function loadHarvest(me: Volunteer, today: string) {
   ]);
   // Harvest training as it would stand in the pool, so someone thinking of
   // joining sees what it involves (and what they have already done).
+  // Modules still in development are not required yet, so they wait on the
+  // Training page's Coming soon list.
   const asPicker = { roles: sortRoles([...me.roles, HARVEST_ROLE]) };
-  const harvestTraining = moduleStatuses(asPicker, training.modules, training.records, today).filter((s) => s.module.requiredRoles.includes(HARVEST_ROLE));
+  const harvestTraining = moduleStatuses(asPicker, training.modules, training.records, today).filter((s) => s.required && s.module.requiredRoles.includes(HARVEST_ROLE));
   return {
     inPool: inHarvestPool(me),
     poolCount,
