@@ -18,6 +18,7 @@ import {
 import { ABSENCE_REASON_LABEL, INITIAL_VISIT_CODE, type AbsenceReason, type VolunteerRole } from "../domain";
 import * as T from "../email-templates";
 import { runCoverChecks } from "../cover";
+import { runMojReminders } from "../reminders";
 import { withCapturedEmails } from "../emails";
 import { env, isDemo } from "../env";
 import { hashPassword } from "../passwords";
@@ -40,6 +41,7 @@ const randInt = (min: number, max: number) => min + Math.floor(rand() * (max - m
 const pick = <T,>(arr: readonly T[]): T => arr[Math.floor(rand() * arr.length)];
 
 let TODAY = "";
+const SORTING_STAGES = 4;
 const WEEKS_BACK = 26;
 const WEEKS_FORWARD = 8;
 
@@ -164,6 +166,10 @@ export async function seedDemo() {
   // Wipe in dependency order.
   await db.email.deleteMany();
   await db.contactLog.deleteMany();
+  await db.documentAcknowledgement.deleteMany();
+  await db.document.deleteMany();
+  await db.mojCheck.deleteMany();
+  await db.emailTemplate.deleteMany();
   await db.announcement.deleteMany();
   await db.sessionRsvp.deleteMany();
   await db.trainingRecord.deleteMany();
@@ -182,6 +188,21 @@ export async function seedDemo() {
   await db.meta.deleteMany();
 
   const ref = await createReferenceData(db);
+  // Demo only, until Phillipa confirms the module list: the warehouse's four
+  // in-person sorting stages, done once and in order after the initial
+  // visit, and a harvest module still being written.
+  await db.trainingModule.updateMany({ where: { order: { gte: 2 } }, data: { order: { increment: SORTING_STAGES } } });
+  let before = ref.moduleIds.get(INITIAL_VISIT_CODE)!;
+  for (let n = 1; n <= SORTING_STAGES; n++) {
+    const row = await db.trainingModule.create({
+      data: { code: `SORTING_T${n}`, name: `Sorting T${n}`, description: `In-person sorting training with the warehouse supervisor, stage ${n} of ${SORTING_STAGES}. Recorded on the day.`, validityMonths: null, requiredRoles: ["WAREHOUSE"], mandatoryBeforeFirstShift: false, delivery: "IN_PERSON", order: 1 + n, prerequisiteId: before },
+    });
+    ref.moduleIds.set(row.code, row.id);
+    before = row.id;
+  }
+  const ladders = await db.trainingModule.create({
+    data: { code: "LADDERS_SUN_SAFETY", name: "Ladders and Sun Safety", description: "Working safely up a ladder and out in the sun at a harvest. Our own video, filmed at an orchard, is on its way.", validityMonths: 12, requiredRoles: ["HARVEST"], mandatoryBeforeFirstShift: false, delivery: "ONLINE_CONFIRM", order: 100, inDevelopment: true },
+  });
   const templateRows = await db.shiftTemplate.findMany();
   const templates = new Map<string, { id: string; kind: string; name: string; start: string; end: string; capacity: number; needed: number; weekdays: number[] }>();
   for (const [key, id] of ref.templateIds) {
@@ -362,6 +383,9 @@ export async function seedDemo() {
   ov(tony, "MANUAL_HANDLING", { daysToExpiry: -21 });
   ov(byName("Frank", "Doyle"), "SLIPS_TRIPS_FALLS", { daysToExpiry: -40 });
   ov(byName("Norm", "Blackwell"), "ROUTE_VEHICLE_SAFETY", { daysToExpiry: -10 });
+  // Part way through the sorting stages: T3 is next, T4 waits for it.
+  ov(byName("Liz", "Stratford"), "SORTING_T3", { skip: true });
+  ov(byName("Liz", "Stratford"), "SORTING_T4", { skip: true });
   // Not started
   ov(byName("Emma", "Whitcombe"), "SLIPS_TRIPS_FALLS", { skip: true });
   ov(byName("Ravi", "Naidoo"), "FOOD_SAFETY", { skip: true });
@@ -376,7 +400,13 @@ export async function seedDemo() {
       if (o?.skip) continue;
       let completedISO: string;
       let expiresISO: string | null;
-      if (m.validityMonths === null) {
+      const stage = code.match(/^SORTING_T(\d)$/);
+      if (stage) {
+        // A fortnight apart, in order, from when they joined.
+        const joined = v.spec.joinedYearsAgo ?? 2;
+        completedISO = addDays(TODAY, Math.min(-1, -(Math.max(joined, 0) * 365) + 14 * Number(stage[1]) - 60));
+        expiresISO = null;
+      } else if (m.validityMonths === null) {
         const yearsAgo = v.spec.joinedYearsAgo ?? 2;
         completedISO = addDays(TODAY, -(Math.max(yearsAgo, 0) * 365 + randInt(1, 120)));
         expiresISO = null;
@@ -391,7 +421,66 @@ export async function seedDemo() {
       recordRows.push({ volunteerId: v.id, moduleId: m.id, completedAt: isoToDate(completedISO), expiresAt: expiresISO ? isoToDate(expiresISO) : null, method });
     }
   }
-  await db.trainingRecord.createMany({ data: recordRows });
+  await db.trainingRecord.createMany({ data: recordRows.filter((r) => r.moduleId !== ladders.id) });
+
+  // Induction -----------------------------------------------------------------
+  // The check is asked of everyone but the harvest-only pool. Most were
+  // sighted when they joined; Margaret's is due for renewal, Frank's has run
+  // out and Jess has not sent hers yet.
+  const MOJ_ROLES: VolunteerRole[] = ["WAREHOUSE", "DRIVERS_ASSISTANT", "VOLUNTEER_DRIVER"];
+  await db.settings.upsert({ where: { id: 1 }, create: { id: 1, mojCheckRoles: MOJ_ROLES }, update: { mojCheckRoles: MOJ_ROLES } });
+  const frank = byName("Frank", "Doyle");
+  const mojRows: { volunteerId: string; checkedOn: Date; recordedById: string; createdAt: Date }[] = [];
+  for (const v of vols.values()) {
+    if (v.id === jess.id || v.id === phillipa.id || !v.roles.some((r) => MOJ_ROLES.includes(r))) continue;
+    const checkedISO =
+      v.id === margaret.id ? addDays(addMonths(TODAY, -36), 40)
+      : v.id === frank.id ? addDays(addMonths(TODAY, -36), -12)
+      : addDays(TODAY, -randInt(30, 900));
+    mojRows.push({ volunteerId: v.id, checkedOn: isoToDate(checkedISO), recordedById: phillipa.id, createdAt: nzInstant(addDays(checkedISO, randInt(1, 6)), "10:00") });
+  }
+  await db.mojCheck.createMany({ data: mojRows });
+
+  // Sample agreements and policies. The real ones live in Satisfy's Google
+  // Drive and are linked from Admin > Policies.
+  const ALL_ROLES: VolunteerRole[] = ["WAREHOUSE", "DRIVERS_ASSISTANT", "VOLUNTEER_DRIVER", "HARVEST"];
+  const agreement = await db.document.create({
+    data: {
+      kind: "AGREEMENT", title: "Volunteer Agreement", summary: "What we offer you, and what we ask of you as a Satisfy volunteer.", roles: ALL_ROLES, order: 1, versionAt: nzInstant(addDays(TODAY, -400), "09:00"),
+      body: "Sample wording for the demo.\n\nSatisfy will give you a safe place to volunteer, the training you need, and someone to talk to when something is not right.\n\nYou agree to follow our health and safety instructions, to let us know if you cannot make a shift, and to treat everyone you meet with respect.",
+    },
+  });
+  const confidentiality = await db.document.create({
+    data: {
+      kind: "AGREEMENT", title: "Confidentiality Agreement", summary: "Keeping what you see and hear about recipients and each other private.", roles: ALL_ROLES, order: 2, version: 2, versionAt: nzInstant(addDays(TODAY, -6), "09:00"), versionNote: "Now covers photos taken at harvests and in the warehouse.",
+      body: "Sample wording for the demo.\n\nWhile volunteering you may learn about the people and groups we deliver to, and about other volunteers. Keep it to yourself, during and after your time with Satisfy.\n\nPlease do not post photos of recipients, or of other volunteers without asking them first.",
+    },
+  });
+  const hs = await db.document.create({
+    data: {
+      kind: "POLICY", title: "Health and Safety Policy", summary: "How we keep everyone safe at the warehouse, on the road and at harvests.", roles: [], order: 1, version: 2, versionAt: nzInstant(addDays(TODAY, -3), "09:00"), versionNote: "The loading bay section now covers the new ramp.",
+      body: "Sample wording for the demo. The board's policy lives in Google Drive and is shown here once its link is added.\n\nReport every incident or near miss to the person running the shift, the same day.\n\nWear closed-toe shoes, lift with your legs, and never carry a load you cannot see over.",
+    },
+  });
+  const conduct = await db.document.create({
+    data: { kind: "POLICY", title: "Code of Conduct", summary: "How we treat each other, recipients and donors.", roles: [], order: 2, versionAt: nzInstant(addDays(TODAY, -500), "09:00"), body: "Sample wording for the demo.\n\nBe kind, be on time, and look after the kai: it is someone's dinner." },
+  });
+  const ackRows: { documentId: string; volunteerId: string; version: number; createdAt: Date }[] = [];
+  const recent = new Set([byName("Kathy", "Moriarty").id, byName("Colin", "Baxter").id, byName("Sue", "Hollander").id]);
+  for (const v of vols.values()) {
+    if (v.id === jess.id || v.id === phillipa.id) continue;
+    const joined = nzInstant(addDays(TODAY, -Math.min(390, (v.spec.joinedYearsAgo ?? 2) * 365)), "11:00");
+    ackRows.push({ documentId: agreement.id, volunteerId: v.id, version: 1, createdAt: joined });
+    ackRows.push({ documentId: confidentiality.id, volunteerId: v.id, version: 1, createdAt: joined });
+    ackRows.push({ documentId: conduct.id, volunteerId: v.id, version: 1, createdAt: joined });
+    ackRows.push({ documentId: hs.id, volunteerId: v.id, version: 1, createdAt: joined });
+    // Most have signed and read the new versions already; a few have not.
+    if (!recent.has(v.id)) {
+      ackRows.push({ documentId: confidentiality.id, volunteerId: v.id, version: 2, createdAt: nzInstant(addDays(TODAY, -randInt(1, 5)), "19:00") });
+      ackRows.push({ documentId: hs.id, volunteerId: v.id, version: 2, createdAt: nzInstant(addDays(TODAY, -randInt(0, 2)), "19:30") });
+    }
+  }
+  await db.documentAcknowledgement.createMany({ data: ackRows });
 
   // Past session attendance: a handful attended and got their record via the session.
   const pastAttendees = [byName("Hine", "Tauwhare"), byName("Liz", "Stratford"), byName("Robyn", "Ashworth"), byName("Sione", "Tuilagi")];
@@ -539,6 +628,7 @@ export async function seedDemo() {
   // Last-minute pushes and coordinator alerts for gaps already near their start,
   // generated by the same rules the app runs, recorded and never sent.
   const cover = await withCapturedEmails(() => runCoverChecks());
+  await withCapturedEmails(() => runMojReminders(TODAY));
 
   // Restored last so nothing above can push to a real phone.
   const keyByEmail = new Map(PERSONAS.map((p) => [p.email, p.key]));

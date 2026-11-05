@@ -136,7 +136,11 @@ export type EmailKind =
   | "APPLICATION_RECEIVED"
   | "APPLICATION_NEW"
   | "ALREADY_REGISTERED"
-  | "ACCOUNT_DELETED";
+  | "ACCOUNT_DELETED"
+  | "MOJ_CHECK_RECORDED"
+  | "MOJ_CHECK_RENEWAL"
+  | "MOJ_CHECK_RENEWAL_COORDINATOR"
+  | "DOCUMENT_UPDATED";
 
 export const EMAIL_KIND_LABEL: Record<EmailKind, string> = {
   TRAINING_DUE_SOON: "Training due soon",
@@ -165,6 +169,10 @@ export const EMAIL_KIND_LABEL: Record<EmailKind, string> = {
   APPLICATION_NEW: "New application",
   ALREADY_REGISTERED: "Already has an account",
   ACCOUNT_DELETED: "Account deleted",
+  MOJ_CHECK_RECORDED: "MOJ check recorded",
+  MOJ_CHECK_RENEWAL: "MOJ check renewal",
+  MOJ_CHECK_RENEWAL_COORDINATOR: "MOJ check renewal (coordinator)",
+  DOCUMENT_UPDATED: "Policy or agreement updated",
 };
 
 export type Channel = "EMAIL" | "PUSH";
@@ -180,7 +188,7 @@ export const DELIVERY_STATUS_LABEL: Record<DeliveryStatus, string> = {
 };
 
 /** Who an announcement goes to. */
-export type AnnouncementAudience = "ALL" | "ROLES" | "SHIFT";
+export type AnnouncementAudience = "ALL" | "ROLES" | "SHIFT" | "SHIFT_TYPE";
 
 export type ContactLogKind =
   | "CALL"
@@ -192,7 +200,9 @@ export type ContactLogKind =
   | "SHIFT_CANCELLED"
   | "ACCOUNT_CREATED"
   | "STATUS_CHANGED"
-  | "ADMIN_ACCESS";
+  | "ADMIN_ACCESS"
+  | "MOJ_CHECK"
+  | "AGREEMENT_SIGNED";
 export const CONTACT_LOG_LABEL: Record<ContactLogKind, string> = {
   CALL: "Phone call",
   NOTE: "Note",
@@ -204,7 +214,25 @@ export const CONTACT_LOG_LABEL: Record<ContactLogKind, string> = {
   ACCOUNT_CREATED: "Account created",
   STATUS_CHANGED: "Status changed",
   ADMIN_ACCESS: "Coordinator access",
+  MOJ_CHECK: "MOJ check recorded",
+  AGREEMENT_SIGNED: "Agreements signed",
 };
+
+/** An agreement is signed during induction; a policy is read at any time. */
+export type DocumentKind = "AGREEMENT" | "POLICY";
+export const DOCUMENT_KIND_LABEL: Record<DocumentKind, string> = {
+  AGREEMENT: "Agreement",
+  POLICY: "Policy",
+};
+
+/** A Ministry of Justice check is renewed this often. */
+export const MOJ_CHECK_YEARS = 3;
+/** Days before renewal at which a check shows as due and reminders start.
+ *  Longer than training's 30, since the Ministry can take up to 20 working
+ *  days to send a check back. */
+export const MOJ_RENEWAL_DAYS = 60;
+/** Where a volunteer requests their own criminal record check. */
+export const MOJ_CHECK_URL = "https://www.justice.govt.nz/criminal-records/get-your-own/";
 
 /** The first in-person training stage. New volunteers cannot book shifts until
  *  it is done, and the coordinator often books it during the welcome call. */

@@ -49,6 +49,12 @@ const ICONS = {
   key: ["key.fill", "key"],
   mail: ["envelope.fill", "mail"],
   phone: ["phone.fill", "call"],
+  induction: ["list.clipboard.fill", "assignment_turned_in"],
+  document: ["doc.text.fill", "description"],
+  signature: ["signature", "signature"],
+  idCheck: ["person.badge.shield.checkmark.fill", "how_to_reg"],
+  inDevelopment: ["hammer.fill", "construction"],
+  helpingHand: ["heart.fill", "favorite"],
 } as const satisfies Record<string, readonly [SFSymbol, AndroidSymbol]>;
 
 export type IconName = keyof typeof ICONS;

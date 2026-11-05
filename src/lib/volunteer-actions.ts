@@ -9,9 +9,12 @@ import { db } from "./db";
 import { addMonths, daysBetween, isoToDate, todayISO, dateToISO } from "./dates";
 import { ABSENCE_REASON_LABEL, HARVEST_ROLE, fullName, sortRoles, type VolunteerRole } from "./domain";
 import { eligibilityFor } from "./training";
+import { trainingLock } from "./induction";
+import { joinPoolIfCoordinator } from "./admin-access";
 import { shiftById } from "./roster";
 import { afterShiftReleased } from "./cover";
 import { trainingContext } from "./volunteer-data";
+import { inductionFor } from "./induction-data";
 import { queueEmail } from "./emails";
 import { isDemo } from "./env";
 import * as T from "./email-templates";
@@ -31,8 +34,8 @@ export async function bookShift(me: Volunteer, shiftId: string): Promise<ActionR
   if (view.iso < today) return { ok: false, error: "That shift has already happened." };
   if (view.shift.status !== "SCHEDULED") return { ok: false, error: "That shift has been cancelled." };
   if (view.confirmed.some((a) => a.volunteerId === me.id)) return { ok: false, error: "You are already on this shift." };
-  const { statuses } = await trainingContext(me, today);
-  const elig = eligibilityFor(me, view.kind, statuses);
+  const { statuses, induction } = await trainingContext(me, today);
+  const elig = eligibilityFor(me, view.kind, statuses, induction);
   if (!elig.eligible) return { ok: false, error: elig.reason ?? "You are not eligible for this shift yet." };
   if (view.isFull) return { ok: false, error: "This shift is full." };
   const sameDay = await db.assignment.findFirst({
@@ -44,6 +47,7 @@ export async function bookShift(me: Volunteer, shiftId: string): Promise<ActionR
   await db.assignment.create({
     data: { shiftId, volunteerId: me.id, source: covering ? "COVER" : "BOOKED", status: "CONFIRMED" },
   });
+  await joinPoolIfCoordinator(me);
   if (covering) {
     await queueEmail(me, T.coverConfirmed({ firstName: me.firstName, shiftName: view.name, dateISO: view.iso, start: view.shift.startTime, end: view.shift.endTime, shiftId }));
   }
@@ -123,11 +127,15 @@ export async function completeOnlineModule(me: Volunteer, moduleId: string): Pro
   if (!mod) return { ok: false, error: "Module not found.", notFound: true };
   if (mod.delivery !== "ONLINE_CONFIRM") return { ok: false, error: "This module is completed in person." };
   const today = todayISO();
+  const { statuses, induction } = await trainingContext(me, today);
+  const lock = trainingLock(me, statuses.find((s) => s.module.id === mod.id)!, induction);
+  if (lock) return { ok: false, error: lock };
   const expiresISO = mod.validityMonths ? addMonths(today, mod.validityMonths) : null;
   await db.trainingRecord.create({
     data: { volunteerId: me.id, moduleId, completedAt: isoToDate(today), expiresAt: expiresISO ? isoToDate(expiresISO) : null, method: "ONLINE" },
   });
   await queueEmail(me, T.trainingCompleted({ firstName: me.firstName, moduleName: mod.name, expiresISO }));
+  await joinPoolIfCoordinator(me);
   revalidateAll();
   return { ok: true, message: `${mod.name} recorded. ${expiresISO ? "Next refresher in " + mod.validityMonths + " months." : ""}`.trim() };
 }
@@ -140,6 +148,11 @@ export async function rsvpSession(me: Volunteer, sessionId: string, going: boole
   if (going && session.rsvps.filter((r) => r.status === "GOING" && r.volunteerId !== me.id).length >= session.capacity) {
     return { ok: false, error: "This session is full. The coordinator will schedule another." };
   }
+  if (going) {
+    const { statuses, induction } = await trainingContext(me);
+    const lock = trainingLock(me, statuses.find((s) => s.module.id === session.moduleId)!, induction);
+    if (lock) return { ok: false, error: lock };
+  }
   await db.sessionRsvp.upsert({
     where: { sessionId_volunteerId: { sessionId, volunteerId: me.id } },
     create: { sessionId, volunteerId: me.id, status: going ? "GOING" : "DECLINED" },
@@ -147,9 +160,51 @@ export async function rsvpSession(me: Volunteer, sessionId: string, going: boole
   });
   if (going) {
     await queueEmail(me, T.sessionConfirmed({ firstName: me.firstName, moduleName: session.module.name, startsAt: session.startsAt, location: session.location }));
+    await joinPoolIfCoordinator(me);
   }
   revalidateAll();
   return { ok: true, message: going ? "You're booked in." : "Noted, you can't make this one." };
+}
+
+/** The agreements ticked, each at the version the volunteer read. */
+export const signAgreementsSchema = z.object({
+  agreements: z.array(z.object({ id: z.string().min(1), version: z.number().int().min(1) })).min(1).max(20),
+});
+
+/** Signs agreements from the induction page: a tick box per agreement, then
+ *  one button. A version published since the page loaded is not signed, so
+ *  nobody agrees to words they have not seen. */
+export async function signAgreements(me: Volunteer, input: z.infer<typeof signAgreementsSchema>): Promise<ActionResult> {
+  const parsed = signAgreementsSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Tick each agreement you are signing." };
+  const induction = await inductionFor(me);
+  const toSign = [];
+  for (const { id, version } of parsed.data.agreements) {
+    const a = induction.agreements.find((x) => x.document.id === id);
+    if (!a) return { ok: false, error: "That agreement is no longer in use. Reload the page.", notFound: true };
+    if (a.document.version !== version) return { ok: false, error: `The ${a.document.title} has just been updated. Read the new version, then sign it.` };
+    if (a.status === "UNSIGNED" || a.status === "UPDATED") toSign.push(a.document);
+  }
+  if (toSign.length === 0) return { ok: true, message: "Already signed. Thank you." };
+  await db.documentAcknowledgement.createMany({ data: toSign.map((d) => ({ documentId: d.id, volunteerId: me.id, version: d.version })), skipDuplicates: true });
+  const names = toSign.map((d) => (d.version > 1 ? `${d.title} (version ${d.version})` : d.title));
+  await db.contactLog.create({ data: { volunteerId: me.id, authorId: me.id, kind: "AGREEMENT_SIGNED", summary: `Signed the ${names.length === 1 ? names[0] : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`}.` } });
+  revalidateAll();
+  return { ok: true, message: toSign.length === 1 ? `${toSign[0]!.title} signed. Thank you.` : "Agreements signed. Thank you." };
+}
+
+export const acknowledgeSchema = z.object({ version: z.number().int().min(1) });
+
+/** "I have read this version" on a policy. */
+export async function acknowledgeDocument(me: Volunteer, documentId: string, version: number): Promise<ActionResult> {
+  const doc = await db.document.findUnique({ where: { id: documentId } });
+  if (!doc || doc.archived || doc.kind !== "POLICY" || (doc.roles.length > 0 && !doc.roles.some((r) => me.roles.includes(r)))) {
+    return { ok: false, error: "That policy is no longer available.", notFound: true };
+  }
+  if (doc.version !== version) return { ok: false, error: `The ${doc.title} has just been updated. Read the new version, then confirm.` };
+  await db.documentAcknowledgement.createMany({ data: [{ documentId: doc.id, volunteerId: me.id, version: doc.version }], skipDuplicates: true });
+  revalidateAll();
+  return { ok: true, message: "Thanks for reading it." };
 }
 
 export const harvestPoolSchema = z.object({ inPool: z.boolean() });

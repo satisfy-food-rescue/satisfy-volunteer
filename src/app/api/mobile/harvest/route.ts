@@ -10,12 +10,12 @@ export const dynamic = "force-dynamic";
 export const GET = mobileHandler(async (me) => {
   const today = todayISO();
   const h = await loadHarvest(me, today);
-  const ctx = { me, statuses: h.statuses, today };
+  const ctx = { me, statuses: h.statuses, induction: h.induction, today };
   return json<HarvestOverview>({
     today,
     inPool: h.inPool,
     poolCount: h.poolCount,
-    training: h.harvestTraining.map(moduleSummary),
+    training: h.harvestTraining.map((s) => moduleSummary(s, { me, induction: h.induction })),
     trained: h.trained,
     harvests: h.harvests.map((v) => shiftSummary(v, ctx)),
   });

@@ -56,7 +56,8 @@ src/app                  routes only (Expo Router)
   _layout.tsx            fonts, splash, auth gate, notification taps
   sign-in.tsx            password, Google, Apple and passkey sign-in; the persona picker on the demo
   (tabs)/_layout.tsx     native tab bar with badges
-  (tabs)/(home,shifts,cover,training,me)/   one stack per tab, sharing shift/[id], module/[code], slot, harvest
+  (tabs)/(home,shifts,cover,training,me)/   one stack per tab, sharing shift/[id], module/[code], slot, harvest,
+                                            induction, policies
   mark-away.tsx, role-request.tsx           form sheets
 src/screens              screen bodies the routes render
 src/components           UI primitives (ui/), shift cards and actions, brand graphics

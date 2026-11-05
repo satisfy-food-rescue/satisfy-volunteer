@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { ArrowDown, ArrowRight, ArrowUp, BellRing, Clock, Mail, MapPin, PlayCircle, Smartphone, Users } from "lucide-react";
+import { ArrowDown, ArrowRight, ArrowUp, BellRing, Clock, Hammer, ListOrdered, Mail, MapPin, PlayCircle, Smartphone, Users } from "lucide-react";
 import { requireAdmin } from "@/lib/session";
 import { isDemo } from "@/lib/env";
 import { db } from "@/lib/db";
+import { ACTIVE_POOL } from "@/lib/pool";
 import { formatInstant, formatInstantRange, todayISO, formatDate } from "@/lib/dates";
 import { DELIVERY_LABEL, EMAIL_KIND_LABEL, ROLE_SHORT, fullName } from "@/lib/domain";
 import { moduleStatuses, trainingSummary, type ModuleStatus } from "@/lib/training";
@@ -11,7 +12,7 @@ import { REMINDER_RULES } from "@/lib/reminders";
 import { PageHeader } from "@/components/shared/page-header";
 import { TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TrainingRecordFilters, UrlTabs } from "@/components/admin/training-filters";
-import { TrainingChip } from "@/components/shared/status-chip";
+import { Chip, TrainingChip } from "@/components/shared/status-chip";
 import { AvatarBadge } from "@/components/shared/avatar-badge";
 import { ModuleEditor, NewSessionForm, RunRemindersButton } from "@/components/admin/training-admin-controls";
 import { cn } from "@/lib/utils";
@@ -53,7 +54,7 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
   const today = todayISO();
   const [modules, volunteers, sessions, reminderEmails] = await Promise.all([
     db.trainingModule.findMany({ orderBy: { order: "asc" }, include: { links: { orderBy: { order: "asc" } } } }),
-    db.volunteer.findMany({ where: { status: "ACTIVE", role: "VOLUNTEER" }, include: { trainingRecords: true } }),
+    db.volunteer.findMany({ where: ACTIVE_POOL, include: { trainingRecords: true } }),
     db.trainingSession.findMany({ include: { module: true, rsvps: { include: { volunteer: true } } }, orderBy: { startsAt: "asc" } }),
     db.email.findMany({ where: { kind: { in: ["TRAINING_DUE_SOON", "TRAINING_OVERDUE", "LAST_MINUTE_CALLOUT", "GAP_ESCALATION"] } }, include: { volunteer: true }, orderBy: { createdAt: "desc" }, take: 8 }),
   ]);
@@ -109,18 +110,19 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
         </TabsList>
 
         <TabsContent value="modules" className="flex flex-col gap-3">
-          <ModuleEditor />
+          <ModuleEditor modules={modules.map((m) => ({ id: m.id, name: m.name }))} />
           {moduleStats.map(({ m, required, complete, dueSoon, overdue, notStarted }) => (
             <article key={m.id} className="rounded-2xl border border-border bg-card p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <h2 className="text-xl text-ink">{m.name}</h2>
+                  <h2 className="flex flex-wrap items-center gap-2 text-xl text-ink">{m.name}{m.inDevelopment && <Chip tone="neutral" size="sm" icon={Hammer}>In development</Chip>}</h2>
                   <p className="mt-1 text-sm text-muted-foreground">{m.description}</p>
                   <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink-soft">
                     <span><span className="font-semibold text-ink">{m.validityMonths ? `Every ${m.validityMonths} months` : "Once"}</span></span>
                     <span>{DELIVERY_LABEL[m.delivery]}</span>
                     <span>Required for {m.requiredRoles.map((r) => ROLE_SHORT[r].toLowerCase()).join(", ")}</span>
                     {m.links.length > 0 && <span className="inline-flex items-center gap-1"><PlayCircle className="size-4 text-sky" aria-hidden />{m.links.length} {m.links.length === 1 ? "video or link" : "videos or links"}</span>}
+                    {m.prerequisiteId && <span className="inline-flex items-center gap-1"><ListOrdered className="size-4 text-sky" aria-hidden />After {modules.find((x) => x.id === m.prerequisiteId)?.name}</span>}
                     {m.mandatoryBeforeFirstShift && <span className="font-semibold text-teal">Mandatory before first shift</span>}
                   </p>
                 </div>
@@ -152,7 +154,10 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
                     delivery: m.delivery,
                     content: m.content ?? "",
                     links: m.links.map((l) => ({ label: l.label, url: l.url })),
+                    prerequisiteId: m.prerequisiteId,
+                    inDevelopment: m.inDevelopment,
                   }}
+                  modules={modules.map((x) => ({ id: x.id, name: x.name }))}
                 />
               </div>
             </article>

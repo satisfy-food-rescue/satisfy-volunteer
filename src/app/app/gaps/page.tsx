@@ -2,7 +2,7 @@ import { HandHelping, Lock, Sparkles } from "lucide-react";
 import { requireVolunteer } from "@/lib/session";
 import { formatDay, formatTimeRange, relativeDay, todayISO } from "@/lib/dates";
 import { coverGaps, trainingContext } from "@/lib/volunteer-data";
-import { eligibilityFor } from "@/lib/training";
+import { eligibilityFor, lockFix } from "@/lib/training";
 import { ShiftActions } from "@/components/app/shift-actions";
 import { LockedShiftCard, ShiftKindIcon, kindTileClass } from "@/components/app/shift-card";
 import { LockBanner } from "@/components/app/lock-banner";
@@ -18,7 +18,7 @@ export default async function GapsPage() {
   const me = await requireVolunteer();
   const today = todayISO();
   const [gaps, training] = await Promise.all([coverGaps(me.id, today), trainingContext(me, today)]);
-  const rows = gaps.map((view) => ({ view, elig: eligibilityFor(me, view.kind, training.statuses), mine: view.confirmed.find((a) => a.volunteerId === me.id) ?? null }));
+  const rows = gaps.map((view) => ({ view, elig: eligibilityFor(me, view.kind, training.statuses, training.induction), mine: view.confirmed.find((a) => a.volunteerId === me.id) ?? null }));
   // The shifts the volunteer can take (or is already on) lead, by day. Locked
   // ones follow, small and grey, with the reason said once at the top.
   const open = rows.filter((r) => r.mine || r.elig.eligible);
@@ -83,7 +83,7 @@ export default async function GapsPage() {
                       <div className="mt-3 @4xl/app:mt-0 @4xl/app:w-[19rem] @4xl/app:shrink-0">
                         <ShiftActions
                           compact
-                          state={{ shiftId: view.shift.id, mine: mine ? { id: mine.id, source: mine.source } : null, isPast: false, isCancelled: false, isFull: view.isFull, isGap: true, eligible: elig.eligible, reason: elig.reason, blockerModuleCode: elig.blockers[0]?.module.code ?? null, missingRole: !elig.hasRole, harvest: false }}
+                          state={{ shiftId: view.shift.id, mine: mine ? { id: mine.id, source: mine.source } : null, isPast: false, isCancelled: false, isFull: view.isFull, isGap: true, eligible: elig.eligible, reason: elig.reason, blockerModuleCode: elig.blockers[0]?.module.code ?? null, fix: elig.eligible ? null : lockFix(elig, view.kind), harvest: false }}
                         />
                       </div>
                     </article>
@@ -110,7 +110,7 @@ export default async function GapsPage() {
                 <ul className="grid gap-2 @4xl/app:grid-cols-2">
                   {locked.map(({ view, elig }) => (
                     <li key={view.shift.id}>
-                      <LockedShiftCard view={view} needsRole={!elig.hasRole} showDate />
+                      <LockedShiftCard view={view} lock={lockFix(elig, view.kind)} showDate />
                     </li>
                   ))}
                 </ul>

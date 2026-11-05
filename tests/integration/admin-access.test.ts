@@ -2,14 +2,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/lib/db";
 import * as mailer from "@/lib/mailer";
 import { addDays, isoToDate, todayISO } from "@/lib/dates";
-import { grantAdminAccess, revokeAdminAccess } from "@/lib/admin-access";
+import { grantAdminAccess, joinPoolIfCoordinator, revokeAdminAccess, setCoordinatorVolunteering } from "@/lib/admin-access";
+import { ACTIVE_POOL } from "@/lib/pool";
 import { makeVolunteer, resetDb } from "./helpers";
 
-const form = (over: Partial<{ firstName: string; lastName: string; email: string; releaseConfirmed: boolean }> = {}) => ({
+const form = (over: Partial<{ firstName: string; lastName: string; email: string }> = {}) => ({
   firstName: "Aroha",
   lastName: "Ngata",
   email: "Aroha.Ngata@Example.NZ",
-  releaseConfirmed: false,
   ...over,
 });
 
@@ -40,7 +40,8 @@ describe("coordinator access", () => {
     const r = await grantAdminAccess(phillipa, form());
     expect(r).toMatchObject({ ok: true, message: "Aroha Ngata is now a coordinator. Aroha has been emailed a link to set up their account." });
     const aroha = await db.volunteer.findUniqueOrThrow({ where: { email: "aroha.ngata@example.nz" }, include: { contactLogs: true } });
-    expect(aroha).toMatchObject({ role: "ADMIN", status: "ACTIVE", passwordHash: null });
+    // Staff, not in the volunteer lists until they volunteer.
+    expect(aroha).toMatchObject({ role: "ADMIN", status: "ACTIVE", passwordHash: null, alsoVolunteers: false });
     expect(aroha.contactLogs).toMatchObject([{ kind: "ACCOUNT_CREATED", authorId: phillipa.id, summary: "Added as a coordinator by Phillipa." }]);
     expect(send.mock.calls[0][0]).toMatchObject({ subject: "Set up your Satisfy coordinator account", ctaHref: expect.stringContaining("/reset-password?token=") });
     expect(await db.authToken.count({ where: { volunteerId: aroha.id, purpose: "INVITE" } })).toBe(1);
@@ -55,30 +56,60 @@ describe("coordinator access", () => {
     expect(await db.volunteer.count()).toBe(1);
   });
 
-  it("asks before taking a rostered volunteer off their shifts, then moves them across", async () => {
+  it("makes a rostered volunteer a coordinator who keeps volunteering", async () => {
     vi.spyOn(mailer, "sendEmail").mockResolvedValue("re");
     const phillipa = await makeVolunteer({ firstName: "Phillipa", role: "ADMIN" });
     const margaret = await makeVolunteer({ firstName: "Margaret", email: "margaret@example.org", roles: ["WAREHOUSE", "HARVEST"] });
     await db.volunteer.update({ where: { id: margaret.id }, data: { passwordHash: "x", lastSignInAt: new Date() } });
-    const { upcoming, past } = await rosterOn(margaret.id);
+    const { upcoming } = await rosterOn(margaret.id);
 
-    // The name typed is ignored for an existing person; nothing changes yet.
-    const ask = await grantAdminAccess(phillipa, form({ firstName: "Maggie", email: "Margaret@Example.org" }));
-    expect(ask).toMatchObject({ ok: false, confirm: { name: "Margaret Test", firstName: "Margaret", upcomingShifts: 1, regularSlots: 1 } });
-    expect((await db.volunteer.findUniqueOrThrow({ where: { id: margaret.id } })).role).toBe("VOLUNTEER");
-
-    const r = await grantAdminAccess(phillipa, form({ email: "margaret@example.org", releaseConfirmed: true }));
-    expect(r).toMatchObject({ ok: true, message: "Margaret Test is now a coordinator and has come off 1 upcoming shift, which now needs cover. Margaret has been emailed." });
+    // The name typed is ignored for an existing person.
+    const r = await grantAdminAccess(phillipa, form({ firstName: "Maggie", email: "Margaret@Example.org" }));
+    expect(r).toMatchObject({ ok: true, message: "Margaret Test is now a coordinator and stays in the volunteer lists. Margaret has been emailed." });
     const after = await db.volunteer.findUniqueOrThrow({ where: { id: margaret.id }, include: { regularSlots: true, assignments: true, contactLogs: true } });
-    expect(after).toMatchObject({ role: "ADMIN", firstName: "Margaret", isRegular: false, roles: ["WAREHOUSE", "HARVEST"] });
-    expect(after.regularSlots).toHaveLength(0);
-    expect(after.assignments.find((a) => a.shiftId === upcoming.id)?.status).toBe("CANCELLED");
-    // History is kept.
-    expect(after.assignments.find((a) => a.shiftId === past.id)?.status).toBe("ATTENDED");
-    expect(after.contactLogs).toMatchObject([{ kind: "ADMIN_ACCESS", summary: "Made a coordinator by Phillipa. Removed from 1 regular slot and 1 upcoming shift." }]);
+    expect(after).toMatchObject({ role: "ADMIN", alsoVolunteers: true, firstName: "Margaret", isRegular: true, roles: ["WAREHOUSE", "HARVEST"] });
+    expect(after.regularSlots).toHaveLength(1);
+    expect(after.assignments.find((a) => a.shiftId === upcoming.id)?.status).toBe("CONFIRMED");
+    expect(after.contactLogs).toMatchObject([{ kind: "ADMIN_ACCESS", summary: "Made a coordinator by Phillipa. Still volunteers." }]);
+    // Still in the pool the volunteer and training lists read.
+    expect(await db.volunteer.count({ where: { ...ACTIVE_POOL, id: margaret.id } })).toBe(1);
     // Already signs in, so told about it rather than sent a link.
     expect(await db.email.findFirst({ where: { volunteerId: margaret.id, kind: "ADMIN_ACCESS" } })).toMatchObject({ subject: "You are now a Satisfy coordinator", ctaHref: "/admin" });
     expect(await db.authToken.count({ where: { volunteerId: margaret.id } })).toBe(0);
+  });
+
+  it("asks before taking a coordinator out of the volunteer lists, then releases their roster", async () => {
+    vi.spyOn(mailer, "sendEmail").mockResolvedValue("re");
+    const phillipa = await makeVolunteer({ firstName: "Phillipa", role: "ADMIN" });
+    const margaret = await makeVolunteer({ firstName: "Margaret", role: "ADMIN" });
+    await db.volunteer.update({ where: { id: margaret.id }, data: { alsoVolunteers: true } });
+    const { upcoming, past } = await rosterOn(margaret.id);
+
+    const ask = await setCoordinatorVolunteering(phillipa, margaret.id, false, false);
+    expect(ask).toMatchObject({ ok: false, confirm: { name: "Margaret Test", firstName: "Margaret", upcomingShifts: 1, regularSlots: 1 } });
+    expect((await db.volunteer.findUniqueOrThrow({ where: { id: margaret.id } })).alsoVolunteers).toBe(true);
+
+    expect(await setCoordinatorVolunteering(phillipa, margaret.id, false, true)).toMatchObject({ ok: true, message: "Margaret Test is no longer in the volunteer lists. Came off 1 upcoming shift; 1 shift now needs cover." });
+    const after = await db.volunteer.findUniqueOrThrow({ where: { id: margaret.id }, include: { regularSlots: true, assignments: true, contactLogs: true } });
+    expect(after).toMatchObject({ role: "ADMIN", alsoVolunteers: false, isRegular: false });
+    expect(after.regularSlots).toHaveLength(0);
+    expect(after.assignments.find((a) => a.shiftId === upcoming.id)?.status).toBe("CANCELLED");
+    expect(after.assignments.find((a) => a.shiftId === past.id)?.status).toBe("ATTENDED");
+    expect(after.contactLogs[0]).toMatchObject({ kind: "ADMIN_ACCESS", summary: "Taken out of the volunteer lists by Phillipa. Removed from 1 regular slot and 1 upcoming shift." });
+    expect(await db.volunteer.count({ where: { ...ACTIVE_POOL, id: margaret.id } })).toBe(0);
+
+    expect(await setCoordinatorVolunteering(phillipa, margaret.id, true, false)).toMatchObject({ ok: true, message: "Margaret Test is now in the volunteer lists and can be rostered." });
+  });
+
+  it("puts a coordinator who books or trains in the volunteer lists", async () => {
+    const aroha = await makeVolunteer({ firstName: "Aroha", role: "ADMIN" });
+    expect(await db.volunteer.count({ where: ACTIVE_POOL })).toBe(0);
+    await joinPoolIfCoordinator(aroha);
+    expect(await db.volunteer.findUniqueOrThrow({ where: { id: aroha.id } })).toMatchObject({ alsoVolunteers: true });
+    expect(await db.volunteer.count({ where: ACTIVE_POOL })).toBe(1);
+    // Once is enough.
+    await joinPoolIfCoordinator({ ...aroha, alsoVolunteers: true });
+    expect(await db.contactLog.count({ where: { volunteerId: aroha.id } })).toBe(1);
   });
 
   it("reactivates an inactive volunteer and invites one who never signed in", async () => {
@@ -87,10 +118,10 @@ describe("coordinator access", () => {
     const sam = await makeVolunteer({ firstName: "Sam", email: "sam@example.org" });
     await db.volunteer.update({ where: { id: sam.id }, data: { status: "INACTIVE" } });
 
-    expect(await grantAdminAccess(phillipa, form({ email: "sam@example.org" }))).toMatchObject({ ok: true, message: "Sam Test is now a coordinator. Sam has been emailed a link to set up their account." });
+    expect(await grantAdminAccess(phillipa, form({ email: "sam@example.org" }))).toMatchObject({ ok: true, message: "Sam Test is now a coordinator and stays in the volunteer lists. Sam has been emailed a link to set up their account." });
     expect(await db.volunteer.findUniqueOrThrow({ where: { id: sam.id } })).toMatchObject({ role: "ADMIN", status: "ACTIVE" });
     expect(send.mock.calls[0][0]).toMatchObject({ subject: "Set up your Satisfy coordinator account" });
-    expect(await db.contactLog.findFirst({ where: { volunteerId: sam.id } })).toMatchObject({ summary: "Made a coordinator by Phillipa. Reactivated." });
+    expect(await db.contactLog.findFirst({ where: { volunteerId: sam.id } })).toMatchObject({ summary: "Made a coordinator by Phillipa. Still volunteers. Reactivated." });
   });
 
   it("removes access, making them a volunteer again", async () => {

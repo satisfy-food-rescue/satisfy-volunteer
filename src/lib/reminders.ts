@@ -1,7 +1,10 @@
 import { db } from "./db";
 import { addDays, dateToISO, daysBetween, isoToDate, nzInstant, todayISO } from "./dates";
-import { DUE_SOON_DAYS, fullName } from "./domain";
-import { shiftReminder, trainingDueSoon, trainingOverdue, trainingOverdueCoordinator } from "./email-templates";
+import { DUE_SOON_DAYS, MOJ_CHECK_URL, MOJ_RENEWAL_DAYS, fullName } from "./domain";
+import { mojExpired, mojRenewalCoordinator, mojRenewalDue, shiftReminder, trainingDueSoon, trainingOverdue, trainingOverdueCoordinator } from "./email-templates";
+import { mojRenewsISO } from "./induction";
+import { ACTIVE_POOL } from "./pool";
+import { getSettings } from "./settings";
 import { queueEmail } from "./emails";
 import { shiftLocation, shiftName } from "./roster";
 
@@ -31,6 +34,20 @@ export const REMINDER_RULES = [
     audience: "The volunteer. The coordinator is told once, at 3 weeks overdue",
     template: "Training overdue",
     detail: "Stops automatically the moment the module is refreshed.",
+  },
+  {
+    id: "moj-due",
+    when: `${MOJ_RENEWAL_DAYS} days before a Ministry of Justice check is three years old`,
+    audience: "The volunteer, and the coordinator",
+    template: "Ministry of Justice check due for renewal",
+    detail: "Early, since the Ministry can take up to 20 working days. Says how to request a new check, and that the coordinator can help.",
+  },
+  {
+    id: "moj-expired",
+    when: "When a Ministry of Justice check turns three years old",
+    audience: "The volunteer, and the coordinator",
+    template: "Ministry of Justice check expired",
+    detail: "New bookings and training pause until a new check is recorded. Only for roles set to need a check in Induction.",
   },
   {
     id: "shift-eve",
@@ -112,6 +129,34 @@ export async function runReminders(today: string) {
     }
   }
   return { dueSoon, overdue, coordinator, checked: latest.size, nextRun: addDays(today, 1) };
+}
+
+/** Ministry of Justice check renewals: once at the renewal window and once
+ *  when it runs out, to the volunteer and the coordinator. Only for
+ *  volunteers whose roles need a check. Safe to run as often as you like. */
+export async function runMojReminders(today: string) {
+  const { mojCheckRoles } = await getSettings();
+  if (mojCheckRoles.length === 0) return { due: 0, expired: 0, checked: 0 };
+  const volunteers = await db.volunteer.findMany({
+    where: { ...ACTIVE_POOL, roles: { hasSome: mojCheckRoles }, mojChecks: { some: {} } },
+    include: { mojChecks: { orderBy: { checkedOn: "desc" }, take: 1 } },
+  });
+  let due = 0;
+  let expired = 0;
+  for (const v of volunteers) {
+    const check = v.mojChecks[0]!;
+    const renewsISO = mojRenewsISO(dateToISO(check.checkedOn));
+    const days = daysBetween(today, renewsISO);
+    if (days > MOJ_RENEWAL_DAYS) continue;
+    const gone = days <= 0;
+    const ref = `${gone ? "moj-expired" : "moj-due"}:${check.id}`;
+    if (await db.email.findFirst({ where: { ref }, select: { id: true } })) continue;
+    await queueEmail(v, gone ? mojExpired({ firstName: v.firstName, renewsISO, checkUrl: MOJ_CHECK_URL }) : mojRenewalDue({ firstName: v.firstName, renewsISO, checkUrl: MOJ_CHECK_URL }), ref);
+    await queueEmail(null, mojRenewalCoordinator({ volunteerName: fullName(v), volunteerId: v.id, renewsISO, expired: gone, phone: v.phone }), `${ref}:coordinator`);
+    if (gone) expired++;
+    else due++;
+  }
+  return { due, expired, checked: volunteers.length };
 }
 
 /** From 4pm NZ, reminds everyone rostered on tomorrow. People who booked after

@@ -2,16 +2,20 @@ import type { Volunteer } from "@/generated/prisma/client";
 import { db } from "./db";
 import { addDays, durationHours, isoToDate, todayISO } from "./dates";
 import { eligibilityFor, moduleStatuses, trainingSummary, type ModuleStatus } from "./training";
+import { inductionFor } from "./induction-data";
 import { decorateShift, gapsBetween, shiftInclude, type ShiftView } from "./roster";
 import { shiftAction, type ShiftContext } from "./mobile-api/shifts";
 
+/** The volunteer's training and induction: what the booking gate and the
+ *  training pages read. */
 export async function trainingContext(volunteer: Volunteer, today = todayISO()) {
-  const [modules, records] = await Promise.all([
+  const [modules, records, induction] = await Promise.all([
     db.trainingModule.findMany({ orderBy: { order: "asc" } }),
     db.trainingRecord.findMany({ where: { volunteerId: volunteer.id } }),
+    inductionFor(volunteer, today),
   ]);
   const statuses: ModuleStatus[] = moduleStatuses(volunteer, modules, records, today);
-  return { modules, records, statuses, summary: trainingSummary(statuses) };
+  return { modules, records, statuses, summary: trainingSummary(statuses), induction };
 }
 
 /** Open gaps in the next four weeks, as the Cover tab lists them: every gap
@@ -27,7 +31,7 @@ export async function coverGaps(volunteerId: string, today = todayISO()): Promis
  *  so neither nags about shifts that are locked to them. */
 export function coverableGaps(gaps: ShiftView[], ctx: ShiftContext): ShiftView[] {
   return gaps.filter((g) => {
-    const action = shiftAction(g, ctx.me.id, eligibilityFor(ctx.me, g.kind, ctx.statuses), ctx.today);
+    const action = shiftAction(g, ctx.me.id, eligibilityFor(ctx.me, g.kind, ctx.statuses, ctx.induction), ctx.today);
     return action.kind === "BOOK";
   });
 }

@@ -4,17 +4,22 @@ import * as Haptics from "expo-haptics";
 import { useCallback, useRef } from "react";
 
 import type {
+  AcknowledgeInput,
   AuthConfig,
   AwayInput,
   CoverList,
+  DocumentItem,
   HarvestOverview,
   Home,
+  InductionOverview,
   MobileSession,
   MutationOk,
+  PolicyList,
   ProfileInput,
   SecurityOverview,
   ShiftDetail,
   ShiftsWeek,
+  SignAgreementsInput,
   SignUpInput,
   SlotOverview,
   TrainingModuleDetail,
@@ -35,6 +40,9 @@ export const keys = {
   module: (code: string) => ["module", code],
   slot: ["slot"],
   harvest: ["harvest"],
+  induction: ["induction"],
+  policies: ["policies"],
+  policy: (id: string) => ["policy", id],
   authConfig: ["auth-config"],
   security: ["security"],
 } as const;
@@ -53,6 +61,9 @@ export const useTraining = () => useQuery({ queryKey: keys.training, queryFn: ()
 export const useModule = (code: string) => useQuery({ queryKey: keys.module(code), queryFn: () => api<TrainingModuleDetail>(`/training/modules/${encodeURIComponent(code)}`) });
 export const useSlot = () => useQuery({ queryKey: keys.slot, queryFn: () => api<SlotOverview>("/slot") });
 export const useHarvest = () => useQuery({ queryKey: keys.harvest, queryFn: () => api<HarvestOverview>("/harvest") });
+export const useInduction = () => useQuery({ queryKey: keys.induction, queryFn: () => api<InductionOverview>("/induction") });
+export const usePolicies = () => useQuery({ queryKey: keys.policies, queryFn: () => api<PolicyList>("/policies") });
+export const usePolicy = (id: string) => useQuery({ queryKey: keys.policy(id), queryFn: () => api<DocumentItem>(`/policies/${encodeURIComponent(id)}`) });
 /** Which sign-in methods the server offers. Read before signing in. */
 export const useAuthConfig = () => useQuery({ queryKey: keys.authConfig, queryFn: () => api<AuthConfig>("/auth/config"), staleTime: 5 * 60_000 });
 export const useSecurity = () => useQuery({ queryKey: keys.security, queryFn: () => api<SecurityOverview>("/security") });
@@ -75,7 +86,8 @@ export function useRefreshOnFocus(refetch: () => unknown) {
 }
 
 /** Runs a mutation, shows its message, and refreshes everything once it has
- *  landed: a booking changes Home, Shifts, Cover and the tab badges at once.
+ *  landed: a booking changes Home, Shifts, Cover and the tab badges at once,
+ *  and signing an agreement opens up training and shifts.
  *  The returned promise settles after the refresh, so buttons stay busy until
  *  the screen shows the new state. */
 export function useAction<TInput = void>(
@@ -108,6 +120,10 @@ export const actions = {
   removeAbsence: (id: string) => api<MutationOk>(`/absences/${encodeURIComponent(id)}`, { method: "DELETE" }),
   completeModule: (moduleId: string) => api<MutationOk>(`/training/modules/${encodeURIComponent(moduleId)}/complete`, { method: "POST" }),
   rsvpSession: ({ id, going }: { id: string; going: boolean }) => api<MutationOk>(`/training/sessions/${encodeURIComponent(id)}/rsvp`, { method: "POST", body: { going } }),
+  /** Signs every agreement at the version the volunteer read, together. */
+  signAgreements: (input: SignAgreementsInput) => api<MutationOk>("/induction/agreements", { method: "POST", body: input }),
+  acknowledgePolicy: ({ id, version }: { id: string } & AcknowledgeInput) =>
+    api<MutationOk>(`/policies/${encodeURIComponent(id)}/acknowledge`, { method: "POST", body: { version } satisfies AcknowledgeInput }),
   setHarvestPool: (inPool: boolean) => api<MutationOk>("/harvest/pool", { method: "PUT", body: { inPool } }),
   updateProfile: (input: ProfileInput) => api<MutationOk>("/profile", { method: "PATCH", body: input }),
   requestRoleChange: (message: string) => api<MutationOk>("/profile/role-request", { method: "POST", body: { message } }),

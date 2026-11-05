@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight, CalendarDays, CheckCircle2, Clock, GraduationCap, Inbox } from "lucide-react";
 import { requireAdmin } from "@/lib/session";
 import { db } from "@/lib/db";
+import { ACTIVE_POOL } from "@/lib/pool";
 import { addDays, formatDay, formatDayLong, formatInstant, isWeekday, isoToDate, relativeDay, todayISO, weekMonday, formatDate } from "@/lib/dates";
 import { decorateShift, shiftInclude, shiftsBetween } from "@/lib/roster";
 import { moduleStatuses, trainingSummary } from "@/lib/training";
@@ -25,7 +26,7 @@ export default async function AdminDashboard() {
   const [board, fortnight, volunteers, modules, applications, sessions, harvests] = await Promise.all([
     shiftsBetween(monday, addDays(monday, 11), { drafts: true }),
     shiftsBetween(today, addDays(today, 14)),
-    db.volunteer.findMany({ where: { status: "ACTIVE", role: "VOLUNTEER" }, include: { trainingRecords: true } }),
+    db.volunteer.findMany({ where: ACTIVE_POOL, include: { trainingRecords: true } }),
     db.trainingModule.findMany({ orderBy: { order: "asc" } }),
     db.application.findMany({ where: { status: "PENDING" }, orderBy: { submittedAt: "desc" } }),
     db.trainingSession.findMany({ where: { startsAt: { gte: new Date() } }, include: { module: true, rsvps: true }, orderBy: { startsAt: "asc" }, take: 3 }),

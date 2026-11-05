@@ -3,6 +3,7 @@ import { Ban, CheckCircle2, ChevronRight, HandHelping, History, Lock, MapPin, Sp
 import type { ShiftView } from "@/lib/roster";
 import { formatDay, formatTimeRange } from "@/lib/dates";
 import { isAdHocKind } from "@/lib/domain";
+import { LOCK_LABEL, type LockFix } from "@/lib/training";
 import { Chip } from "@/components/shared/status-chip";
 import { AvatarBadge } from "@/components/shared/avatar-badge";
 import { cn } from "@/lib/utils";
@@ -32,7 +33,7 @@ export function ShiftKindIcon({ kind, className }: { kind: string; className?: s
 
 /** A shift the volunteer cannot book, kept small and grey so the ones they
  *  can take stand out. The page says why once, in its lock banner. */
-export function LockedShiftCard({ view, needsRole, showDate = false }: { view: ShiftView; needsRole: boolean; showDate?: boolean }) {
+export function LockedShiftCard({ view, lock, showDate = false }: { view: ShiftView; lock: LockFix; showDate?: boolean }) {
   return (
     <Link
       href={`/app/shifts/${view.shift.id}`}
@@ -52,7 +53,7 @@ export function LockedShiftCard({ view, needsRole, showDate = false }: { view: S
         </span>
         <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-status-neutral">
           <Lock className="size-3.5" aria-hidden />
-          {needsRole ? (view.kind === "HARVEST" ? "Join the pool" : "Role needed") : "Training needed"}
+          {LOCK_LABEL[lock]}
         </span>
       </span>
     </Link>
@@ -63,7 +64,7 @@ export function ShiftCard({
   view,
   meId,
   eligible,
-  needsRole,
+  lock,
   reason,
   showDate = false,
   past = false,
@@ -71,8 +72,8 @@ export function ShiftCard({
   view: ShiftView;
   meId: string;
   eligible: boolean;
-  /** Blocked by a missing role rather than lapsed training. */
-  needsRole: boolean;
+  /** What would unblock it, when it is locked. */
+  lock: LockFix;
   reason: string | null;
   /** For lists that span days rather than sitting under a day heading. */
   showDate?: boolean;
@@ -136,7 +137,7 @@ export function ShiftCard({
             ) : isAdHocKind(view.kind) && eligible ? (
               <Chip tone="info" size="sm">{view.spotsLeft} {view.spotsLeft === 1 ? "place" : "places"} left</Chip>
             ) : null}
-            {locked && <Chip tone="neutral" icon={Lock} size="sm">{needsRole ? (view.kind === "HARVEST" ? "Join the pool" : "Role needed") : "Training needed"}</Chip>}
+            {locked && <Chip tone="neutral" icon={Lock} size="sm">{LOCK_LABEL[lock]}</Chip>}
             {crewCount("ml-auto hidden @min-[17rem]/card:inline-flex")}
           </span>
           {/* In a narrow card the count moves down beside the faces, and the

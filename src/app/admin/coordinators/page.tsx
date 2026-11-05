@@ -6,7 +6,7 @@ import { fullName } from "@/lib/domain";
 import { PageHeader } from "@/components/shared/page-header";
 import { AvatarBadge } from "@/components/shared/avatar-badge";
 import { Chip } from "@/components/shared/status-chip";
-import { AddCoordinatorButton, CoordinatorActions } from "@/components/admin/coordinator-controls";
+import { AddCoordinatorButton, CoordinatorActions, VolunteeringSwitch } from "@/components/admin/coordinator-controls";
 
 export const metadata = { title: "Coordinators" };
 
@@ -60,7 +60,10 @@ export default async function CoordinatorsPage() {
                     {added && <span>{added.author ? `Added by ${added.author.firstName}` : "Added"}, {formatDay(instantToISO(added.createdAt))}</span>}
                   </p>
                 </div>
-                <CoordinatorActions coordinator={{ id: a.id, firstName: a.firstName, name: fullName(a) }} isSelf={isSelf} canInvite={!inactive && !hasSignedIn} />
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                  {!inactive && <VolunteeringSwitch coordinator={{ id: a.id, firstName: a.firstName }} on={a.alsoVolunteers} isSelf={isSelf} />}
+                  <CoordinatorActions coordinator={{ id: a.id, firstName: a.firstName, name: fullName(a) }} isSelf={isSelf} canInvite={!inactive && !hasSignedIn} />
+                </div>
               </li>
             );
           })}
@@ -73,7 +76,8 @@ export default async function CoordinatorsPage() {
           </div>
           <p>Coordinators run the roster, volunteers, training and messages. There is one level of access, so only add people you trust with volunteers&apos; contact details.</p>
           <p><span className="font-semibold text-ink">Someone new</span> gets an account and an emailed invite to choose a password, valid for 7 days. They can also sign in with Google or Apple.</p>
-          <p><span className="font-semibold text-ink">An existing volunteer</span> moves here from Volunteers. Coordinators are not rostered, so they come off their regular slots and upcoming shifts. Their roles, training and history are kept.</p>
+          <p><span className="font-semibold text-ink">An existing volunteer</span> becomes a coordinator and keeps volunteering: their regular slot, shifts, training and history carry on.</p>
+          <p><span className="font-semibold text-ink">Also volunteers</span> puts a coordinator in the volunteer lists: the roster, Volunteers, Training, announcements and reports. It turns on by itself when a coordinator books a shift or does training in the volunteer app. Turning it off takes them off their regular slots and upcoming shifts.</p>
           <p><span className="font-semibold text-ink">Removing access</span> makes them a volunteer again, listed under Volunteers. To stop them signing in at all, deactivate them from their profile there.</p>
           <p>You cannot remove your own access, so there is always at least one coordinator.</p>
         </aside>

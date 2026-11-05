@@ -17,5 +17,5 @@ export const GET = mobileHandler<{ id: string }>(async (me, _request, { params }
     trainingContext(me, today),
     view.shift.template.routeId ? db.donor.findMany({ where: { routeId: view.shift.template.routeId } }) : Promise.resolve([]),
   ]);
-  return json<ShiftDetail>(shiftDetail(view, { me, statuses: training.statuses, today }, donors.map((d) => d.name)));
+  return json<ShiftDetail>(shiftDetail(view, { me, statuses: training.statuses, induction: training.induction, today }, donors.map((d) => d.name)));
 });

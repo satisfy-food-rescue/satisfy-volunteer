@@ -1,6 +1,7 @@
 import { Clock, Repeat, ShieldCheck, UserX } from "lucide-react";
 import { requireAdmin } from "@/lib/session";
 import { db } from "@/lib/db";
+import { IN_POOL } from "@/lib/pool";
 import { addDays, dateToISO, durationHours, formatMonth, formatMonthShort, isoToDate, monthStart, todayISO } from "@/lib/dates";
 import { moduleStatuses, trainingSummary } from "@/lib/training";
 import { PageHeader } from "@/components/shared/page-header";
@@ -24,7 +25,7 @@ export default async function ReportsPage() {
       where: { status: { in: ["ATTENDED", "NO_SHOW"] }, shift: { date: { gte: isoToDate(from), lt: isoToDate(today) } } },
       include: { shift: { select: { date: true, startTime: true, endTime: true } } },
     }),
-    db.volunteer.findMany({ where: { role: "VOLUNTEER" }, include: { trainingRecords: true } }),
+    db.volunteer.findMany({ where: IN_POOL, include: { trainingRecords: true } }),
     db.trainingModule.findMany(),
   ]);
   const monthKey = (d: Date) => dateToISO(d).slice(0, 7);

@@ -46,7 +46,7 @@ function Profile({ session }: { session: MobileSession }) {
         </View>
       </View>
       <Roles me={me} />
-      <Links />
+      <Links badges={session.badges} />
       <NotificationsRow />
       {!session.demo && <SignInSecurity />}
       <ProfileForm me={me} />
@@ -76,18 +76,25 @@ function Roles({ me }: { me: Me }) {
   );
 }
 
-const LINKS: { href: Href; label: string; icon: IconName }[] = [
+const LINKS: { href: Href; label: string; icon: IconName; count?: (badges: MobileSession["badges"]) => number }[] = [
   { href: "/slot", label: "My regular slot and absences", icon: "calendarCheck" },
   { href: "/harvest", label: "Harvest", icon: "leaf" },
+  { href: "/induction", label: "Induction", icon: "induction", count: (b) => b.induction },
+  { href: "/policies", label: "Policies", icon: "document", count: (b) => b.policies },
 ];
 
-function Links() {
+function Links({ badges }: { badges: MobileSession["badges"] }) {
   const t = useTheme();
   return (
     <Card padded={false}>
-      {LINKS.map((l, i) => (
-        <Pressable key={l.label} onPress={() => router.push(l.href)}
+      {LINKS.map((l, i) => {
+        const count = l.count?.(badges) ?? 0;
+        return (
+          <Pressable
+            key={l.label}
+            onPress={() => router.push(l.href)}
             accessibilityRole="button"
+            accessibilityLabel={count ? `${l.label}, ${count} to do` : l.label}
             style={({ pressed }) => ({
               flexDirection: "row",
               alignItems: "center",
@@ -103,9 +110,17 @@ function Links() {
             <Text variant="bodySemibold" style={{ flex: 1 }}>
               {l.label}
             </Text>
+            {count > 0 && (
+              <View style={{ minWidth: 24, height: 24, paddingHorizontal: 6, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: t.orange }}>
+                <Text variant="labelBold" tone="onOrange" tabular>
+                  {count}
+                </Text>
+              </View>
+            )}
             <Icon name="chevronRight" size={16} color={t.mutedText} />
           </Pressable>
-      ))}
+        );
+      })}
     </Card>
   );
 }

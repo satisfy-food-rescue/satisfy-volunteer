@@ -15,6 +15,8 @@ function mod(over: Partial<TrainingModule> & Pick<TrainingModule, "id" | "code">
     delivery: "ONLINE_CONFIRM",
     content: null,
     order: 0,
+    prerequisiteId: null,
+    inDevelopment: false,
     ...over,
   };
 }
@@ -62,12 +64,12 @@ describe("the booking gate", () => {
 
   it("lets a trained volunteer with the role book", () => {
     const statuses = moduleStatuses({ roles: ["WAREHOUSE", "DRIVERS_ASSISTANT"] }, modules, current, TODAY);
-    expect(eligibilityFor({ roles: ["WAREHOUSE", "DRIVERS_ASSISTANT"] }, "DRIVERS_ASSISTANT", statuses)).toMatchObject({ eligible: true, reason: null });
+    expect(eligibilityFor({ roles: ["WAREHOUSE", "DRIVERS_ASSISTANT"] }, "DRIVERS_ASSISTANT", statuses, null)).toMatchObject({ eligible: true, reason: null });
   });
 
   it("requires the role", () => {
     const statuses = moduleStatuses({ roles: ["WAREHOUSE"] }, modules, current, TODAY);
-    const e = eligibilityFor({ roles: ["WAREHOUSE"] }, "DRIVERS_ASSISTANT", statuses);
+    const e = eligibilityFor({ roles: ["WAREHOUSE"] }, "DRIVERS_ASSISTANT", statuses, null);
     expect(e.eligible).toBe(false);
     expect(e.hasRole).toBe(false);
     expect(e.reason).toMatch(/driver help role/i);
@@ -76,20 +78,46 @@ describe("the booking gate", () => {
   it("blocks on an overdue refresher, naming it", () => {
     const lapsed = [record("m1", "2024-01-10", null), record("m2", "2025-09-01", "2026-09-01"), record("m3", "2026-06-01", "2027-06-01")];
     const roles = ["WAREHOUSE", "DRIVERS_ASSISTANT"] as const;
-    const e = eligibilityFor({ roles: [...roles] }, "DRIVERS_ASSISTANT", moduleStatuses({ roles: [...roles] }, modules, lapsed, TODAY));
+    const e = eligibilityFor({ roles: [...roles] }, "DRIVERS_ASSISTANT", moduleStatuses({ roles: [...roles] }, modules, lapsed, TODAY), null);
     expect(e.eligible).toBe(false);
     expect(e.reason).toBe("Complete the MANUAL_HANDLING refresher to book driver help shifts");
   });
 
   it("asks new volunteers for their first stage before anything else", () => {
-    const e = eligibilityFor({ roles: ["WAREHOUSE"] }, "WAREHOUSE", moduleStatuses({ roles: ["WAREHOUSE"] }, modules, [], TODAY));
+    const e = eligibilityFor({ roles: ["WAREHOUSE"] }, "WAREHOUSE", moduleStatuses({ roles: ["WAREHOUSE"] }, modules, [], TODAY), null);
     expect(e.blockers.map((b) => b.module.code)).toEqual(["INITIAL_VISIT", "MANUAL_HANDLING"]);
     expect(e.reason).toBe("Complete INITIAL_VISIT before your first shift");
   });
 
   it("still allows booking while a module is only due soon", () => {
     const dueSoon = [record("m1", "2024-01-10", null), record("m2", "2025-10-10", "2026-10-10")];
-    const e = eligibilityFor({ roles: ["WAREHOUSE"] }, "WAREHOUSE", moduleStatuses({ roles: ["WAREHOUSE"] }, modules, dueSoon, TODAY));
+    const e = eligibilityFor({ roles: ["WAREHOUSE"] }, "WAREHOUSE", moduleStatuses({ roles: ["WAREHOUSE"] }, modules, dueSoon, TODAY), null);
     expect(e.eligible).toBe(true);
+  });
+});
+
+describe("stages in order", () => {
+  const t1 = mod({ id: "t1", code: "T1", validityMonths: null, delivery: "IN_PERSON", order: 5 });
+  const t2 = mod({ id: "t2", code: "T2", validityMonths: null, delivery: "IN_PERSON", order: 6, prerequisiteId: "t1" });
+  const soon = mod({ id: "s", code: "SOON", order: 7, inDevelopment: true });
+  const all = [visit, handling, t1, t2, soon];
+
+  it("locks a stage until the one before it is done", () => {
+    const before = moduleStatuses({ roles: ["WAREHOUSE"] }, all, [], TODAY);
+    expect(before.find((s) => s.module.code === "T1")?.lockedBy).toBeNull();
+    expect(before.find((s) => s.module.code === "T2")?.lockedBy?.code).toBe("T1");
+    const after = moduleStatuses({ roles: ["WAREHOUSE"] }, all, [record("t1", "2026-09-01", null)], TODAY);
+    expect(after.find((s) => s.module.code === "T2")?.lockedBy).toBeNull();
+  });
+
+  it("never locks a stage already done, even if records came in out of order", () => {
+    const st = moduleStatuses({ roles: ["WAREHOUSE"] }, all, [record("t2", "2026-09-01", null)], TODAY);
+    expect(st.find((s) => s.module.code === "T2")).toMatchObject({ status: "COMPLETE", lockedBy: null });
+  });
+
+  it("keeps modules in development out of what is required", () => {
+    const st = moduleStatuses({ roles: ["WAREHOUSE"] }, all, [], TODAY);
+    expect(st.find((s) => s.module.code === "SOON")).toMatchObject({ required: false, status: "NOT_REQUIRED" });
+    expect(eligibilityFor({ roles: ["WAREHOUSE"] }, "WAREHOUSE", st, null).blockers.map((b) => b.module.code)).not.toContain("SOON");
   });
 });

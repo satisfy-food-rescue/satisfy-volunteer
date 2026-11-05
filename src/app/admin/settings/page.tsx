@@ -1,61 +1,27 @@
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, Clock, Import, Mail } from "lucide-react";
+import { ArrowRight, CheckCircle2, Clock, Import, Mail, Smartphone } from "lucide-react";
 import { requireAdmin } from "@/lib/session";
 import { isDemo } from "@/lib/env";
 import { db } from "@/lib/db";
-import { EMAIL_KIND_LABEL, type EmailKind } from "@/lib/domain";
+import { TEMPLATES, type TemplateAudience } from "@/lib/email-templates";
 import { PageHeader } from "@/components/shared/page-header";
 import { Chip } from "@/components/shared/status-chip";
 
 export const metadata = { title: "Emails and import" };
 
-// Every message the system sends by itself, who gets it and when.
-const TEMPLATES: { heading: string; kinds: [EmailKind, string][] }[] = [
-  {
-    heading: "To volunteers",
-    kinds: [
-      ["SHIFT_REMINDER", "4pm the day before each shift."],
-      ["ABSENCE_CONFIRMED", "When they mark themselves away, or you record it for them."],
-      ["COVER_CONFIRMED", "When they take a shift that needed cover."],
-      ["LAST_MINUTE_CALLOUT", "A push notification when a gap opens inside the shift type's last-minute window."],
-      ["SHIFT_PUBLISHED", "When you publish a one-off shift with a callout."],
-      ["HARVEST_CALLOUT", "When you publish a harvest, to the whole harvest pool."],
-      ["SHIFT_ADDED", "When you put them on a shift."],
-      ["SHIFT_CANCELLED", "When you cancel a shift they are booked on."],
-      ["ANNOUNCEMENT", "When you send an announcement."],
-      ["TRAINING_DUE_SOON", "Before a module they need runs out."],
-      ["TRAINING_OVERDUE", "When a module runs out, then weekly until it is refreshed."],
-      ["TRAINING_COMPLETED", "When they complete a module in the app."],
-      ["SESSION_CONFIRMED", "When they book a training session, or you book their initial visit."],
-      ["APPLICATION_RECEIVED", "When they sign up to volunteer."],
-      ["ALREADY_REGISTERED", "When they sign up with an email that already has an account."],
-      ["APPLICATION_APPROVED", "When you approve their application."],
-      ["ACCOUNT_INVITE", "When an account is made for them, with a link to sign in."],
-      ["PASSWORD_RESET", "When they ask to set or reset their password."],
-    ],
-  },
-  {
-    heading: "To coordinators",
-    kinds: [
-      ["GAP_ALERT", "As soon as an absence or cancellation leaves a shift short."],
-      ["GAP_ESCALATION", "When a shift is still short at the shift type's alert threshold."],
-      ["APPLICATION_NEW", "When a new application is waiting for review."],
-      ["TRAINING_OVERDUE_COORDINATOR", "When a volunteer's training is three weeks overdue."],
-      ["ROLE_CHANGE_REQUEST", "When a volunteer asks to change roles from the app."],
-      ["ROLES_CHANGED", "When a coordinator changes a volunteer's roles."],
-      ["ADMIN_ACCESS", "When someone is given coordinator access, or loses it."],
-    ],
-  },
+const GROUPS: { heading: string; audience: TemplateAudience[] }[] = [
+  { heading: "To volunteers", audience: ["volunteer", "applicant"] },
+  { heading: "To coordinators", audience: ["coordinator"] },
 ];
 
 export default async function SettingsPage() {
   await requireAdmin();
   const demo = isDemo();
-  const [imported, sent] = await Promise.all([
+  const [imported, custom] = await Promise.all([
     db.volunteer.count({ where: { infoodleId: { not: null } } }),
-    db.email.groupBy({ by: ["kind"], _count: { _all: true } }),
+    db.emailTemplate.findMany({ select: { key: true } }),
   ]);
-  const countOf = (k: EmailKind) => sent.find((t) => t.kind === k)?._count._all ?? 0;
+  const customKeys = new Set(custom.map((c) => c.key));
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-8">
       <PageHeader eyebrow="Set-up" title="Emails and import" description="The messages the system sends by itself and when it sends them, and how volunteer records came across from Infoodle." />
@@ -65,33 +31,32 @@ export default async function SettingsPage() {
           <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-teal-tint text-teal"><Mail className="size-5" aria-hidden /></span>
           <div className="min-w-0 flex-1">
             <h2 id="tpl-h" className="text-2xl text-ink">Automatic emails</h2>
-            <p className="mt-1 text-ink-soft">Each one carries the Satisfy header and a single button. Some go as a push notification to volunteers with the app on their phone. Open one to see the latest real example in the Outbox. To change the wording of a message, send the new text to whoever looks after this site.</p>
+            <p className="mt-1 text-ink-soft">Each one carries the Satisfy header and a single button. Some go as a push notification to volunteers with the app on their phone. Open one to change its wording: your version is used for every one sent from then on, and you can go back to the standard wording at any time.</p>
           </div>
         </div>
         <div className="mt-5 grid gap-6 @4xl/admin:grid-cols-[3fr_2fr]">
-          {TEMPLATES.map((group) => (
+          {GROUPS.map((group) => (
             <div key={group.heading}>
               <h3 className="eyebrow mb-2">{group.heading}</h3>
               <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border">
-                {group.kinds.map(([k, when]) => {
-                  const count = countOf(k);
-                  return (
-                    <li key={k}>
-                      <Link href={`/admin/outbox?kind=${k}`} className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted">
-                        <span className="min-w-0 flex-1">
-                          <span className="block text-sm font-semibold text-ink">{EMAIL_KIND_LABEL[k]}</span>
-                          <span className="block text-xs text-muted-foreground">{when}</span>
-                        </span>
-                        <span className="shrink-0 text-xs text-muted-foreground tabular">{count === 0 ? "None yet" : `${count} sent`}</span>
-                        <ArrowRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-                      </Link>
-                    </li>
-                  );
-                })}
+                {TEMPLATES.filter((t) => group.audience.includes(t.audience)).map((t) => (
+                  <li key={t.key}>
+                    <Link href={`/admin/emails/${t.key}`} className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted">
+                      {t.channel === "PUSH" ? <Smartphone className="size-4 shrink-0 text-orange-text" aria-label="Push notification" /> : <Mail className="size-4 shrink-0 text-sky" aria-label="Email" />}
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-semibold text-ink">{t.name}</span>
+                        <span className="block text-xs text-muted-foreground">{t.when}</span>
+                      </span>
+                      {customKeys.has(t.key) && <Chip tone="info" size="sm" className="shrink-0">Your wording</Chip>}
+                      <ArrowRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                    </Link>
+                  </li>
+                ))}
               </ul>
             </div>
           ))}
         </div>
+        <p className="mt-4 text-sm text-muted-foreground">Announcements are not here: they are written fresh each time. To see what was actually sent, open the <Link href="/admin/outbox" className="font-semibold text-teal hover:underline">Outbox</Link>.</p>
       </section>
 
       <section className="rounded-2xl border border-border bg-card p-5" aria-labelledby="inf-h">

@@ -67,7 +67,7 @@ export function AppSidebar({
         <div>
           <h2 id="you-nav" className="px-3 pb-2 font-display text-sm font-bold text-muted-foreground">You</h2>
           <ul aria-labelledby="you-nav" className="flex flex-col gap-1">
-            {YOU_NAV.map((item) => <NavLink key={item.href} item={item} pathname={pathname} />)}
+            {YOU_NAV.map((item) => <NavLink key={item.href} item={item} pathname={pathname} badge={badges[item.href]} />)}
           </ul>
         </div>
       </nav>

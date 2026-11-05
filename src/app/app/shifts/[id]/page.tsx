@@ -4,7 +4,7 @@ import { requireVolunteer } from "@/lib/session";
 import { formatDay, formatDayLong, formatTimeRange, relativeDays, todayISO } from "@/lib/dates";
 import { shiftById } from "@/lib/roster";
 import { trainingContext } from "@/lib/volunteer-data";
-import { eligibilityFor } from "@/lib/training";
+import { eligibilityFor, lockFix } from "@/lib/training";
 import { db } from "@/lib/db";
 import { AvatarBadge } from "@/components/shared/avatar-badge";
 import { Chip } from "@/components/shared/status-chip";
@@ -40,7 +40,7 @@ export default async function ShiftDetailPage({ params }: { params: Promise<{ id
   if (!view) notFound();
   const today = todayISO();
   const training = await trainingContext(me, today);
-  const elig = eligibilityFor(me, view.kind, training.statuses);
+  const elig = eligibilityFor(me, view.kind, training.statuses, training.induction);
   const donors = view.shift.template.routeId
     ? await db.donor.findMany({ where: { routeId: view.shift.template.routeId } })
     : [];
@@ -50,7 +50,7 @@ export default async function ShiftDetailPage({ params }: { params: Promise<{ id
 
   const actions = (
     <ShiftActions
-      state={{ shiftId: view.shift.id, mine: mine ? { id: mine.id, source: mine.source } : null, isPast: view.iso < today, isCancelled: view.shift.status === "CANCELLED", isFull: view.isFull, isGap: view.isGap, eligible: elig.eligible, reason: elig.reason, blockerModuleCode: blocker, missingRole: !elig.hasRole, harvest }}
+      state={{ shiftId: view.shift.id, mine: mine ? { id: mine.id, source: mine.source } : null, isPast: view.iso < today, isCancelled: view.shift.status === "CANCELLED", isFull: view.isFull, isGap: view.isGap, eligible: elig.eligible, reason: elig.reason, blockerModuleCode: blocker, fix: elig.eligible ? null : lockFix(elig, view.kind), harvest }}
     />
   );
 

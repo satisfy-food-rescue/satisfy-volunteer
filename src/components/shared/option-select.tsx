@@ -15,6 +15,7 @@ export function OptionSelect<V extends string>({
   placeholder,
   className,
   "aria-label": ariaLabel,
+  "aria-describedby": describedBy,
 }: {
   id?: string;
   value: V;
@@ -23,12 +24,14 @@ export function OptionSelect<V extends string>({
   placeholder?: string;
   className?: string;
   "aria-label"?: string;
+  "aria-describedby"?: string;
 }) {
   return (
     <Select items={options} value={value} onValueChange={(v) => onValueChange(v as V)}>
       <SelectTrigger
         id={id}
         aria-label={ariaLabel}
+        aria-describedby={describedBy}
         className={cn("h-11! w-full bg-card pr-2.5 pl-2.5 text-base text-ink hover:border-teal/50 data-popup-open:border-ring", className)}
       >
         <SelectValue placeholder={placeholder} />

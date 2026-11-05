@@ -5,6 +5,7 @@ import { Ban, CalendarOff, CheckCircle2, HandHelping, Lock } from "lucide-react"
 import { bookShift, cancelBooking } from "@/app/app/actions";
 import { ActionButton } from "./action-button";
 import { Button } from "@/components/ui/button";
+import type { LockFix } from "@/lib/training";
 
 export type ShiftActionState = {
   shiftId: string;
@@ -16,8 +17,8 @@ export type ShiftActionState = {
   eligible: boolean;
   reason: string | null;
   blockerModuleCode: string | null;
-  /** Blocked because the volunteer lacks the role, which training cannot fix. */
-  missingRole: boolean;
+  /** What unblocks it, when it is locked. */
+  fix: LockFix | null;
   /** A harvest: the missing role is the harvest pool, which they join themselves. */
   harvest: boolean;
 };
@@ -66,9 +67,9 @@ export function ShiftActions({ state, compact = false }: { state: ShiftActionSta
           variant="outline"
           size="lg"
           className="mt-3 h-12 w-full bg-card text-base"
-          render={<Link href={state.missingRole ? (state.harvest ? "/app/harvest" : "/app/profile") : state.blockerModuleCode ? `/app/training/${state.blockerModuleCode}` : "/app/training"} />}
+          render={<Link href={state.fix === "harvestPool" ? "/app/harvest" : state.fix === "role" ? "/app/profile" : state.fix === "induction" ? "/app/induction" : state.blockerModuleCode ? `/app/training/${state.blockerModuleCode}` : "/app/training"} />}
         >
-          {state.missingRole ? (state.harvest ? "Join the harvest pool" : "Ask to change my roles") : "Go to training"}
+          {state.fix === "harvestPool" ? "Join the harvest pool" : state.fix === "role" ? "Ask to change my roles" : state.fix === "induction" ? "Finish my induction" : "Go to training"}
         </Button>
       </div>
     );

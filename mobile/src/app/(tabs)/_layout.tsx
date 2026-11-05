@@ -10,6 +10,8 @@ function badge(n: number | undefined) {
 export default function TabsLayout() {
   const t = useTheme();
   const { data } = useSession();
+  // Me leads to the induction and policies, so it carries what is to do there.
+  const toDo = (data?.badges.induction ?? 0) + (data?.badges.policies ?? 0);
   return (
     <NativeTabs
       tintColor={t.tealText}
@@ -42,6 +44,7 @@ export default function TabsLayout() {
       <NativeTabs.Trigger name="(me)">
         <NativeTabs.Trigger.Icon sf={{ default: "person.crop.circle", selected: "person.crop.circle.fill" }} md="account_circle" />
         <NativeTabs.Trigger.Label>Me</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Badge hidden={!toDo}>{badge(toDo)}</NativeTabs.Trigger.Badge>
       </NativeTabs.Trigger>
     </NativeTabs>
   );

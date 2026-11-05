@@ -7,6 +7,7 @@ import { isAdHocKind } from "@satisfy/core/domain";
 import { Chip } from "@/components/ui/chip";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
+import { lockLabel } from "@/lib/locks";
 import { radius, useTheme } from "@/theme";
 
 import { CrewLine } from "./crew-line";
@@ -32,7 +33,7 @@ export function ShiftCard({ shift, showDate = false, hideReason = false }: { shi
           : isAdHocKind(shift.kind) && a.kind === "BOOK"
             ? `${shift.spotsLeft} ${shift.spotsLeft === 1 ? "place" : "places"} left`
             : null;
-  const lock = blocked ? (a.fix === "harvestPool" ? "Join the pool" : a.fix === "role" ? "Role needed" : "Training needed") : null;
+  const lock = blocked ? lockLabel(a.fix) : null;
   // The label replaces everything inside the card for screen readers, so it
   // carries what the chips, the count and the lock reason show.
   const label = [

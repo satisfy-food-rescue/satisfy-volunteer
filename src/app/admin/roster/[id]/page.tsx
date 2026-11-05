@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Ban, ChevronLeft, Clock, HandHelping, Mail, MapPin, Megaphone, MessageSquareText, Pencil, PencilLine, Smartphone, Store, UserRound, Users, CheckCircle2, XCircle } from "lucide-react";
 import { requireAdmin } from "@/lib/session";
 import { db } from "@/lib/db";
+import { ACTIVE_POOL } from "@/lib/pool";
 import { formatDay, formatDayLong, formatInstant, formatTimeRange, relativeDay, todayISO, dateToISO, formatDayRange } from "@/lib/dates";
 import { availableForShift, shiftById } from "@/lib/roster";
 import { ABSENCE_REASON_LABEL, ROLE_LABEL, fullName, isAdHocKind } from "@/lib/domain";
@@ -35,7 +36,7 @@ export default async function AdminShiftPage({ params }: { params: Promise<{ id:
       ? db.email.findMany({ where: { ref: { startsWith: `shift-cancelled:${id}:` }, channel: "EMAIL" }, include: { volunteer: { select: { firstName: true, lastName: true } } }, orderBy: { createdAt: "asc" } })
       : Promise.resolve([]),
     db.email.findMany({ where: { ref: { startsWith: `callout:${id}:` }, channel: "EMAIL" }, select: { createdAt: true }, orderBy: { createdAt: "asc" } }),
-    draft ? db.volunteer.findMany({ where: { status: "ACTIVE", role: "VOLUNTEER", roles: { has: view.kind } }, select: { roles: true } }) : Promise.resolve([]),
+    draft ? db.volunteer.findMany({ where: { ...ACTIVE_POOL, roles: { has: view.kind } }, select: { roles: true } }) : Promise.resolve([]),
   ]);
   const holders = roleHolders.length;
   const pushedTo = pushes.flatMap((p) => (p.volunteer ? [fullName(p.volunteer)] : []));

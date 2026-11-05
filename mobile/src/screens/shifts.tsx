@@ -4,13 +4,14 @@ import { ActivityIndicator, Pressable, View } from "react-native";
 import type { ShiftsWeek } from "@satisfy/core/api";
 import { addDays, formatDayShort, formatMonth, WEEKDAY_LONG, weekdayOf, weekMonday } from "@satisfy/core/dates";
 import { QueryScreen } from "@/components/screen";
-import { LockBanner, locksOf } from "@/components/shift/lock-banner";
+import { LockBanner } from "@/components/shift/lock-banner";
 import { ShiftCard } from "@/components/shift/shift-card";
 import { Card } from "@/components/ui/card";
 import { Chip } from "@/components/ui/chip";
 import { Icon } from "@/components/ui/icon";
 import { EmptyLine } from "@/components/ui/states";
 import { Text } from "@/components/ui/text";
+import { locksOf } from "@/lib/locks";
 import { useShiftsWeek } from "@/lib/queries";
 import { radius, TAP, useTheme } from "@/theme";
 

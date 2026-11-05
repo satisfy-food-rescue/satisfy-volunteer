@@ -3,7 +3,7 @@ import { CheckCircle2, ChevronRight, Sprout } from "lucide-react";
 import { requireVolunteer } from "@/lib/session";
 import { todayISO } from "@/lib/dates";
 import { loadHarvest } from "@/lib/harvest";
-import { eligibilityFor } from "@/lib/training";
+import { eligibilityFor, lockFix } from "@/lib/training";
 import { HarvestPoolToggle } from "@/components/app/harvest-controls";
 import { ShiftCard } from "@/components/app/shift-card";
 import { AppPage, AppPageHeader } from "@/components/app/app-page-header";
@@ -18,8 +18,8 @@ export const metadata = { title: "Harvest" };
 export default async function HarvestPage() {
   const me = await requireVolunteer();
   const today = todayISO();
-  const { inPool, poolCount, harvestTraining, trained, harvests, statuses } = await loadHarvest(me, today);
-  const elig = eligibilityFor(me, "HARVEST", statuses);
+  const { inPool, poolCount, harvestTraining, trained, harvests, statuses, induction } = await loadHarvest(me, today);
+  const elig = eligibilityFor(me, "HARVEST", statuses, induction);
   const toDo = harvestTraining.filter((s) => s.status === "NOT_STARTED" || s.status === "OVERDUE");
 
   return (
@@ -85,7 +85,7 @@ export default async function HarvestPage() {
             <div className="grid gap-2.5 @6xl/app:grid-cols-2 @6xl/app:gap-3">
               {/* Outside the pool the join button above says it all; inside, the reason names the module to do. */}
               {harvests.map((view) => (
-                <ShiftCard key={view.shift.id} view={view} meId={me.id} eligible={elig.eligible} needsRole={!elig.hasRole} reason={inPool ? elig.reason : null} showDate />
+                <ShiftCard key={view.shift.id} view={view} meId={me.id} eligible={elig.eligible} lock={lockFix(elig, "HARVEST")} reason={inPool ? elig.reason : null} showDate />
               ))}
             </div>
           )}

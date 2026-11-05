@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { BadgeCheck, CalendarPlus, ChevronLeft, Clock, MapPin, Users } from "lucide-react";
 import { requireAdmin } from "@/lib/session";
 import { db } from "@/lib/db";
+import { ACTIVE_POOL } from "@/lib/pool";
 import { formatInstantRange, addMonths, todayISO, formatDate } from "@/lib/dates";
 import { fullName } from "@/lib/domain";
 import { moduleStatuses } from "@/lib/training";
@@ -26,7 +27,7 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
   const isPast = s.startsAt < new Date();
   // Who could book it: everyone the module applies to who is not current on it.
   const [modules, volunteers] = going.length === 0 && !isPast
-    ? await Promise.all([db.trainingModule.findMany(), db.volunteer.findMany({ where: { status: "ACTIVE", role: "VOLUNTEER" }, include: { trainingRecords: true } })])
+    ? await Promise.all([db.trainingModule.findMany(), db.volunteer.findMany({ where: ACTIVE_POOL, include: { trainingRecords: true } })])
     : [[], []];
   const needing = volunteers.filter((v) => {
     const st = moduleStatuses(v, modules, v.trainingRecords, todayISO()).find((x) => x.module.id === s.moduleId);

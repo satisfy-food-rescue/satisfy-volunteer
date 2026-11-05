@@ -47,8 +47,19 @@ Still as Tony:
 ## 6. Filters and shift types - 1 min
 
 - **Training > Modules**: click a count such as "1 overdue" under a module. The **People** tab opens filtered to exactly those volunteers. Filter by module, status, expiry window or name, and sort by any column.
-- **Coordinators**: who can use this admin. **Add coordinator** takes a name and email; for someone already on the system, such as a regular volunteer, it first says which slots and shifts they will come off. Phillipa cannot remove her own access, so there is always a coordinator.
-- **Shift types**: names, times, crew sizes, who volunteers work with, and per-type last-minute thresholds. Route shifts push to last-minute volunteers 3 days out and alert the coordinator at 36 hours; the warehouse sort uses 2 days and 1 day.
+- **Coordinators**: who can use this admin. **Add coordinator** takes a name and email; someone already on the system, such as a regular volunteer, becomes a coordinator and keeps volunteering. **Also volunteers** puts a coordinator in the volunteer lists (it turns on by itself when they book a shift or do training in the volunteer app). Phillipa cannot remove her own access, so there is always a coordinator.
+- **Shift types**: names, times, crew sizes, who volunteers work with, and per-type last-minute thresholds. Route shifts push to last-minute volunteers 3 days out and alert the coordinator at 36 hours; the warehouse sort uses 2 days and 1 day. **Add a shift type**, for example "Harvest: schools and corporates", to plan and message a group separately (Announcements, **A shift type**).
+
+## 6b. Induction, sorting stages and policies - 3 min
+
+As **Phillipa**:
+
+- **Induction**: the Ministry of Justice check is needed for warehouse, driver help and driver roles. Margaret's renews within 60 days and Frank's has run out (both have had their emails, in the Outbox). Jess has not sent hers: **Record check** asks for the date on it. The Agreements card shows who has signed what; four volunteers still have to sign the new Confidentiality Agreement.
+- **Volunteers > Liz Stratford**: the Induction section, then the Training record with Sorting T1 and T2 done, T3 ready to **Mark complete** and T4 "After Sorting T3". **Training > Modules** shows "After ..." on each stage; **Edit module** has **Comes after**, **Never expires** and **Still in development**.
+- **Policies**: each document with how many have read or signed the latest version and who has not. **Publish a new version** asks for a note and can email and notify volunteers.
+- **Emails and import**: open any automatic message, change the wording with placeholders, and watch the preview. **Use the standard wording** puts it back.
+
+Switch to **Jess** at phone width: Home says **Start with your induction**. The induction page explains the Ministry of Justice check (with help for anyone without a computer), then the two agreements, signed together. Training stays locked until the induction is done. **Me > Policies** has the Health and Safety Policy to read and confirm,. Anyone in the harvest pool sees Ladders and Sun Safety under Training as coming soon.
 
 ## 7. Harvests and announcements - 3 min
 
@@ -64,7 +75,7 @@ Switch to **Margaret** at phone width: **Me > Harvest**, **Count me in for harve
 
 ## 8. Rebrand-ready and Infoodle - 1 min
 
-- **Settings**. First card: the logo, colours, tints, footer and font from the 2026 brand refresh, all theme tokens in one file. Second card: the Infoodle import, a one-off bring-across of existing volunteers at go-live (no ongoing sync; new volunteers come through the sign-up form). Third: the email templates.
+- **Settings**. First card: the logo, colours, tints, footer and font from the 2026 brand refresh, all theme tokens in one file. Second card: the Infoodle import, a one-off bring-across of existing volunteers at go-live (no ongoing sync; new volunteers come through the sign-up form). Third: the automatic emails, each with its wording editable here.
 
 ## If something looks off
 

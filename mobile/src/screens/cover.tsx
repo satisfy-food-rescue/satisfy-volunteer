@@ -5,7 +5,7 @@ import type { ShiftSummary } from "@satisfy/core/api";
 import { formatDay, formatTimeRange, relativeDay } from "@satisfy/core/dates";
 import { QueryScreen } from "@/components/screen";
 import { KindTile } from "@/components/shift/kind-tile";
-import { LockBanner, locksOf, unlockNote, type Lock } from "@/components/shift/lock-banner";
+import { LockBanner } from "@/components/shift/lock-banner";
 import { ShiftActions } from "@/components/shift/shift-actions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -14,6 +14,7 @@ import { Icon } from "@/components/ui/icon";
 import { EmptyState } from "@/components/ui/states";
 import { Text } from "@/components/ui/text";
 import { TAB } from "@/lib/links";
+import { lockLabel, locksOf, unlockNote, type Lock } from "@/lib/locks";
 import { useCover } from "@/lib/queries";
 import { radius, useTheme } from "@/theme";
 
@@ -138,7 +139,7 @@ function Locked({ shifts, locks, today }: { shifts: ShiftSummary[]; locks: Lock[
 function LockedCard({ shift, today }: { shift: ShiftSummary; today: string }) {
   const t = useTheme();
   const a = shift.action;
-  const lock = a.kind !== "BLOCKED" ? null : a.fix === "harvestPool" ? "Join the pool" : a.fix === "role" ? "Role needed" : "Training needed";
+  const lock = a.kind !== "BLOCKED" ? null : lockLabel(a.fix);
   const when = `${relativeDay(shift.iso, today)}, ${formatTimeRange(shift.startTime, shift.endTime)}`;
   return (
     <Pressable

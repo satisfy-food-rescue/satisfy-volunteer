@@ -2,6 +2,7 @@ import { requireVolunteer } from "@/lib/session";
 import { dateToISO, formatMonth, todayISO } from "@/lib/dates";
 import { ORG } from "@/lib/brand";
 import { coverGaps, coverableGaps, trainingContext } from "@/lib/volunteer-data";
+import { documentsFor } from "@/lib/documents";
 import { BottomNav } from "@/components/app/bottom-nav";
 import { AppHeader } from "@/components/app/app-header";
 import { AppSidebar } from "@/components/app/app-sidebar";
@@ -15,10 +16,20 @@ export const dynamic = "force-dynamic";
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const me = await requireVolunteer();
   const today = todayISO();
-  const [gaps, training] = await Promise.all([coverGaps(me.id, today), trainingContext(me, today)]);
-  const coverable = coverableGaps(gaps, { me, statuses: training.statuses, today });
+  const [gaps, training, documents] = await Promise.all([coverGaps(me.id, today), trainingContext(me, today), documentsFor(me)]);
+  const coverable = coverableGaps(gaps, { me, statuses: training.statuses, induction: training.induction, today });
   const attention = training.summary.overdue + training.summary.notStarted;
-  const badges = { "/app/gaps": coverable.length || undefined, "/app/training": attention || undefined };
+  // Agreements are counted under Induction, where they are signed.
+  const toRead = documents.filter((d) => d.needsAction && d.document.kind === "POLICY").length;
+  const inductionSteps = training.induction.outstanding;
+  const badges = {
+    "/app/gaps": coverable.length || undefined,
+    "/app/training": attention || undefined,
+    "/app/induction": inductionSteps || undefined,
+    "/app/policies": toRead || undefined,
+    // On a phone those two sit behind the Me tab.
+    "/app/profile": inductionSteps + toRead || undefined,
+  };
   // Only what the chrome shows: a client component's props are sent to the
   // browser whole, and the full record holds the coordinator's notes.
   const person = { firstName: me.firstName, lastName: me.lastName };

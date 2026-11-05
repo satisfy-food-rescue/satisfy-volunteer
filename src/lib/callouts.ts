@@ -4,6 +4,7 @@
 // or not: the email says training comes first, and new pickers are exactly who
 // the coordinator wants to reach.
 import { db } from "./db";
+import { ACTIVE_POOL } from "./pool";
 import { SHIFT_KIND_LABEL } from "./domain";
 import type { ShiftView } from "./roster";
 import { queueEmail } from "./emails";
@@ -16,7 +17,7 @@ const calloutRef = (shiftId: string, volunteerId: string) => `callout:${shiftId}
 export async function calloutRecipients(view: ShiftView) {
   const onIt = new Set(view.confirmed.map((a) => a.volunteerId));
   const volunteers = await db.volunteer.findMany({
-    where: { status: "ACTIVE", role: "VOLUNTEER", roles: { has: view.kind } },
+    where: { ...ACTIVE_POOL, roles: { has: view.kind } },
     orderBy: { firstName: "asc" },
   });
   return volunteers.filter((v) => !onIt.has(v.id));

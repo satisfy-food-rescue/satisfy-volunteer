@@ -9,6 +9,6 @@ export const dynamic = "force-dynamic";
 export const GET = mobileHandler(async (me) => {
   const today = todayISO();
   const [gaps, training] = await Promise.all([coverGaps(me.id, today), trainingContext(me, today)]);
-  const ctx = { me, statuses: training.statuses, today };
+  const ctx = { me, statuses: training.statuses, induction: training.induction, today };
   return json<CoverList>({ today, shifts: gaps.map((g) => shiftSummary(g, ctx)) });
 });

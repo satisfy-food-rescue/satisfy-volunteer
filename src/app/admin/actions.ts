@@ -8,13 +8,13 @@ import { requireAdmin } from "@/lib/session";
 import { addDays, addMonths, dateToISO, isoToDate, isWeekday, nzInstant, todayISO, weekdayOf, formatDay, formatInstant, formatTimeRange } from "@/lib/dates";
 import { ABSENCE_REASON_LABEL, INITIAL_VISIT_CODE, ROLE_LABEL, VOLUNTEER_ROLES, fullName, isAdHocKind, normaliseEmail, sortRoles } from "@/lib/domain";
 import { sendSignInLink } from "@/lib/auth";
-import { grantAdminAccess, revokeAdminAccess, type GrantAdminResult, type NewAdminInput } from "@/lib/admin-access";
+import { grantAdminAccess, revokeAdminAccess, setCoordinatorVolunteering, type GrantAdminResult, type NewAdminInput, type VolunteeringResult } from "@/lib/admin-access";
 import { approveSignUp } from "@/lib/applications";
 import { shiftById } from "@/lib/roster";
 import { sendShiftCallout } from "@/lib/callouts";
 import { announcementSchema, audienceSchema, resolveAudience, sendAnnouncement, type AnnouncementInput, type AudienceInput } from "@/lib/announcements";
 import { moduleStatuses } from "@/lib/training";
-import { runReminders, runShiftReminders } from "@/lib/reminders";
+import { runMojReminders, runReminders, runShiftReminders } from "@/lib/reminders";
 import { afterShiftReleased, runCoverChecks } from "@/lib/cover";
 import { queueEmail } from "@/lib/emails";
 import * as T from "@/lib/email-templates";
@@ -306,12 +306,24 @@ export async function recordAbsence(input: z.infer<typeof absenceSchema>): Promi
 }
 
 // --- Training ---
+
+/** The name of the module that must come before this one, when the
+ *  volunteer has not done it. Stages run in order. */
+async function prerequisiteMissing(volunteerId: string, moduleId: string): Promise<string | null> {
+  const mod = await db.trainingModule.findUnique({ where: { id: moduleId }, include: { prerequisite: true } });
+  if (!mod?.prerequisite) return null;
+  const done = await db.trainingRecord.count({ where: { volunteerId, moduleId: mod.prerequisite.id } });
+  return done > 0 ? null : mod.prerequisite.name;
+}
+
 export async function markSessionAttendance(rsvpId: string, attended: boolean): Promise<ActionResult> {
   await requireAdmin();
   const rsvp = await db.sessionRsvp.findUnique({ where: { id: rsvpId }, include: { session: { include: { module: true } }, volunteer: true } });
   if (!rsvp) return { ok: false, error: "RSVP not found." };
   const sessionISO = todayISO(rsvp.session.startsAt);
   if (attended) {
+    const first = await prerequisiteMissing(rsvp.volunteerId, rsvp.session.moduleId);
+    if (first) return { ok: false, error: `${rsvp.volunteer.firstName} has not done ${first} yet, and it comes first. Record that, then mark this.` };
     await db.sessionRsvp.update({ where: { id: rsvpId }, data: { attendedAt: new Date() } });
     const expiresISO = rsvp.session.module.validityMonths ? addMonths(sessionISO, rsvp.session.module.validityMonths) : null;
     await db.trainingRecord.create({ data: { volunteerId: rsvp.volunteerId, moduleId: rsvp.session.moduleId, completedAt: isoToDate(sessionISO), expiresAt: expiresISO ? isoToDate(expiresISO) : null, method: "SESSION", sessionId: rsvp.sessionId } });
@@ -364,6 +376,10 @@ const moduleSchema = z.object({
   /** Paragraphs separated by a blank line. Online modules only. */
   content: z.string().trim().max(10000),
   links: z.array(linkSchema).max(10),
+  /** Must be completed first. */
+  prerequisiteId: z.string().min(1).nullable(),
+  /** Coming soon: shown to volunteers, not required, cannot be completed. */
+  inDevelopment: z.boolean(),
 });
 export type ModuleInput = z.infer<typeof moduleSchema>;
 
@@ -382,7 +398,17 @@ export async function saveModule(input: ModuleInput): Promise<ActionResult> {
   }
   const d = parsed.data;
   const online = d.delivery === "ONLINE_CONFIRM";
-  if (online && moduleParagraphs(d.content).length === 0) return { ok: false, error: "Online modules need some content to read." };
+  if (online && !d.inDevelopment && moduleParagraphs(d.content).length === 0) return { ok: false, error: "Online modules need some content to read." };
+  if (d.prerequisiteId) {
+    // Follow the chain from the chosen module back: it must exist and must
+    // not lead back to this one.
+    const all = await db.trainingModule.findMany({ select: { id: true, prerequisiteId: true } });
+    const byId = new Map(all.map((m) => [m.id, m]));
+    if (!byId.has(d.prerequisiteId)) return { ok: false, error: "The module that comes first no longer exists." };
+    for (let at: string | null = d.prerequisiteId, steps = 0; at; at = byId.get(at)?.prerequisiteId ?? null, steps++) {
+      if (at === d.id || steps > all.length) return { ok: false, error: "That would put the modules in a loop. Pick one that comes earlier." };
+    }
+  }
   const data = {
     name: d.name,
     description: d.description,
@@ -391,6 +417,8 @@ export async function saveModule(input: ModuleInput): Promise<ActionResult> {
     mandatoryBeforeFirstShift: d.mandatoryBeforeFirstShift,
     delivery: d.delivery,
     content: online ? d.content : null,
+    prerequisiteId: d.prerequisiteId,
+    inDevelopment: d.inDevelopment,
   };
   const links = online ? d.links.map((l, order) => ({ label: l.label, url: l.url, order })) : [];
   if (d.id) {
@@ -427,6 +455,9 @@ export async function recordCoordinatorCompletion(input: z.infer<typeof completi
   if (completedISO > today) return { ok: false, error: "The completion date cannot be in the future." };
   const [volunteer, mod] = await Promise.all([db.volunteer.findUnique({ where: { id: volunteerId } }), db.trainingModule.findUnique({ where: { id: moduleId } })]);
   if (!volunteer || !mod) return { ok: false, error: "Not found." };
+  if (mod.inDevelopment) return { ok: false, error: `${mod.name} is still in development. Publish it from Training first.` };
+  const first = await prerequisiteMissing(volunteerId, moduleId);
+  if (first) return { ok: false, error: `${volunteer.firstName} has not done ${first} yet, and it comes first. Record that, then this.` };
   const expiresISO = mod.validityMonths ? addMonths(completedISO, mod.validityMonths) : null;
   await db.trainingRecord.create({ data: { volunteerId, moduleId, completedAt: isoToDate(completedISO), expiresAt: expiresISO ? isoToDate(expiresISO) : null, method: "COORDINATOR" } });
   await queueEmail(volunteer, T.trainingCompleted({ firstName: volunteer.firstName, moduleName: mod.name, completedISO: completedISO === today ? undefined : completedISO, expiresISO }));
@@ -437,12 +468,14 @@ export async function recordCoordinatorCompletion(input: z.infer<typeof completi
 export async function runRemindersNow(): Promise<ActionResult> {
   await requireAdmin();
   const r = await runReminders(todayISO());
+  const m = await runMojReminders(todayISO());
   const s = await runShiftReminders();
   const c = await runCoverChecks();
   revalidateAll();
   const parts = [
     r.dueSoon + r.overdue > 0 && `${r.dueSoon} due-soon and ${r.overdue} overdue reminders`,
     r.coordinator > 0 && `${r.coordinator} overdue ${r.coordinator === 1 ? "notice" : "notices"} to you`,
+    m.due + m.expired > 0 && `${m.due + m.expired} Ministry of Justice check ${m.due + m.expired === 1 ? "renewal" : "renewals"}`,
     s.sent > 0 && `${s.sent} shift ${s.sent === 1 ? "reminder" : "reminders"} for tomorrow`,
     c.pushes > 0 && `${c.pushes} last-minute ${c.pushes === 1 ? "notification" : "notifications"}`,
     c.escalations > 0 && `${c.escalations} uncovered shift ${c.escalations === 1 ? "alert" : "alerts"}`,
@@ -641,6 +674,51 @@ export async function updateShiftType(input: z.infer<typeof shiftTypeSchema>): P
   return { ok: true, message: "Shift type saved." };
 }
 
+const newShiftTypeSchema = shiftTypeSchema.omit({ id: true }).extend({
+  kind: z.enum(VOLUNTEER_ROLES),
+  routeId: z.string().min(1).nullable(),
+  /** ISO weekdays it runs on; none for ad hoc kinds (harvests). */
+  weekdays: z.array(z.number().int().min(1).max(5)),
+});
+export type NewShiftTypeInput = z.infer<typeof newShiftTypeSchema>;
+
+/** A new kind of shift, such as a harvest for a corporate group or an extra
+ *  sorting session, set up by a coordinator. */
+export async function createShiftType(input: NewShiftTypeInput): Promise<ActionResult> {
+  await requireAdmin();
+  const parsed = newShiftTypeSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Please check the shift type settings." };
+  const { workingWith, routeId, weekdays, ...d } = parsed.data;
+  if (d.endTime <= d.startTime) return { ok: false, error: "End time must be after the start time." };
+  if (d.needed > d.capacity) return { ok: false, error: "Minimum crew cannot be more than the maximum." };
+  if (d.lastMinuteHours > 0 && d.escalateHours > d.lastMinuteHours) return { ok: false, error: "The coordinator alert should come after the last-minute notification: use fewer hours before the start." };
+  const adHoc = isAdHocKind(d.kind);
+  if (!adHoc && weekdays.length === 0) return { ok: false, error: "Pick the days it runs on." };
+  if (routeId && !(await db.route.findUnique({ where: { id: routeId }, select: { id: true } }))) return { ok: false, error: "That route no longer exists." };
+  if (await db.shiftTemplate.findFirst({ where: { name: { equals: d.name, mode: "insensitive" }, active: true }, select: { id: true } })) return { ok: false, error: "There is already a shift type with that name." };
+  const last = await db.shiftTemplate.findFirst({ orderBy: { order: "desc" }, select: { order: true } });
+  await db.shiftTemplate.create({
+    data: { ...d, workingWith: workingWith || null, routeId, weekdays: adHoc ? [] : [...new Set(weekdays)].sort(), order: (last?.order ?? 0) + 1 },
+  });
+  revalidateAll();
+  return { ok: true, message: adHoc ? "Shift type added. Plan one from Harvests or the roster." : "Shift type added. Schedule it from the roster's bulk scheduler." };
+}
+
+/** Retired shift types are hidden from planning and scheduling. Shifts
+ *  already on the roster carry on. */
+export async function setShiftTypeActive(id: string, active: boolean): Promise<ActionResult> {
+  await requireAdmin();
+  const template = await db.shiftTemplate.findUnique({ where: { id: z.string().parse(id) }, include: { _count: { select: { regularSlots: true } } } });
+  if (!template) return { ok: false, error: "That shift type no longer exists." };
+  if (!active && template._count.regularSlots > 0) {
+    const n = template._count.regularSlots;
+    return { ok: false, error: `${n} ${n === 1 ? "volunteer has a regular slot" : "volunteers have regular slots"} on it. Move them to another shift type first.` };
+  }
+  await db.shiftTemplate.update({ where: { id: template.id }, data: { active } });
+  revalidateAll();
+  return { ok: true, message: active ? `${template.name} is back.` : `${template.name} retired. Shifts already on the roster carry on.` };
+}
+
 // --- Accounts ---
 const newVolunteerSchema = z.object({
   firstName: z.string().trim().min(1, "Add a first name.").max(60),
@@ -737,6 +815,13 @@ export async function setVolunteerStatus(volunteerId: string, active: boolean): 
 export async function addAdmin(input: NewAdminInput): Promise<GrantAdminResult> {
   const admin = await requireAdmin();
   const r = await grantAdminAccess(admin, input);
+  if (r.ok) revalidateAll();
+  return r;
+}
+
+export async function setAdminVolunteering(volunteerId: string, on: boolean, releaseConfirmed: boolean): Promise<VolunteeringResult> {
+  const admin = await requireAdmin();
+  const r = await setCoordinatorVolunteering(admin, z.string().min(1).parse(volunteerId), z.boolean().parse(on), z.boolean().parse(releaseConfirmed));
   if (r.ok) revalidateAll();
   return r;
 }
