@@ -164,6 +164,11 @@ export type MobileSession = {
     cover: number;
     /** Required modules overdue or not started. */
     training: number;
+    /** Induction steps to do: the Ministry of Justice check, plus each
+     *  agreement to sign (again). */
+    induction: number;
+    /** Policies with a version they have not confirmed reading. */
+    policies: number;
   };
 };
 
@@ -185,10 +190,11 @@ export type ShiftAction =
   /** The coordinator cancelled it; nobody should turn up. */
   | { kind: "CANCELLED" }
   | { kind: "MINE"; assignmentId: string; source: AssignmentSource }
-  /** `fix` says what unblocks it: current training, a role the volunteer
-   *  does not hold yet (only a coordinator can add one), or for a harvest,
-   *  joining the harvest pool (which they do themselves). */
-  | { kind: "BLOCKED"; reason: string; fix: "training" | "role" | "harvestPool"; moduleCode: string | null }
+  /** `fix` says what unblocks it: finishing their induction (the Ministry of
+   *  Justice check, agreements to sign), current training, a role the
+   *  volunteer does not hold yet (only a coordinator can add one), or for a
+   *  harvest, joining the harvest pool (which they do themselves). */
+  | { kind: "BLOCKED"; reason: string; fix: "induction" | "training" | "role" | "harvestPool"; moduleCode: string | null }
   | { kind: "FULL" }
   | { kind: "BOOK"; cover: boolean };
 
@@ -247,14 +253,15 @@ export type CoverList = {
 
 export type Tone = "good" | "warn" | "bad" | "info" | "neutral";
 
-export type HomeAlert = { tone: "bad" | "warn" | "info"; title: string; text: string };
+/** `target` is where tapping it goes; the Training tab when omitted. */
+export type HomeAlert = { tone: "bad" | "warn" | "info"; title: string; text: string; target?: "training" | "induction" };
 
 /** GET /api/mobile/home */
 export type Home = {
   today: string;
   next: ShiftSummary | null;
   /** Shown instead of the next shift when nothing is booked. */
-  empty: { text: string; cta: string; target: "training" | "shifts" };
+  empty: { text: string; cta: string; target: "training" | "shifts" | "induction" };
   alert: HomeAlert | null;
   /** The gaps counted by the Cover badge, and the soonest of them. */
   cover: { count: number; next: { iso: string; name: string } | null };
@@ -286,6 +293,15 @@ export type ModuleSummary = {
   expiresISO: string | null;
   /** Days until expiry; negative when overdue; null when no expiry applies. */
   daysLeft: number | null;
+  /** Why it cannot be done yet, in the volunteer's words: their induction
+   *  is not finished, an earlier stage comes first, or it is still in
+   *  development. Null when it can. */
+  lockedReason: string | null;
+  /** What `lockedReason` is about, for its button: the module is still in
+   *  development, the induction comes first, or `after` does. */
+  lockKind: "development" | "induction" | "after" | null;
+  /** The earlier stage that must be done first (T1 before T2). */
+  after: { code: string; name: string; online: boolean } | null;
 };
 
 export type TrainingSessionItem = {
@@ -302,6 +318,9 @@ export type TrainingSessionItem = {
   /** The volunteer needs this module and it is not complete. */
   relevant: boolean;
   full: boolean;
+  /** Why they cannot book in yet (see ModuleSummary.lockedReason). Null when
+   *  they can, or are already going. */
+  lockedReason: string | null;
 };
 
 /** GET /api/mobile/training */
@@ -318,8 +337,15 @@ export type TrainingOverview = {
   };
   required: ModuleSummary[];
   notRequired: ModuleSummary[];
+  /** Modules still in development for the volunteer's roles: shown as
+   *  coming soon, never required. */
+  comingSoon: ModuleSummary[];
   /** Relevant sessions first, then the rest, each soonest first. */
   sessions: TrainingSessionItem[];
+  /** Training opens once induction is done. `toDo` says what is still
+   *  needed, e.g. "your Ministry of Justice check and your signature on the
+   *  Volunteer Agreement", for "Training opens once we have {toDo}." */
+  induction: { complete: boolean; toDo: string };
 };
 
 /** GET /api/mobile/training/modules/:code. For an online module, the app
@@ -336,6 +362,73 @@ export type TrainingModuleDetail = {
 /** POST /api/mobile/training/modules/:id/complete returns MutationOk.
  *  POST /api/mobile/training/sessions/:id/rsvp with RsvpInput returns MutationOk. */
 export type RsvpInput = { going: boolean };
+
+// Induction and policies ----------------------------------------------------
+//
+// Before training or shifts a volunteer may need a current Ministry of
+// Justice check (which a coordinator records once they have seen it) and to
+// sign the agreements for their roles. Policies are there to read at any
+// time; a new version asks them to confirm they have read it. Documents live
+// in Google Drive: `viewUrl` is Google's viewer, to open in the in-app
+// browser, else the link itself.
+
+export type MojStatus = "NOT_REQUIRED" | "NEEDED" | "CURRENT" | "RENEWAL_DUE" | "EXPIRED";
+
+export type DocumentItem = {
+  id: string;
+  kind: "AGREEMENT" | "POLICY";
+  title: string;
+  summary: string;
+  /** The current version. Send it back when signing or confirming. */
+  version: number;
+  /** When the current version was published, and what changed. */
+  versionISO: string;
+  versionNote: string | null;
+  /** The document in Drive, or null when it is all in `paragraphs`. */
+  url: string | null;
+  viewUrl: string | null;
+  /** Words shown with it, paragraphs in order. */
+  paragraphs: string[];
+  /** The latest version they signed or confirmed reading, and the day. */
+  readVersion: number | null;
+  readISO: string | null;
+  /** An agreement to sign (again), or a policy version to confirm. */
+  needsAction: boolean;
+};
+
+/** GET /api/mobile/induction */
+export type InductionOverview = {
+  today: string;
+  complete: boolean;
+  /** What is still needed, as a phrase for "we need {toDo}"; empty when
+   *  complete. */
+  toDo: string;
+  moj: {
+    status: MojStatus;
+    /** Their roles need one. */
+    required: boolean;
+    checkedISO: string | null;
+    renewsISO: string | null;
+    /** Where to request your own check. */
+    requestUrl: string;
+    /** Who to send it to, or ask for a hand. */
+    coordinatorEmail: string;
+  };
+  /** The agreements their roles need, signed or not. */
+  agreements: DocumentItem[];
+};
+
+/** POST /api/mobile/induction/agreements returns MutationOk. Each agreement
+ *  at the version the volunteer read; a newer version is refused. */
+export type SignAgreementsInput = { agreements: { id: string; version: number }[] };
+
+/** GET /api/mobile/policies: policies and agreements for the volunteer.
+ *  GET /api/mobile/policies/:id returns DocumentItem. */
+export type PolicyList = { documents: DocumentItem[] };
+
+/** POST /api/mobile/policies/:id/acknowledge returns MutationOk. Policies
+ *  only; agreements are signed from the induction. */
+export type AcknowledgeInput = { version: number };
 
 // Regular slot and absences -------------------------------------------------
 

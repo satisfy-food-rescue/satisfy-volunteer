@@ -3,7 +3,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { after } from "next/server";
 import type { Email } from "@/generated/prisma/client";
 import { db } from "./db";
-import type { EmailDraft } from "./email-templates";
+import { renderText, type EmailDraft } from "./email-templates";
 import { fullName } from "./domain";
 import { env, isDemo } from "./env";
 import { sendEmail } from "./mailer";
@@ -48,12 +48,23 @@ function pushAsEmailBody(to: Recipient, body: string): string {
   return `Kia ora ${to.firstName},\n\n${body}\n\nNgā mihi nui,\nThe Satisfy volunteer team`;
 }
 
+/** Swaps in the coordinator's wording for the draft's template, if they have
+ *  written their own (Admin > Emails), filled with the draft's values. */
+export async function withCustomWording(draft: EmailDraft): Promise<EmailDraft> {
+  if (!draft.template) return draft;
+  const custom = await db.emailTemplate.findUnique({ where: { key: draft.template.key } });
+  if (!custom) return draft;
+  const text = renderText({ subject: custom.subject, preview: custom.preview, body: custom.body, ctaLabel: custom.ctaLabel ?? undefined }, draft.template.values);
+  return { ...draft, subject: text.subject, preview: text.preview, body: text.body, ...(draft.ctaLabel && text.ctaLabel ? { ctaLabel: text.ctaLabel } : {}) };
+}
+
 /** Records a message for a volunteer, an applicant, or the coordinator when
  *  `to` is null, and schedules delivery. `ref` de-duplicates automated
  *  messages. A push draft goes to the volunteer's phones, or by email when
  *  they have not signed in to the app on one. */
-export async function queueEmail(to: Recipient | ApplicantRecipient | null, draft: EmailDraft, ref?: string) {
+export async function queueEmail(to: Recipient | ApplicantRecipient | null, template: EmailDraft, ref?: string) {
   const e = env();
+  const draft = await withCustomWording(template);
   const volunteer = to && "id" in to ? to : null;
   let channel = draft.channel ?? "EMAIL";
   let body = draft.body;
@@ -94,7 +105,8 @@ export async function queueEmail(to: Recipient | ApplicantRecipient | null, draf
 /** Sends a sign-in link (invite or password reset) straight away. The link is
  *  never stored: the logged row has no call to action, so a failed send can
  *  only be fixed by sending a new link. Returns whether it was handed over. */
-export async function sendSignInLinkEmail(to: Recipient, draft: EmailDraft, url: string): Promise<boolean> {
+export async function sendSignInLinkEmail(to: Recipient, template: EmailDraft, url: string): Promise<boolean> {
+  const draft = await withCustomWording(template);
   const capture = isDemo() || seeding();
   const row = await db.email.create({
     data: {

@@ -25,7 +25,11 @@ const DELIVERY: Option<ModuleForm["delivery"]>[] = [
   { value: "ONLINE_CONFIRM", label: "Online module" },
 ];
 
-const BLANK_MODULE: ModuleForm = { id: null, name: "", description: "", validityMonths: 12, requiredRoles: [], mandatoryBeforeFirstShift: false, delivery: "ONLINE_CONFIRM", content: "", links: [] };
+// New modules never expire until the coordinator says otherwise: in-person
+// stages such as T1 to T4 are done once.
+const BLANK_MODULE: ModuleForm = { id: null, name: "", description: "", validityMonths: null, requiredRoles: [], mandatoryBeforeFirstShift: false, delivery: "ONLINE_CONFIRM", content: "", links: [], prerequisiteId: null, inDevelopment: false };
+
+const NO_PREREQUISITE = "none";
 
 // Link rows carry a client-only key, made when the row is added, so typing in
 // one row or removing another never shifts focus or text between rows.
@@ -44,9 +48,11 @@ export const TIMES: Option[] = Array.from({ length: (20 - 6) * 4 + 1 }, (_, i) =
   return { value, label: formatTime(value) };
 });
 
-/** Edits a module, or adds one when `module` is omitted. */
-export function ModuleEditor({ module }: { module?: ModuleForm }) {
+/** Edits a module, or adds one when `module` is omitted. `modules` are the
+ *  others, for "Comes after". */
+export function ModuleEditor({ module, modules }: { module?: ModuleForm; modules: { id: string; name: string }[] }) {
   const initial = module ?? BLANK_MODULE;
+  const earlier: Option[] = [{ value: NO_PREREQUISITE, label: "Nothing: it can be done any time" }, ...modules.filter((m) => m.id !== module?.id).map((m) => ({ value: m.id, label: m.name }))];
   const [open, setOpen] = useState(false);
   const [v, setV] = useState(() => toDraft(initial));
   const [pending, run] = useTransition();
@@ -86,14 +92,28 @@ export function ModuleEditor({ module }: { module?: ModuleForm }) {
         <Label htmlFor={`m-desc-${key}`}>Summary</Label>
         <Input id={`m-desc-${key}`} required value={v.description} onChange={(e) => setV({ ...v, description: e.target.value })} className="h-11 bg-card text-base" placeholder="One line shown on the training list" />
       </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor={`m-val-${key}`}>Valid for</Label>
-        <div className="relative">
-          <Input id={`m-val-${key}`} type="number" min={1} max={60} placeholder="Never expires" aria-describedby={`m-val-hint-${key}`} value={v.validityMonths ?? ""} onChange={(e) => setV({ ...v, validityMonths: e.target.value ? Number(e.target.value) : null })} className="h-11 bg-card pr-20 text-base" />
-          {v.validityMonths != null && <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">months</span>}
+      <fieldset className="flex flex-col gap-1.5">
+        <legend className="mb-1.5 text-sm font-medium">Expiry</legend>
+        <div className="flex flex-wrap items-center gap-2">
+          {([["never", "Never expires"], ["months", "Expires after"]] as const).map(([value, label]) => {
+            const on = (v.validityMonths == null) === (value === "never");
+            return (
+              <label key={value} className={cn("flex h-10 cursor-pointer items-center gap-1.5 rounded-full border px-3.5 font-display text-sm font-semibold transition-colors has-focus-visible:outline-3 has-focus-visible:outline-ring", on ? "border-teal bg-card text-teal-deep" : "border-border bg-card/60 text-muted-foreground hover:text-ink")}>
+                <input type="radio" name={`m-exp-${key}`} className="sr-only" checked={on} onChange={() => setV({ ...v, validityMonths: value === "never" ? null : (initial.validityMonths ?? 12) })} />
+                {on && <Check className="size-4 text-teal" aria-hidden />}
+                {label}
+              </label>
+            );
+          })}
+          {v.validityMonths != null && (
+            <span className="flex items-center gap-2">
+              <Input aria-label="Months until it expires" type="number" min={1} max={60} required value={v.validityMonths} onChange={(e) => setV({ ...v, validityMonths: e.target.value ? Number(e.target.value) : 1 })} className="h-10 w-20 bg-card text-base" />
+              <span className="text-sm text-muted-foreground">months</span>
+            </span>
+          )}
         </div>
-        <p id={`m-val-hint-${key}`} className="text-xs text-muted-foreground">Leave blank if it never expires.</p>
-      </div>
+        <p className="text-xs text-muted-foreground">{v.validityMonths == null ? "Done once, valid for good. In-person stages such as T1 to T4 work like this." : "Volunteers are reminded 30 days before it runs out, and need a refresher to keep booking."}</p>
+      </fieldset>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={`m-del-${key}`}>Delivery</Label>
         <OptionSelect id={`m-del-${key}`} value={v.delivery} onValueChange={(d) => setV({ ...v, delivery: d })} options={DELIVERY} />
@@ -140,11 +160,23 @@ export function ModuleEditor({ module }: { module?: ModuleForm }) {
           </fieldset>
         </>
       )}
+      <div className="flex flex-col gap-1.5 @xl/admin:col-span-2">
+        <Label htmlFor={`m-pre-${key}`}>Comes after</Label>
+        <OptionSelect id={`m-pre-${key}`} value={v.prerequisiteId ?? NO_PREREQUISITE} onValueChange={(id) => setV({ ...v, prerequisiteId: id === NO_PREREQUISITE ? null : id })} options={earlier} aria-describedby={`m-pre-hint-${key}`} />
+        <p id={`m-pre-hint-${key}`} className="text-xs text-muted-foreground">Stages done in order: volunteers cannot start this one, and it cannot be recorded, until the one before it is done.</p>
+      </div>
       <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-card p-3 @xl/admin:col-span-2">
         <Checkbox className="mt-0.5 size-5" checked={v.mandatoryBeforeFirstShift} onCheckedChange={(c) => setV({ ...v, mandatoryBeforeFirstShift: c })} />
         <span className="flex flex-col">
           <span className="text-sm font-semibold text-ink">Mandatory before first shift</span>
           <span className="text-xs text-muted-foreground">New volunteers cannot book until this module is complete.</span>
+        </span>
+      </label>
+      <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-card p-3 @xl/admin:col-span-2">
+        <Checkbox className="mt-0.5 size-5" checked={v.inDevelopment} onCheckedChange={(c) => setV({ ...v, inDevelopment: c })} />
+        <span className="flex flex-col">
+          <span className="text-sm font-semibold text-ink">Still in development</span>
+          <span className="text-xs text-muted-foreground">Volunteers see it as coming soon. It is not required and cannot be completed until you untick this.</span>
         </span>
       </label>
       <div className="flex gap-2 @xl/admin:col-span-2">

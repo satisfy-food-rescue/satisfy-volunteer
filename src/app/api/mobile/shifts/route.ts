@@ -19,7 +19,7 @@ export const GET = mobileHandler(async (me, request) => {
     trainingContext(me, today),
     db.absence.findMany({ where: { volunteerId: me.id, startDate: { lte: isoToDate(days[4]) }, endDate: { gte: isoToDate(days[0]) } } }),
   ]);
-  const ctx = { me, statuses: training.statuses, today };
+  const ctx = { me, statuses: training.statuses, induction: training.induction, today };
   const isAway = (iso: string) => absences.some((a) => a.startDate <= isoToDate(iso) && a.endDate >= isoToDate(iso));
   return json<ShiftsWeek>({
     today,

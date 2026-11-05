@@ -32,6 +32,10 @@ export function routeForWebPath(url: string | undefined | null): Href {
       return "/slot";
     case "harvest":
       return "/harvest";
+    case "induction":
+      return "/induction";
+    case "policies":
+      return id ? { pathname: "/policies/[id]", params: { id } } : "/policies";
     case "profile":
       return TAB.me;
     default:

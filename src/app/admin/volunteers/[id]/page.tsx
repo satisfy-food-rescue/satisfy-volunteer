@@ -7,7 +7,11 @@ import { requireAdmin } from "@/lib/session";
 import { shiftName } from "@/lib/roster";
 import { db } from "@/lib/db";
 import { addDays, dateToISO, formatDate, isWeekday, formatDay, formatDayRange, formatInstant, formatInstantRange, formatTimeRange, todayISO, WEEKDAY_LONG } from "@/lib/dates";
-import { DELIVERY_LABEL, INITIAL_VISIT_CODE, fullName, inHarvestPool } from "@/lib/domain";
+import { DELIVERY_LABEL, INITIAL_VISIT_CODE, ROLE_SHORT, fullName, inHarvestPool } from "@/lib/domain";
+import { inductionFor } from "@/lib/induction-data";
+import { getSettings } from "@/lib/settings";
+import { MOJ_STATUS_LABEL, type MojStatus } from "@/lib/induction";
+import { RecordMojCheckButton, RemoveMojCheckButton } from "@/components/admin/induction-controls";
 import { moduleStatuses, trainingSummary } from "@/lib/training";
 import { AvatarBadge } from "@/components/shared/avatar-badge";
 import { Chip, TrainingChip } from "@/components/shared/status-chip";
@@ -41,6 +45,7 @@ export default async function VolunteerProfilePage({ params, searchParams }: { p
         absences: { orderBy: { startDate: "desc" } },
         emails: { select: { id: true, channel: true, kind: true, subject: true, status: true, createdAt: true }, orderBy: { createdAt: "desc" } },
         passkeys: { select: { id: true } },
+        mojChecks: { include: { recordedBy: { select: { firstName: true } } }, orderBy: [{ checkedOn: "desc" }, { createdAt: "desc" }] },
         oauthAccounts: { select: { provider: true } },
         contactLogs: { include: { author: { select: { id: true, firstName: true } } }, orderBy: { createdAt: "desc" } },
         sessionRsvps: { where: { status: "GOING", session: { startsAt: { gte: now }, module: { code: INITIAL_VISIT_CODE } } }, include: { session: true } },
@@ -51,6 +56,7 @@ export default async function VolunteerProfilePage({ params, searchParams }: { p
     db.trainingSession.findMany({ where: { startsAt: { gte: now }, module: { code: INITIAL_VISIT_CODE } }, include: { rsvps: { where: { status: "GOING" } } }, orderBy: { startsAt: "asc" } }),
   ]);
   if (!v) notFound();
+  const [induction, settings] = await Promise.all([inductionFor(v, today), getSettings()]);
   const statuses = moduleStatuses(v, modules, v.trainingRecords, today);
   const summary = trainingSummary(statuses);
   const history = v.assignments.filter((a) => dateToISO(a.shift.date) < today);
@@ -126,6 +132,53 @@ export default async function VolunteerProfilePage({ params, searchParams }: { p
 
       <div className="grid grid-cols-1 gap-6 @4xl/admin:grid-cols-5">
         <div className="flex flex-col gap-6 @4xl/admin:col-span-3">
+          <section className="flex flex-col gap-3" aria-labelledby="ind-h">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h2 id="ind-h" className="text-2xl text-ink">Induction</h2>
+              {induction.complete ? <span className="inline-flex items-center gap-1 text-sm font-semibold text-status-good"><CheckCircle2 className="size-4" aria-hidden /> Complete</span> : <span className="text-sm font-semibold text-status-info">{induction.outstanding} to do before training</span>}
+            </div>
+            <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
+              <li className="flex flex-wrap items-start gap-3 px-4 py-3">
+                <div className="min-w-0 flex-1">
+                  <p className="font-bold text-ink">Ministry of Justice check</p>
+                  <p className="text-xs text-muted-foreground">
+                    {induction.moj.required ? `Needed for ${induction.moj.roles.map((r) => ROLE_SHORT[r].toLowerCase()).join(" and ")}` : settings.mojCheckRoles.length === 0 ? "Not required yet: turn it on in Induction" : "Not needed for their roles"} · renewed every three years
+                  </p>
+                  {v.mojChecks.length > 0 ? (
+                    <ul className="mt-1.5 flex flex-col gap-0.5">
+                      {v.mojChecks.map((c, i) => {
+                        const iso = dateToISO(c.checkedOn);
+                        return (
+                          <li key={c.id} className={cn("flex items-center gap-2 text-sm tabular", i > 0 && "text-muted-foreground")}>
+                            <span className="min-w-0 flex-1">Dated {formatDate(iso)}{i === 0 && induction.moj.renewsISO ? `, ${induction.moj.status === "EXPIRED" ? "ran out" : "renews"} ${formatDate(induction.moj.renewsISO)}` : ""}{c.recordedBy ? ` · recorded by ${c.recordedBy.firstName}` : ""}{c.note ? ` · ${c.note}` : ""}</span>
+                            <RemoveMojCheckButton checkId={c.id} label={formatDate(iso)} />
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : (
+                    <p className="mt-1 text-sm text-ink-soft">Nothing recorded yet.</p>
+                  )}
+                </div>
+                {induction.moj.status !== "CURRENT" && <MojChip status={induction.moj.status} mojOn={settings.mojCheckRoles.length > 0} hasCheck={v.mojChecks.length > 0} />}
+                {induction.moj.status !== "CURRENT" && v.status !== "DELETED" && <RecordMojCheckButton volunteer={{ id: v.id, firstName: v.firstName }} today={today} renewing={v.mojChecks.length > 0} />}
+                {induction.moj.status === "CURRENT" && <Chip tone="good" size="sm" icon={CheckCircle2}>Current</Chip>}
+              </li>
+              {induction.agreements.filter((a) => a.required).map((a) => (
+                <li key={a.document.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-ink">{a.document.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {a.signedAt ? `Signed ${formatDate(todayISO(a.signedAt))}${a.signedVersion && a.signedVersion > 1 ? `, version ${a.signedVersion}` : ""}` : "Not signed yet"}
+                      {a.status === "UPDATED" && ` · version ${a.document.version} to sign`}
+                    </p>
+                  </div>
+                  {a.status === "SIGNED" ? <Chip tone="good" size="sm" icon={CheckCircle2}>Signed</Chip> : <Chip tone={a.status === "UPDATED" ? "warn" : "info"} size="sm">{a.status === "UPDATED" ? "New version" : "To sign"}</Chip>}
+                </li>
+              ))}
+            </ul>
+          </section>
+
           <section className="flex flex-col gap-3" aria-labelledby="tr-h">
             <h2 id="tr-h" className="text-2xl text-ink">Training record</h2>
             <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
@@ -141,7 +194,11 @@ export default async function VolunteerProfilePage({ params, searchParams }: { p
                     {s.expiresISO && <p className={cn("text-xs tabular", s.status === "OVERDUE" ? "text-status-bad" : s.status === "DUE_SOON" ? "text-status-warn" : "text-muted-foreground")}>{s.status === "OVERDUE" ? "Expired" : "Expires"} {formatDate(s.expiresISO)}</p>}
                   </div>
                   <TrainingChip status={s.status} size="sm" />
-                  {s.status !== "COMPLETE" && <RecordCompletionButton volunteerId={v.id} moduleId={s.module.id} moduleName={s.module.name} firstName={v.firstName} today={today} />}
+                  {s.status !== "COMPLETE" && (s.lockedBy ? (
+                    <span className="text-xs font-semibold text-muted-foreground">After {s.lockedBy.name}</span>
+                  ) : (
+                    <RecordCompletionButton volunteerId={v.id} moduleId={s.module.id} moduleName={s.module.name} firstName={v.firstName} today={today} />
+                  ))}
                 </li>
               ))}
             </ul>
@@ -246,7 +303,7 @@ export default async function VolunteerProfilePage({ params, searchParams }: { p
               {v.role === "ADMIN" && (
                 <>
                   <dt className="font-semibold text-muted-foreground">Access</dt>
-                  <dd className="text-ink">Coordinator, not rostered. <Link href="/admin/coordinators" className="font-semibold text-teal hover:underline">Manage coordinators</Link></dd>
+                  <dd className="text-ink">{v.alsoVolunteers ? "Coordinator who also volunteers." : "Coordinator, not in the volunteer lists."} <Link href="/admin/coordinators" className="font-semibold text-teal hover:underline">Manage coordinators</Link></dd>
                 </>
               )}
               <dt className="font-semibold text-muted-foreground">Last sign-in</dt>
@@ -277,4 +334,9 @@ export default async function VolunteerProfilePage({ params, searchParams }: { p
       </div>
     </div>
   );
+}
+
+function MojChip({ status, mojOn, hasCheck }: { status: MojStatus; mojOn: boolean; hasCheck: boolean }) {
+  const tone = status === "EXPIRED" ? "bad" : status === "RENEWAL_DUE" ? "warn" : status === "NEEDED" ? "info" : "muted";
+  return <Chip tone={tone} size="sm">{status !== "NOT_REQUIRED" ? MOJ_STATUS_LABEL[status] : mojOn ? "Not needed" : hasCheck ? "Ran out" : "Not recorded"}</Chip>;
 }

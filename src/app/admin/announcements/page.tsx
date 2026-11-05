@@ -14,7 +14,7 @@ export default async function AnnouncementsPage({ searchParams }: { searchParams
   const admin = await requireAdmin();
   const { shift } = await searchParams;
   const today = todayISO();
-  const [shifts, history] = await Promise.all([
+  const [shifts, history, shiftTypes] = await Promise.all([
     // Shifts with a crew to message: the next month, plus the one asked for.
     db.shift.findMany({
       where: {
@@ -26,6 +26,7 @@ export default async function AnnouncementsPage({ searchParams }: { searchParams
       orderBy: [{ date: "asc" }, { startTime: "asc" }],
     }),
     db.announcement.findMany({ include: { author: true }, orderBy: { createdAt: "desc" }, take: 20 }),
+    db.shiftTemplate.findMany({ where: { active: true }, orderBy: { order: "asc" }, select: { id: true, name: true } }),
   ]);
   const options = shifts.map(decorateShift).map((v) => ({ id: v.shift.id, label: `${formatDay(v.iso)}, ${formatTimeRange(v.shift.startTime, v.shift.endTime)}: ${v.name} (${v.confirmedCount})` }));
 
@@ -34,9 +35,9 @@ export default async function AnnouncementsPage({ searchParams }: { searchParams
       <PageHeader
         eyebrow="Messages"
         title="Announcements"
-        description="Send news or a change of plans to everyone, a group of roles, or the crew of one shift. It goes by email, and as a push notification to phones with the app."
+        description="Send news or a change of plans to everyone, a group of roles, the crew of one shift, or everyone on one shift type. It goes by email, and as a push notification to phones with the app."
       />
-      <AnnouncementForm shifts={options} initialShiftId={shift && options.some((o) => o.id === shift) ? shift : null} from={admin.firstName} />
+      <AnnouncementForm shifts={options} shiftTypes={shiftTypes.map((t) => ({ id: t.id, label: t.name }))} initialShiftId={shift && options.some((o) => o.id === shift) ? shift : null} from={admin.firstName} />
 
       <section className="flex flex-col gap-3" aria-labelledby="sent-h">
         <h2 id="sent-h" className="text-2xl text-ink">Sent</h2>

@@ -1,45 +1,25 @@
 import { router } from "expo-router";
 import { Pressable, View } from "react-native";
 
-import type { ShiftAction, ShiftSummary } from "@satisfy/core/api";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { TAB } from "@/lib/links";
+import { lockFix, type Lock, type LockFix } from "@/lib/locks";
 import { radius, TAP, useTheme } from "@/theme";
 
-export type Lock = Extract<ShiftAction, { kind: "BLOCKED" }>;
-
-/** The locks on these shifts, one per reason, in the order they first
- *  appear. */
-export function locksOf(shifts: ShiftSummary[]): Lock[] {
-  const byReason = new Map<string, Lock>();
-  for (const s of shifts) if (s.action.kind === "BLOCKED" && !byReason.has(s.action.reason)) byReason.set(s.action.reason, s.action);
-  return [...byReason.values()];
-}
-
-/** When locked shifts open up, in the web's words for each case. */
-export function unlockNote(locks: Lock[]): string {
-  const role = locks.some((l) => l.fix !== "training");
-  const training = locks.some((l) => l.fix === "training");
-  return role && training
-    ? "Locked shifts open up once you have the role and the training they need."
-    : role
-      ? "Locked shifts open up once you have the role they need."
-      : "Locked shifts open up as soon as the training they need is current.";
-}
+const ACTIONS: Record<LockFix, { label: string; onPress: () => void }> = {
+  role: { label: "Ask to change my roles", onPress: () => router.push("/role-request") },
+  induction: { label: "Finish my induction", onPress: () => router.push("/induction") },
+  training: { label: "Go to my training", onPress: () => router.navigate(TAB.training) },
+  harvestPool: { label: "Join the harvest pool", onPress: () => router.push("/harvest") },
+};
 
 /** Why some shifts are locked, said once above the list rather than on every
  *  card, with the step that unlocks them. Grey, as orange is kept for shifts
  *  that need cover. */
 export function LockBanner({ locks }: { locks: Lock[] }) {
   const t = useTheme();
-  // A missing role is the coordinator's to fix, so it comes first, as on the
-  // web.
-  const action = locks.some((l) => l.fix === "role")
-    ? { label: "Ask to change my roles", onPress: () => router.push("/role-request") }
-    : locks.some((l) => l.fix === "training")
-      ? { label: "Go to my training", onPress: () => router.navigate(TAB.training) }
-      : { label: "Join the harvest pool", onPress: () => router.push("/harvest") };
+  const action = ACTIONS[lockFix(locks)];
   return (
     <View style={{ flexDirection: "row", gap: 12, paddingTop: 16, paddingBottom: 4, paddingHorizontal: 16, borderRadius: radius.card, borderCurve: "continuous", backgroundColor: t.neutralTint }}>
       <View style={{ paddingTop: 2 }}>

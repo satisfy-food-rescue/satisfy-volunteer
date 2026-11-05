@@ -2,7 +2,7 @@ import "server-only";
 import { db } from "./db";
 import { todayISO } from "./dates";
 import { isDemo } from "./env";
-import { runReminders, runShiftReminders } from "./reminders";
+import { runMojReminders, runReminders, runShiftReminders } from "./reminders";
 import { runCoverChecks } from "./cover";
 import { sweepOutbox } from "./emails";
 import { ensureDemoData } from "./demo/seed";
@@ -25,6 +25,7 @@ async function cleanUp(now = new Date()) {
 
 const JOBS = {
   trainingReminders: () => runReminders(todayISO()),
+  mojReminders: () => runMojReminders(todayISO()),
   shiftReminders: () => runShiftReminders(),
   coverChecks: () => runCoverChecks(),
   outbox: () => sweepOutbox(),

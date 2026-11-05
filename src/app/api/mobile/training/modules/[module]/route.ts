@@ -15,11 +15,11 @@ export const GET = mobileHandler<{ module: string }>(async (me, _request, { para
   const mod = await db.trainingModule.findUnique({ where: { code }, include: { links: { orderBy: { order: "asc" } } } });
   if (!mod) return failure(404, "Module not found.");
   const today = todayISO();
-  const { statuses } = await trainingContext(me, today);
+  const { statuses, induction } = await trainingContext(me, today);
   const status = statuses.find((s) => s.module.id === mod.id)!;
   return json<TrainingModuleDetail>({
     today,
-    module: moduleSummary(status),
+    module: moduleSummary(status, { me, induction }),
     paragraphs: moduleParagraphs(mod.content),
     links: mod.links.map((l) => ({ id: l.id, label: l.label, url: l.url })),
   });

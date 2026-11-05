@@ -2,6 +2,7 @@
 // in the pool, what training harvests need, and what harvests are coming up.
 import type { Volunteer } from "@/generated/prisma/client";
 import { db } from "./db";
+import { ACTIVE_POOL } from "./pool";
 import { HARVEST_ROLE, inHarvestPool, sortRoles } from "./domain";
 import { moduleStatuses } from "./training";
 import { trainingContext, upcomingHarvests } from "./volunteer-data";
@@ -10,12 +11,14 @@ export async function loadHarvest(me: Volunteer, today: string) {
   const [training, harvests, poolCount] = await Promise.all([
     trainingContext(me, today),
     upcomingHarvests(today),
-    db.volunteer.count({ where: { status: "ACTIVE", role: "VOLUNTEER", roles: { has: HARVEST_ROLE } } }),
+    db.volunteer.count({ where: { ...ACTIVE_POOL, roles: { has: HARVEST_ROLE } } }),
   ]);
   // Harvest training as it would stand in the pool, so someone thinking of
   // joining sees what it involves (and what they have already done).
+  // Modules still in development are not required yet, so they wait on the
+  // Training page's Coming soon list.
   const asPicker = { roles: sortRoles([...me.roles, HARVEST_ROLE]) };
-  const harvestTraining = moduleStatuses(asPicker, training.modules, training.records, today).filter((s) => s.module.requiredRoles.includes(HARVEST_ROLE));
+  const harvestTraining = moduleStatuses(asPicker, training.modules, training.records, today).filter((s) => s.required && s.module.requiredRoles.includes(HARVEST_ROLE));
   return {
     inPool: inHarvestPool(me),
     poolCount,
@@ -24,5 +27,6 @@ export async function loadHarvest(me: Volunteer, today: string) {
     trained: harvestTraining.every((s) => s.status === "COMPLETE" || s.status === "DUE_SOON"),
     harvests,
     statuses: training.statuses,
+    induction: training.induction,
   };
 }

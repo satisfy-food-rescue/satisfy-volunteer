@@ -24,6 +24,7 @@ const AUDIENCES: { value: Audience; label: string; hint: string }[] = [
   { value: "ALL", label: "Everyone", hint: "All active volunteers" },
   { value: "ROLES", label: "By role", hint: "For example, the harvest pool" },
   { value: "SHIFT", label: "A shift's crew", hint: "Everyone booked on one shift" },
+  { value: "SHIFT_TYPE", label: "A shift type", hint: "Everyone on its upcoming shifts, and its regulars" },
 ];
 
 const pill = (on: boolean) =>
@@ -34,10 +35,11 @@ const pill = (on: boolean) =>
 
 /** Compose and send an announcement. The recipient count updates as the
  *  audience changes, and sending asks once more with the number. */
-export function AnnouncementForm({ shifts, initialShiftId, from }: { shifts: ShiftOption[]; initialShiftId: string | null; from: string }) {
+export function AnnouncementForm({ shifts, shiftTypes, initialShiftId, from }: { shifts: ShiftOption[]; shiftTypes: ShiftOption[]; initialShiftId: string | null; from: string }) {
   const [audience, setAudience] = useState<Audience>(initialShiftId ? "SHIFT" : "ALL");
   const [roles, setRoles] = useState<VolunteerRole[]>(["HARVEST"]);
   const [shiftId, setShiftId] = useState(initialShiftId ?? shifts[0]?.id ?? "");
+  const [templateId, setTemplateId] = useState(shiftTypes[0]?.id ?? "");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [push, setPush] = useState(true);
@@ -52,7 +54,13 @@ export function AnnouncementForm({ shifts, initialShiftId, from }: { shifts: Shi
   const router = useRouter();
 
   const target: AudienceInput | null =
-    audience === "ALL" ? { audience } : audience === "ROLES" ? (roles.length ? { audience, roles } : null) : shiftId ? { audience, shiftId } : null;
+    audience === "ALL"
+      ? { audience }
+      : audience === "ROLES"
+        ? roles.length ? { audience, roles } : null
+        : audience === "SHIFT_TYPE"
+          ? templateId ? { audience, templateId } : null
+          : shiftId ? { audience, shiftId } : null;
   const targetKey = JSON.stringify(target);
 
   useEffect(() => {
@@ -90,7 +98,7 @@ export function AnnouncementForm({ shifts, initialShiftId, from }: { shifts: Shi
         className="@container flex min-w-0 flex-col gap-5 rounded-2xl border border-border bg-card p-5 @4xl/admin:col-span-3"
         onSubmit={(e) => {
           e.preventDefault();
-          if (!target) return toast.error(audience === "ROLES" ? "Pick at least one role." : "Pick a shift.");
+          if (!target) return toast.error(audience === "ROLES" ? "Pick at least one role." : audience === "SHIFT_TYPE" ? "Pick a shift type." : "Pick a shift.");
           if (!reach) return;
           if (count === 0) return toast.error("Nobody matches that audience yet.");
           setConfirming({ subject, count, push });
@@ -98,8 +106,8 @@ export function AnnouncementForm({ shifts, initialShiftId, from }: { shifts: Shi
       >
         <fieldset className="flex flex-col gap-2">
           <legend className="mb-2 text-sm font-medium">Who it goes to</legend>
-          <div className="grid gap-2 @lg:grid-cols-3">
-            {AUDIENCES.filter((a) => a.value !== "SHIFT" || shifts.length > 0).map((a) => (
+          <div className="grid gap-2 @lg:grid-cols-2 @3xl:grid-cols-4">
+            {AUDIENCES.filter((a) => (a.value !== "SHIFT" || shifts.length > 0) && (a.value !== "SHIFT_TYPE" || shiftTypes.length > 0)).map((a) => (
               <label key={a.value} className={cn("flex cursor-pointer flex-col rounded-xl border p-3 transition-colors has-focus-visible:outline-3 has-focus-visible:outline-ring", audience === a.value ? "border-teal bg-teal-tint-soft" : "border-border hover:border-teal/50")}>
                 <input type="radio" name="audience" className="sr-only" checked={audience === a.value} onChange={() => setAudience(a.value)} />
                 <span className="flex items-center gap-1.5 text-sm font-bold text-ink">
@@ -130,10 +138,16 @@ export function AnnouncementForm({ shifts, initialShiftId, from }: { shifts: Shi
               <OptionSelect id="an-shift" value={shiftId} onValueChange={setShiftId} options={shifts.map((s) => ({ value: s.id, label: s.label }))} />
             </div>
           )}
+          {audience === "SHIFT_TYPE" && (
+            <div className="mt-1 flex flex-col gap-1.5">
+              <Label htmlFor="an-type" className="sr-only">Shift type</Label>
+              <OptionSelect id="an-type" value={templateId} onValueChange={setTemplateId} options={shiftTypes.map((s) => ({ value: s.id, label: s.label }))} />
+            </div>
+          )}
           <p className="mt-1 flex items-start gap-1.5 text-sm text-ink-soft" aria-live="polite">
             <Users className="mt-0.5 size-4 shrink-0 text-sky" aria-hidden />
             {!target ? (
-              audience === "ROLES" ? "Pick at least one role." : "Pick a shift."
+              audience === "ROLES" ? "Pick at least one role." : audience === "SHIFT_TYPE" ? "Pick a shift type." : "Pick a shift."
             ) : !reach ? (
               "Counting..."
             ) : "error" in reach ? (

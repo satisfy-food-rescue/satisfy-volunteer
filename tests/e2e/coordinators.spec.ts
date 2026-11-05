@@ -45,7 +45,7 @@ test("a coordinator adds another, who sets up their account, then removes their 
   await hanaContext.close();
 });
 
-test("making a rostered volunteer a coordinator takes them off the roster, and back again", async ({ page }) => {
+test("a rostered volunteer made a coordinator keeps volunteering until taken out of the lists", async ({ page }) => {
   await signInAs(page, "phillipa");
   await page.goto("/admin/coordinators");
   await page.getByRole("button", { name: "Add coordinator" }).click();
@@ -53,31 +53,37 @@ test("making a rostered volunteer a coordinator takes them off the roster, and b
   await dialog.getByLabel("First name").fill("Graham");
   await dialog.getByLabel("Email").fill("graham.lister@example.nz");
   await dialog.getByRole("button", { name: "Add coordinator" }).click();
-
-  // Asked first, since Graham has a regular slot and upcoming shifts.
-  await expect(dialog.getByRole("heading", { name: "Make Graham a coordinator?" })).toBeVisible();
-  await expect(dialog).toContainText("Graham Lister is a volunteer with 1 regular slot and");
-  await dialog.getByRole("button", { name: "Make Graham a coordinator" }).click();
-  await expect(page.getByText("Graham Lister is now a coordinator")).toBeVisible();
+  await expect(page.getByText("Graham Lister is now a coordinator and stays in the volunteer lists")).toBeVisible();
   const graham = page.getByRole("list", { name: "Coordinators" }).getByRole("listitem", { name: "Graham Lister" });
-  await expect(graham).toBeVisible();
+  await expect(graham.getByRole("switch", { name: "Also volunteers" })).toBeChecked();
   // Graham has never signed in, so the email is an invite worded for a coordinator.
   await expect.poll(() => latestEmailTo("graham.lister@example.nz", "ACCOUNT_INVITE")).toMatchObject({ subject: "Set up your Satisfy coordinator account", status: "SENT" });
 
+  // Still a volunteer, marked as a coordinator.
+  await page.goto("/admin/volunteers?q=graham");
+  await expect(page.getByRole("link", { name: /Graham Lister/ })).toContainText("Coordinator");
+
+  // Taking him out of the lists asks first, since he has a regular slot.
+  await page.goto("/admin/coordinators");
+  await graham.getByRole("switch", { name: "Also volunteers" }).click();
+  const confirm = page.getByRole("dialog");
+  await expect(confirm.getByRole("heading", { name: "Take Graham out of the volunteer lists?" })).toBeVisible();
+  await expect(confirm).toContainText("Graham Lister has 1 regular slot and");
+  await confirm.getByRole("button", { name: "Take off the roster" }).click();
+  await expect(page.getByText("Graham Lister is no longer in the volunteer lists")).toBeVisible();
   await page.goto("/admin/volunteers?q=graham");
   await expect(page.getByText("No volunteers match these filters.")).toBeVisible();
 
+  // Removing access makes him a volunteer again, with the changes in the history.
   await page.goto("/admin/coordinators");
   await graham.getByRole("button", { name: "Remove access for Graham Lister" }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Remove access" }).click();
   // The list is hidden from assistive tech while the dialog is open, so wait for the result first.
   await expect(page.getByText("Graham Lister is no longer a coordinator")).toBeVisible();
   await expect(graham).toHaveCount(0);
-
-  // Back among the volunteers, with both changes in the history.
   await page.goto("/admin/volunteers?q=graham");
   await page.getByRole("link", { name: /Graham Lister/ }).click();
   await expect(page.getByRole("heading", { name: "Graham Lister", level: 1 })).toBeVisible();
   await expect(page.getByText("Coordinator access removed by Phillipa.")).toBeVisible();
-  await expect(page.getByText(/Made a coordinator by Phillipa\. Removed from 1 regular slot and \d+ upcoming shifts?\./)).toBeVisible();
+  await expect(page.getByText(/Taken out of the volunteer lists by Phillipa\. Removed from 1 regular slot and \d+ upcoming shifts?\./)).toBeVisible();
 });

@@ -4,17 +4,20 @@ import type { Eligibility } from "@/lib/training";
 
 /** Why some shifts are locked, said once above a list rather than on every
  *  card. Grey, not orange: orange is for shifts that need cover. One action:
- *  training when any lock is training, since the volunteer can fix that
- *  themselves, else asking for a role. */
+ *  the induction when any lock is that (training waits for it), then
+ *  training, since the volunteer can fix both themselves, else asking for a
+ *  role. */
 export function LockBanner({ title, locks }: { title: string; locks: Eligibility[] }) {
   // Training first: it is what the action button leads to.
   const ordered = [...locks].sort((a, b) => Number(b.hasRole) - Number(a.hasRole));
   const reasons = [...new Set(ordered.map((e) => e.reason).filter((r): r is string => !!r))];
   if (reasons.length === 0) return null;
-  const training = locks.filter((e) => e.hasRole && e.blockers.length > 0);
+  const induction = locks.some((e) => e.hasRole && e.induction.length > 0);
+  const training = locks.filter((e) => e.hasRole && e.induction.length === 0 && e.blockers.length > 0);
   const modules = [...new Set(training.map((e) => e.blockers[0].module.code))];
-  const action =
-    training.length > 0
+  const action = induction
+    ? { href: "/app/induction", label: "Finish my induction" }
+    : training.length > 0
       ? { href: modules.length === 1 ? `/app/training/${modules[0]}` : "/app/training", label: "Go to my training" }
       : { href: "/app/profile", label: "Ask to change my roles" };
   return (

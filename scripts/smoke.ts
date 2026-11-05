@@ -17,6 +17,7 @@ import type * as Api from "@satisfy/core/api";
 import { addDays, isoToDate, todayISO } from "../src/lib/dates";
 import { SESSION_COOKIE } from "../src/lib/auth-shared";
 import { PERSONAS } from "../src/lib/personas";
+import { TEMPLATES } from "../src/lib/email-templates";
 
 const base = process.env.BASE_URL ?? "http://localhost:3000";
 const db = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
@@ -64,6 +65,9 @@ async function resolvers(): Promise<Record<string, string[]>> {
     "/admin/volunteers/[id]": ids(await db.volunteer.findMany({ select: { id: true } })),
     "/admin/outbox/[id]": ids(await db.email.findMany({ select: { id: true } })),
     "/admin/training/sessions/[id]": ids(await db.trainingSession.findMany({ select: { id: true } })),
+    // The demo's documents are for every role, so every persona can open them.
+    "/app/policies/[id]": ids(await db.document.findMany({ where: { archived: false }, select: { id: true } })),
+    "/admin/emails/[key]": TEMPLATES.map((t) => t.key),
   };
 }
 
@@ -182,6 +186,7 @@ async function mobileApiChecks(admins: Volunteer[], volunteers: Volunteer[], val
 
   const shiftIds = values["/app/shifts/[id]"];
   const moduleCodes = values["/app/training/[code]"];
+  const documentIds = values["/app/policies/[id]"];
   await Promise.all(
     volunteers.map(async (v) => {
       const who = keyOf(v);
@@ -190,14 +195,17 @@ async function mobileApiChecks(admins: Volunteer[], volunteers: Volunteer[], val
       if (!token) return;
       const today = todayISO();
       const get = <T>(path: string, check: (b: T) => boolean) => call<T>(who, "GET", path, { token, check });
-      await get<Api.MobileSession>("/session", (b) => b.me.id === v.id && b.today === today && isNum(b.badges.cover) && isNum(b.badges.training));
+      await get<Api.MobileSession>("/session", (b) => b.me.id === v.id && b.today === today && isNum(b.badges.cover) && isNum(b.badges.training) && isNum(b.badges.induction) && isNum(b.badges.policies));
       await get<Api.Home>("/home", (b) => b.today === today && isStr(b.empty.cta) && isNum(b.impact.meals) && (b.next === null || shiftOk(b.next)));
       for (const week of ["", `?week=${addDays(today, 7)}`]) {
         await get<Api.ShiftsWeek>(`/shifts${week}`, (b) => b.days.length === 5 && b.days.every((d) => isArr(d.shifts) && d.shifts.every(shiftOk)));
       }
       for (const id of shiftIds) await get<Api.ShiftDetail>(`/shifts/${id}`, (b) => b.id === id && shiftOk(b) && isArr(b.stops));
       await get<Api.CoverList>("/cover", (b) => b.shifts.every((s) => shiftOk(s) && s.isGap));
-      await get<Api.TrainingOverview>("/training", (b) => b.required.length > 0 && isNum(b.summary.current) && isArr(b.sessions));
+      await get<Api.TrainingOverview>("/training", (b) => b.required.length > 0 && isNum(b.summary.current) && isArr(b.sessions) && isArr(b.comingSoon) && typeof b.induction.complete === "boolean");
+      await get<Api.InductionOverview>("/induction", (b) => b.today === today && isStr(b.moj.status) && isStr(b.moj.requestUrl) && b.agreements.every((a) => a.kind === "AGREEMENT" && isNum(a.version)));
+      await get<Api.PolicyList>("/policies", (b) => b.documents.length === documentIds.length);
+      for (const id of documentIds) await get<Api.DocumentItem>(`/policies/${id}`, (b) => b.id === id && isArr(b.paragraphs));
       for (const code of moduleCodes) await get<Api.TrainingModuleDetail>(`/training/modules/${code}`, (b) => b.module.code === code && isArr(b.paragraphs) && isArr(b.links));
       await get<Api.SlotOverview>("/slot", (b) => isArr(b.slots) && isArr(b.absences) && isArr(b.upcoming));
       await get<Api.SecurityOverview>("/security", (b) => typeof b.hasPassword === "boolean" && typeof b.appleAvailable === "boolean" && isArr(b.passkeys) && isStr(b.manageUrl));

@@ -1,6 +1,8 @@
 import Link from "next/link";
-import { CalendarCheck, KeyRound, LogOut, Sprout, ChevronRight } from "lucide-react";
+import { CalendarCheck, ClipboardCheck, FileText, KeyRound, LogOut, Sprout, ChevronRight } from "lucide-react";
 import { requireVolunteer } from "@/lib/session";
+import { inductionFor } from "@/lib/induction-data";
+import { documentsFor } from "@/lib/documents";
 import { isDemo } from "@/lib/env";
 import { formatDate, dateToISO } from "@/lib/dates";
 import { ROLE_LABEL, fullName } from "@/lib/domain";
@@ -19,6 +21,11 @@ export const metadata = { title: "My profile" };
 export default async function ProfilePage() {
   const me = await requireVolunteer();
   const demo = isDemo();
+  const [induction, documents] = await Promise.all([inductionFor(me), documentsFor(me)]);
+  const counts: Record<string, number> = {
+    "/app/induction": induction.outstanding,
+    "/app/policies": documents.filter((d) => d.needsAction && d.document.kind === "POLICY").length,
+  };
   return (
     <AppPage>
       <header className="flex items-center gap-4 @3xl/app:gap-6">
@@ -50,11 +57,14 @@ export default async function ProfilePage() {
             {[
               { href: "/app/slot", label: "My regular slot and absences", icon: CalendarCheck },
               { href: "/app/harvest", label: "Harvest", icon: Sprout },
+              { href: "/app/induction", label: "Induction", icon: ClipboardCheck },
+              { href: "/app/policies", label: "Policies", icon: FileText },
               { href: "/app/security", label: "Sign-in and security", icon: KeyRound },
             ].map((l) => (
               <Link key={l.href} href={l.href} className="flex min-h-14 items-center gap-3 border-b border-border px-4 last:border-b-0 hover:bg-muted">
                 <l.icon className="size-5 text-teal" aria-hidden />
                 <span className="flex-1 font-semibold text-ink">{l.label}</span>
+                {counts[l.href] ? <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-orange px-1.5 text-sm font-bold text-ink tabular">{counts[l.href]}<span className="sr-only"> to do</span></span> : null}
                 <ChevronRight className="size-5 text-muted-foreground" aria-hidden />
               </Link>
             ))}

@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export const GET = mobileHandler(async (me) => {
   const today = todayISO();
   const { next, training, coverable, harvest, alert, empty } = await loadHome(me, today);
-  const ctx = { me, statuses: training.statuses, today };
+  const ctx = { me, statuses: training.statuses, induction: training.induction, today };
   return json<Home>({
     today,
     next: next ? shiftSummary(next, ctx) : null,

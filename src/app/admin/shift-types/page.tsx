@@ -5,7 +5,7 @@ import { formatTimeRange, WEEKDAY_SHORT } from "@/lib/dates";
 import { SHIFT_KIND_LABEL, isAdHocKind } from "@/lib/domain";
 import { PageHeader } from "@/components/shared/page-header";
 import { ShiftKindIcon, kindTileClass } from "@/components/app/shift-card";
-import { ShiftTypeEditor } from "@/components/admin/shift-type-editor";
+import { NewShiftType, RetireShiftTypeButton, ShiftTypeEditor } from "@/components/admin/shift-type-editor";
 import { cn } from "@/lib/utils";
 
 export const metadata = { title: "Shift types" };
@@ -17,10 +17,16 @@ function hoursLabel(h: number) {
 
 export default async function ShiftTypesPage() {
   await requireAdmin();
-  const templates = await db.shiftTemplate.findMany({ where: { active: true }, include: { route: true }, orderBy: { order: "asc" } });
+  const [all, routes] = await Promise.all([
+    db.shiftTemplate.findMany({ include: { route: true }, orderBy: { order: "asc" } }),
+    db.route.findMany({ orderBy: { order: "asc" }, select: { id: true, name: true } }),
+  ]);
+  const templates = all.filter((t) => t.active);
+  const retired = all.filter((t) => !t.active);
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-8">
-      <PageHeader eyebrow="Set-up" title="Shift types" description="Names, times, crew sizes and who volunteers work with. Last-minute thresholds are set per shift type, so route shifts can call for cover earlier than the warehouse." />
+      <PageHeader eyebrow="Set-up" title="Shift types" description="Names, times, crew sizes and who volunteers work with. Last-minute thresholds are set per shift type, so route shifts can call for cover earlier than the warehouse. Add your own, such as a harvest for one group, to plan and message them separately." />
+      <NewShiftType routes={routes} />
       <div className="flex flex-col gap-3">
         {templates.map((t) => {
           // Ad hoc shifts (harvests) are made one at a time and are never
@@ -54,13 +60,30 @@ export default async function ShiftTypesPage() {
                   </dl>
                 )}
               </div>
-              <div className="mt-3">
+              <div className="mt-3 flex flex-wrap gap-2">
                 <ShiftTypeEditor shiftType={{ id: t.id, name: t.name, workingWith: t.workingWith ?? "", startTime: t.startTime, endTime: t.endTime, capacity: t.capacity, needed: t.needed, lastMinuteHours: t.lastMinuteHours, escalateHours: t.escalateHours }} adHoc={adHoc} />
+                <RetireShiftTypeButton id={t.id} name={t.name} active />
               </div>
             </article>
           );
         })}
       </div>
+      {retired.length > 0 && (
+        <section className="flex flex-col gap-2" aria-labelledby="retired-h">
+          <h2 id="retired-h" className="text-xl text-ink">Retired</h2>
+          <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-dashed border-border bg-card/60">
+            {retired.map((t) => (
+              <li key={t.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
+                <span className="min-w-0 flex-1">
+                  <span className="block font-semibold text-ink">{t.name}</span>
+                  <span className="block text-sm text-muted-foreground">{SHIFT_KIND_LABEL[t.kind]} · {formatTimeRange(t.startTime, t.endTime)}</span>
+                </span>
+                <RetireShiftTypeButton id={t.id} name={t.name} active={false} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   );
 }

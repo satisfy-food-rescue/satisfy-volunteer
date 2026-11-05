@@ -4,6 +4,7 @@ import type { ShiftView } from "@/lib/roster";
 import type { Eligibility, ModuleStatus } from "@/lib/training";
 import { shiftAction } from "@/lib/mobile-api/shifts";
 import { coverableGaps } from "@/lib/volunteer-data";
+import { NO_INDUCTION } from "@/lib/induction";
 
 const TODAY = "2026-10-09";
 const ME = "me";
@@ -12,14 +13,15 @@ function view(over: { iso?: string; status?: string; kind?: string; confirmed?: 
   return { iso: over.iso ?? TODAY, kind: over.kind ?? "DRIVERS_ASSISTANT", shift: { status: over.status ?? "SCHEDULED" }, confirmed: over.confirmed ?? [], isFull: over.isFull ?? false, isGap: over.isGap ?? false } as unknown as ShiftView;
 }
 
-const eligible: Eligibility = { eligible: true, hasRole: true, blockers: [], reason: null };
+const eligible: Eligibility = { eligible: true, hasRole: true, induction: [], blockers: [], reason: null };
 const blocked: Eligibility = {
   eligible: false,
   hasRole: true,
+  induction: [],
   blockers: [{ module: { code: "MANUAL_HANDLING" } as TrainingModule, status: "OVERDUE", message: "Complete the Manual Handling refresher to book driver help shifts" }],
   reason: "Complete the Manual Handling refresher to book driver help shifts",
 };
-const noRole: Eligibility = { eligible: false, hasRole: false, blockers: [], reason: "Driver help shifts need the driver help role." };
+const noRole: Eligibility = { eligible: false, hasRole: false, induction: [], blockers: [], reason: "Driver help shifts need the driver help role." };
 const mine = { id: "a1", volunteerId: ME, source: "REGULAR" };
 
 describe("shiftAction follows the web's ShiftActions order", () => {
@@ -49,6 +51,8 @@ describe("shiftAction follows the web's ShiftActions order", () => {
 
   it("a missing role is fixed by asking for the role, not by training", () => {
     expect(shiftAction(view(), ME, noRole, TODAY)).toEqual({ kind: "BLOCKED", reason: noRole.reason, fix: "role", moduleCode: null });
+    const induction: Eligibility = { ...blocked, induction: ["Sign the Volunteer Agreement first"], reason: "Sign the Volunteer Agreement first" };
+    expect(shiftAction(view(), ME, induction, TODAY)).toEqual({ kind: "BLOCKED", reason: "Sign the Volunteer Agreement first", fix: "induction", moduleCode: null });
   });
 
   it("a harvest without the role is fixed by joining the harvest pool", () => {
@@ -76,11 +80,11 @@ describe("coverableGaps counts only gaps the volunteer could take", () => {
   const ids = (list: ShiftView[]) => list.map((g) => (g as unknown as { id: string }).id);
 
   it("leaves out locked, own and past gaps", () => {
-    expect(ids(coverableGaps(gaps, { me, statuses: [], today: TODAY }))).toEqual(["open"]);
+    expect(ids(coverableGaps(gaps, { me, statuses: [], induction: NO_INDUCTION, today: TODAY }))).toEqual(["open"]);
   });
 
   it("counts nothing while the training the role needs is overdue", () => {
     const overdue = { module: { code: "MANUAL_HANDLING", name: "Manual Handling", requiredRoles: ["DRIVERS_ASSISTANT"], mandatoryBeforeFirstShift: false }, status: "OVERDUE" } as unknown as ModuleStatus;
-    expect(coverableGaps(gaps, { me, statuses: [overdue], today: TODAY })).toEqual([]);
+    expect(coverableGaps(gaps, { me, statuses: [overdue], induction: NO_INDUCTION, today: TODAY })).toEqual([]);
   });
 });

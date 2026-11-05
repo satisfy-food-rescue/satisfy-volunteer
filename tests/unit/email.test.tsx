@@ -56,10 +56,9 @@ describe("templates", () => {
     expect(T.accountInvite({ firstName: "Aroha", expiresDays: 7, coordinator: true })).toMatchObject({ subject: "Set up your Satisfy coordinator account", body: expect.stringContaining("coordinator admin") });
     expect(T.accountInvite({ firstName: "Jess", expiresDays: 7 }).subject).toBe("Set up your Satisfy volunteer account");
 
-    const granted = T.adminAccessGranted({ firstName: "Margaret", grantedBy: "Phillipa", releasedShifts: 3, releasedSlots: 1 });
+    const granted = T.adminAccessGranted({ firstName: "Margaret", grantedBy: "Phillipa" });
     expect(granted).toMatchObject({ kind: "ADMIN_ACCESS", ctaHref: "/admin" });
-    expect(granted.body).toContain("taken off your regular slot and 3 upcoming shifts");
-    expect(T.adminAccessGranted({ firstName: "Sam", grantedBy: "Phillipa", releasedShifts: 0, releasedSlots: 0 }).body).not.toContain("taken off");
+    expect(granted.body).toContain("You are still a volunteer too");
 
     const removed = T.adminAccessRemoved({ firstName: "Aroha", removedBy: "Phillipa" });
     expect(removed).toMatchObject({ kind: "ADMIN_ACCESS", ctaHref: "/app" });
@@ -85,5 +84,34 @@ describe("templates", () => {
 
   it("marks last-minute callouts as push notifications", () => {
     expect(T.lastMinuteCallout({ shiftName: "S", dateISO: "2026-10-03", start: "08:00", end: "11:30", shiftId: "s" }).channel).toBe("PUSH");
+  });
+});
+
+describe("editable wording", () => {
+  it("drops a paragraph whose placeholder is empty, and keeps the rest", () => {
+    expect(T.renderText({ subject: "Hi {name}", preview: "p", body: "Kia ora {name},\n\nA note: {note}\n\nBye" }, { name: "Jess", note: "" })).toEqual({ subject: "Hi Jess", preview: "p", body: "Kia ora Jess,\n\nBye" });
+  });
+
+  it("matches the standard wording with the builders' own output", () => {
+    const d = T.shiftCancelled({ firstName: "Sam", shiftName: "Warehouse sorting (AM)", dateISO: "2026-11-10", start: "09:00", end: "12:00", shiftId: "s1", regular: true, cancelledBy: "Phillipa" });
+    expect(d.body).not.toContain("A note from");
+    expect(d.template?.key).toBe("shift-cancelled");
+    expect(T.renderText(T.templateByKey("shift-cancelled")!, d.template!.values).body).toBe(d.body);
+  });
+
+  it("has every placeholder it uses, and an example of each", () => {
+    for (const t of T.TEMPLATES) {
+      const used = [t.subject, t.preview, t.body, t.ctaLabel ?? ""].flatMap(T.placeholdersIn);
+      for (const name of used) expect(Object.keys(t.placeholders), `${t.key} uses {${name}}`).toContain(name);
+      expect(Object.keys(t.sample).sort(), t.key).toEqual(Object.keys(t.placeholders).sort());
+      expect(T.wordingProblems(t, t), t.key).toBeNull();
+    }
+    expect(new Set(T.TEMPLATES.map((t) => t.key)).size).toBe(T.TEMPLATES.length);
+  });
+
+  it("refuses placeholders the message does not have, and empty parts", () => {
+    const spec = T.templateByKey("shift-reminder")!;
+    expect(T.wordingProblems(spec, { ...spec, subject: "See you {when}" })).toEqual({ subject: "{when} is not a placeholder this message has." });
+    expect(T.wordingProblems(spec, { ...spec, body: "  ", ctaLabel: "" })).toEqual({ body: "This cannot be empty.", ctaLabel: "This cannot be empty." });
   });
 });

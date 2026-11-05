@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CalendarDays, GraduationCap, Plus, Sprout } from "lucide-react";
 import { requireAdmin } from "@/lib/session";
 import { db } from "@/lib/db";
+import { ACTIVE_POOL } from "@/lib/pool";
 import { addDays, formatDay, isoToDate, todayISO } from "@/lib/dates";
 import { HARVEST_ROLE, inHarvestPool } from "@/lib/domain";
 import { decorateShift, shiftInclude } from "@/lib/roster";
@@ -22,7 +23,7 @@ export default async function HarvestsAdminPage() {
       include: shiftInclude,
       orderBy: [{ date: "asc" }, { startTime: "asc" }],
     }),
-    db.volunteer.findMany({ where: { status: "ACTIVE", role: "VOLUNTEER", roles: { has: HARVEST_ROLE } }, include: { trainingRecords: true } }),
+    db.volunteer.findMany({ where: { ...ACTIVE_POOL, roles: { has: HARVEST_ROLE } }, include: { trainingRecords: true } }),
     db.trainingModule.findMany({ orderBy: { order: "asc" } }),
   ]);
   const views = shifts.map(decorateShift);

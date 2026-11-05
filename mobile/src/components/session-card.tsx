@@ -40,7 +40,17 @@ export function SessionCard({ session }: { session: TrainingSessionItem }) {
         </Text>
       )}
       <View style={{ marginTop: 8 }}>
-        {session.mine === "GOING" ? (
+        {session.lockedReason ? (
+          // Why they cannot book in yet, in place of the RSVP, as on the web.
+          <View style={{ flexDirection: "row", gap: 6 }}>
+            <View style={{ paddingTop: 3 }}>
+              <Icon name="lock" size={14} color={t.mutedText} />
+            </View>
+            <Text variant="small" tone="mutedText" style={{ flex: 1 }}>
+              {session.lockedReason}
+            </Text>
+          </View>
+        ) : session.mine === "GOING" ? (
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
               <Icon name="check" size={18} color={t.greenText} />

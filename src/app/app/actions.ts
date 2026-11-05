@@ -32,6 +32,14 @@ export async function rsvpSession(sessionId: string, going: boolean): Promise<Ac
   return A.rsvpSession(await requireVolunteer(), sessionId, going);
 }
 
+export async function signAgreements(input: z.infer<typeof A.signAgreementsSchema>): Promise<ActionResult> {
+  return A.signAgreements(await requireVolunteer(), input);
+}
+
+export async function acknowledgeDocument(documentId: string, version: number): Promise<ActionResult> {
+  return A.acknowledgeDocument(await requireVolunteer(), documentId, version);
+}
+
 export async function setHarvestPool(inPool: boolean): Promise<ActionResult> {
   return A.setHarvestPool(await requireVolunteer(), inPool);
 }

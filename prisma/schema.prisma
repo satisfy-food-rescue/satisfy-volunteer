@@ -130,6 +130,10 @@ enum EmailKind {
   APPLICATION_NEW
   ALREADY_REGISTERED
   ACCOUNT_DELETED
+  MOJ_CHECK_RECORDED
+  MOJ_CHECK_RENEWAL
+  MOJ_CHECK_RENEWAL_COORDINATOR
+  DOCUMENT_UPDATED
 }
 
 // PENDING: recorded, not yet handed to the mail or push provider (retried by
@@ -145,6 +149,7 @@ enum AnnouncementAudience {
   ALL
   ROLES
   SHIFT
+  SHIFT_TYPE
 }
 
 enum ContactLogKind {
@@ -158,6 +163,16 @@ enum ContactLogKind {
   ACCOUNT_CREATED
   STATUS_CHANGED
   ADMIN_ACCESS
+  MOJ_CHECK
+  AGREEMENT_SIGNED
+}
+
+// An agreement is signed during induction, before training or shifts (the
+// volunteer and confidentiality agreements). A policy is there to read at any
+// time (health and safety); volunteers confirm they have read a new version.
+enum DocumentKind {
+  AGREEMENT
+  POLICY
 }
 
 enum AuthTokenPurpose {
@@ -215,6 +230,11 @@ model Volunteer {
   availabilityNote String?
   notes            String?
   joinedAt         DateTime        @default(now()) @db.Date
+  // Coordinators only: also volunteers, so they are in the volunteer pool
+  // (lists, roster, training figures, announcements) like role VOLUNTEER.
+  // Set when a volunteer is made a coordinator, or when a coordinator books
+  // a shift or does training in the volunteer app.
+  alsoVolunteers   Boolean         @default(false)
   infoodleId       String?
   infoodleSyncedAt DateTime?
 
@@ -243,8 +263,12 @@ model Volunteer {
   sessionRsvps      SessionRsvp[]
   emails            Email[]
   announcements     Announcement[]
-  contactLogs       ContactLog[]       @relation("ContactLogVolunteer")
-  authoredLogs      ContactLog[]       @relation("ContactLogAuthor")
+  contactLogs       ContactLog[]              @relation("ContactLogVolunteer")
+  authoredLogs      ContactLog[]              @relation("ContactLogAuthor")
+  mojChecks         MojCheck[]                @relation("MojCheckVolunteer")
+  recordedMojChecks MojCheck[]                @relation("MojCheckRecordedBy")
+  acknowledgements  DocumentAcknowledgement[]
+  editedTemplates   EmailTemplate[]
 }
 
 // A signed-in browser or phone. Only the SHA-256 of the token is stored, so a
@@ -393,11 +417,11 @@ model Recipient {
 // scheduling) and regular slots point at a template + weekday. Ad hoc kinds
 // (HARVEST) have no weekdays: each shift is created one at a time.
 model ShiftTemplate {
-  id              String        @id @default(cuid())
+  id              String         @id @default(cuid())
   kind            VolunteerRole
   name            String
   routeId         String?
-  route           Route?        @relation(fields: [routeId], references: [id], onDelete: SetNull)
+  route           Route?         @relation(fields: [routeId], references: [id], onDelete: SetNull)
   startTime       String
   endTime         String
   capacity        Int
@@ -410,13 +434,14 @@ model ShiftTemplate {
   workingWith     String?
   // A gap that opens within this many hours of the start sends a push
   // notification to eligible last-minute volunteers.
-  lastMinuteHours Int           @default(48)
+  lastMinuteHours Int            @default(48)
   // Still uncovered this many hours before the start: alert the coordinator.
-  escalateHours   Int           @default(24)
-  order           Int           @default(0)
-  active          Boolean       @default(true)
+  escalateHours   Int            @default(24)
+  order           Int            @default(0)
+  active          Boolean        @default(true)
   shifts          Shift[]
   regularSlots    RegularSlot[]
+  announcements   Announcement[]
 }
 
 model Shift {
@@ -509,6 +534,12 @@ model TrainingModule {
   // by blank lines.
   content                   String?
   order                     Int               @default(0)
+  // Must be completed first, so stages run in sequence (T1 before T2).
+  prerequisiteId            String?
+  prerequisite              TrainingModule?   @relation("ModulePrerequisite", fields: [prerequisiteId], references: [id], onDelete: SetNull)
+  unlocks                   TrainingModule[]  @relation("ModulePrerequisite")
+  // Shown to volunteers as coming soon. Not required, cannot be completed.
+  inDevelopment             Boolean           @default(false)
   records                   TrainingRecord[]
   sessions                  TrainingSession[]
   links                     TrainingLink[]
@@ -664,6 +695,9 @@ model Announcement {
   roles          VolunteerRole[]
   shiftId        String?
   shift          Shift?               @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  // The shift type, when audience is SHIFT_TYPE.
+  templateId     String?
+  template       ShiftTemplate?       @relation(fields: [templateId], references: [id], onDelete: SetNull)
   // Who it went to, in words, kept for the history after a shift is deleted.
   audienceLabel  String
   push           Boolean              @default(false)
@@ -689,6 +723,92 @@ model ContactLog {
   createdAt   DateTime       @default(now())
 
   @@index([volunteerId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Induction: Ministry of Justice check and agreements; policies
+// ---------------------------------------------------------------------------
+
+// A coordinator has sighted the volunteer's Ministry of Justice criminal
+// record check (a self-check the volunteer requests online). The latest one
+// counts, and it is renewed every three years (MOJ_CHECK_YEARS).
+model MojCheck {
+  id           String     @id @default(cuid())
+  volunteerId  String
+  volunteer    Volunteer  @relation("MojCheckVolunteer", fields: [volunteerId], references: [id], onDelete: Cascade)
+  // The date on the check: renewal runs from here.
+  checkedOn    DateTime   @db.Date
+  recordedById String?
+  recordedBy   Volunteer? @relation("MojCheckRecordedBy", fields: [recordedById], references: [id], onDelete: SetNull)
+  note         String?
+  createdAt    DateTime   @default(now())
+
+  @@index([volunteerId, checkedOn])
+}
+
+// A document the board owns, kept in Google Drive (the single source of
+// truth) and shown in the app, or written out here. Editing it does not ask
+// anyone to read it again: publishing a new version does, and for an
+// agreement that means signing it again before the next booking.
+model Document {
+  id               String                    @id @default(cuid())
+  kind             DocumentKind
+  title            String
+  summary          String
+  // A Google Drive or Docs share link (embedded in the app), or any https page.
+  url              String?
+  // Paragraphs separated by a blank line, shown when there is no link, or
+  // as the words beside the tick box.
+  body             String?
+  // Agreements: who must sign. Policies: who it is for; empty is everyone.
+  roles            VolunteerRole[]
+  version          Int                       @default(1)
+  // What changed, from the coordinator, shown with the new version.
+  versionNote      String?
+  versionAt        DateTime                  @default(now())
+  order            Int                       @default(0)
+  archived         Boolean                   @default(false)
+  createdAt        DateTime                  @default(now())
+  updatedAt        DateTime                  @updatedAt
+  acknowledgements DocumentAcknowledgement[]
+}
+
+// A volunteer signed an agreement, or confirmed they read a policy, at one
+// version. Kept for every version, as the record of what they agreed to.
+model DocumentAcknowledgement {
+  id          String    @id @default(cuid())
+  documentId  String
+  document    Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  volunteerId String
+  volunteer   Volunteer @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
+  version     Int
+  createdAt   DateTime  @default(now())
+
+  @@unique([documentId, volunteerId, version])
+  @@index([volunteerId])
+}
+
+// Settings coordinators change in the admin. One row, id 1.
+model Settings {
+  id            Int             @id @default(1)
+  // Roles whose volunteers need a current Ministry of Justice check before
+  // training or booking. Empty turns the requirement off.
+  mojCheckRoles VolunteerRole[] @default([])
+  updatedAt     DateTime        @updatedAt
+}
+
+// A coordinator's wording for an automatic message, replacing the default in
+// src/lib/email-templates.ts. Keyed by the template's key. {placeholders}
+// are filled in when the message is sent.
+model EmailTemplate {
+  key         String     @id
+  subject     String
+  preview     String
+  body        String
+  ctaLabel    String?
+  updatedAt   DateTime   @updatedAt
+  updatedById String?
+  updatedBy   Volunteer? @relation(fields: [updatedById], references: [id], onDelete: SetNull)
 }
 
 // Small key/value store for operational bookkeeping, e.g. the date the demo

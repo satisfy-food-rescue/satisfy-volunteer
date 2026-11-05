@@ -5,6 +5,7 @@ import { dateToISO, todayISO } from "../dates";
 import { inHarvestPool, sortRoles } from "../domain";
 import { isDemo } from "../env";
 import { coverGaps, coverableGaps, trainingContext } from "../volunteer-data";
+import { documentsFor } from "../documents";
 
 export function meView(v: Volunteer): Me {
   return {
@@ -27,12 +28,17 @@ export function meView(v: Volunteer): Me {
 /** Badges count exactly what the web tab bar does (src/app/app/layout.tsx). */
 export async function mobileSession(me: Volunteer): Promise<MobileSession> {
   const today = todayISO();
-  const [gaps, training] = await Promise.all([coverGaps(me.id, today), trainingContext(me, today)]);
-  const coverable = coverableGaps(gaps, { me, statuses: training.statuses, today });
+  const [gaps, training, documents] = await Promise.all([coverGaps(me.id, today), trainingContext(me, today), documentsFor(me)]);
+  const coverable = coverableGaps(gaps, { me, statuses: training.statuses, induction: training.induction, today });
   return {
     me: meView(me),
     today,
     demo: isDemo(),
-    badges: { cover: coverable.length, training: training.summary.overdue + training.summary.notStarted },
+    badges: {
+      cover: coverable.length,
+      training: training.summary.overdue + training.summary.notStarted,
+      induction: training.induction.outstanding,
+      policies: documents.filter((d) => d.needsAction && d.document.kind === "POLICY").length,
+    },
   };
 }

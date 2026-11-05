@@ -1,14 +1,15 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { Sprout, Zap } from "lucide-react";
+import { ShieldCheck, Sprout, Zap } from "lucide-react";
 import { requireAdmin } from "@/lib/session";
 import { db } from "@/lib/db";
+import { IN_POOL } from "@/lib/pool";
 import { todayISO, WEEKDAY_SHORT } from "@/lib/dates";
 import { ROLE_SHORT, fullName, inHarvestPool, isVolunteerRole } from "@/lib/domain";
 import { moduleStatuses, trainingSummary } from "@/lib/training";
 import { PageHeader } from "@/components/shared/page-header";
 import { AvatarBadge } from "@/components/shared/avatar-badge";
-import { TrainingChip } from "@/components/shared/status-chip";
+import { Chip, TrainingChip } from "@/components/shared/status-chip";
 import { VolunteerFilters } from "@/components/admin/volunteer-filters";
 import { AddVolunteerButton } from "@/components/admin/volunteer-admin-controls";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -22,7 +23,7 @@ export default async function VolunteersPage({ searchParams }: { searchParams: P
   const [volunteers, modules] = await Promise.all([
     // Deleted accounts are left out: there is nothing to see or do, and they
     // are still reachable from the roster history they appear on.
-    db.volunteer.findMany({ where: { role: "VOLUNTEER", status: { not: "DELETED" } }, include: { trainingRecords: true, regularSlots: { include: { template: true } } }, orderBy: [{ firstName: "asc" }, { lastName: "asc" }] }),
+    db.volunteer.findMany({ where: { ...IN_POOL, status: { not: "DELETED" } }, include: { trainingRecords: true, regularSlots: { include: { template: true } } }, orderBy: [{ firstName: "asc" }, { lastName: "asc" }] }),
     db.trainingModule.findMany(),
   ]);
   const q = (sp.q ?? "").toLowerCase().trim();
@@ -63,7 +64,7 @@ export default async function VolunteersPage({ searchParams }: { searchParams: P
                     <Link href={`/admin/volunteers/${v.id}`} className="flex items-center gap-3">
                       <AvatarBadge person={v} size="sm" />
                       <span className="min-w-0">
-                        <span className="block font-bold text-ink hover:underline">{fullName(v)}</span>
+                        <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5"><span className="font-bold text-ink hover:underline">{fullName(v)}</span>{v.role === "ADMIN" && <Chip tone="info" size="sm" icon={ShieldCheck}>Coordinator</Chip>}</span>
                         <span className="block text-xs text-muted-foreground">{[v.suburb, v.birthYear && `aged ${new Date().getFullYear() - v.birthYear}`, v.status !== "ACTIVE" && "inactive"].filter(Boolean).join(" · ")}</span>
                       </span>
                     </Link>

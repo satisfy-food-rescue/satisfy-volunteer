@@ -4,7 +4,7 @@ import { requireVolunteer } from "@/lib/session";
 import { addDays, formatDayShort, isWeekday, todayISO, weekMonday, workWeek, WEEKDAY_LONG, weekdayOf, isoToDate, formatMonth } from "@/lib/dates";
 import { shiftsBetween, type ShiftView } from "@/lib/roster";
 import { trainingContext } from "@/lib/volunteer-data";
-import { eligibilityFor } from "@/lib/training";
+import { eligibilityFor, lockFix } from "@/lib/training";
 import { LockedShiftCard, ShiftCard } from "@/components/app/shift-card";
 import { LockBanner } from "@/components/app/lock-banner";
 import { AppPage, AppPageHeader } from "@/components/app/app-page-header";
@@ -27,7 +27,7 @@ export default async function ShiftsPage({ searchParams }: { searchParams: Promi
     trainingContext(me, today),
     db.absence.findMany({ where: { volunteerId: me.id, startDate: { lte: isoToDate(days[4]) }, endDate: { gte: isoToDate(days[0]) } } }),
   ]);
-  const eligibilityByKind = new Map([...new Set(shifts.map((s) => s.kind))].map((k) => [k, eligibilityFor(me, k, training.statuses)] as const));
+  const eligibilityByKind = new Map([...new Set(shifts.map((s) => s.kind))].map((k) => [k, eligibilityFor(me, k, training.statuses, training.induction)] as const));
   const isAway = (iso: string) => absences.some((a) => a.startDate <= isoToDate(iso) && a.endDate >= isoToDate(iso));
   const thisWeek = weekMonday(today);
   // Why some shifts are locked, said once above the list rather than on every
@@ -87,7 +87,7 @@ export default async function ShiftsPage({ searchParams }: { searchParams: Promi
               <div className={cn("grid gap-2.5 @4xl/app:grid-cols-2 @4xl/app:gap-3 @6xl/app:grid-cols-1", past && "@3xl/app:opacity-75")}>
                 {open.map((view) => {
                   const e = eligibilityByKind.get(view.kind)!;
-                  return <ShiftCard key={view.shift.id} view={view} meId={me.id} eligible={e.eligible} needsRole={!e.hasRole} reason={e.reason} past={past} />;
+                  return <ShiftCard key={view.shift.id} view={view} meId={me.id} eligible={e.eligible} lock={lockFix(e, view.kind)} reason={e.reason} past={past} />;
                 })}
               </div>
             )}
@@ -104,7 +104,7 @@ export default async function ShiftsPage({ searchParams }: { searchParams: Promi
                 </summary>
                 <div className="grid gap-2 px-2 pb-2 @4xl/app:grid-cols-2 @6xl/app:grid-cols-1">
                   {locked.map((view) => (
-                    <LockedShiftCard key={view.shift.id} view={view} needsRole={!eligibilityByKind.get(view.kind)!.hasRole} />
+                    <LockedShiftCard key={view.shift.id} view={view} lock={lockFix(eligibilityByKind.get(view.kind)!, view.kind)} />
                   ))}
                 </div>
               </details>

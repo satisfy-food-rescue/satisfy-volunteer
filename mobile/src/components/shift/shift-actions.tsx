@@ -78,6 +78,8 @@ export function ShiftActions({ shift, compact = false }: { shift: ShiftSummary; 
             <Button label="Join the harvest pool" variant="outline" block onPress={() => router.push("/harvest")} />
           ) : a.fix === "role" ? (
             <Button label="Ask to change my roles" variant="outline" block onPress={() => router.push("/role-request")} />
+          ) : a.fix === "induction" ? (
+            <Button label="Finish my induction" variant="outline" block onPress={() => router.push("/induction")} />
           ) : (
             <Button
               label="Go to training"

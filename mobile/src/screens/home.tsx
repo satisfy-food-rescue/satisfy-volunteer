@@ -111,7 +111,7 @@ function HomeContent({ home }: { home: Home }) {
   return (
     <>
       {home.next ? <NextShift shift={home.next} today={home.today} /> : <NoShift home={home} />}
-      {home.alert && <TrainingAlert alert={home.alert} />}
+      {home.alert && <AlertCard alert={home.alert} />}
       <QuickActions />
       {home.cover.count > 0 && <CoverCard cover={home.cover} />}
       {home.harvest && <HarvestCard harvest={home.harvest} />}
@@ -174,7 +174,11 @@ function NoShift({ home }: { home: Home }) {
         {home.empty.text}
       </Text>
       <View style={{ marginTop: 10, flexDirection: "row" }}>
-        <Button label={home.empty.cta} block onPress={() => router.navigate(home.empty.target === "training" ? TAB.training : TAB.shifts)} />
+        <Button
+          label={home.empty.cta}
+          block
+          onPress={() => (home.empty.target === "induction" ? router.push("/induction") : router.navigate(home.empty.target === "training" ? TAB.training : TAB.shifts))}
+        />
       </View>
     </Card>
   );
@@ -186,14 +190,18 @@ const ALERT_TONE: Record<HomeAlert["tone"], { bg: keyof Palette; fg: keyof Palet
   info: { bg: "skyTint", fg: "skyText", icon: "training" },
 };
 
-function TrainingAlert({ alert }: { alert: HomeAlert }) {
+/** The induction or training step that most needs doing. Tapping it opens
+ *  that step: the induction inside Home, or the Training tab. */
+function AlertCard({ alert }: { alert: HomeAlert }) {
   const t = useTheme();
+  const induction = alert.target === "induction";
   const c = ALERT_TONE[alert.tone];
+  const icon = induction && alert.tone === "info" ? "induction" : c.icon;
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityHint="Opens your training"
-      onPress={() => router.navigate(TAB.training)}
+      accessibilityHint={induction ? "Opens your induction" : "Opens your training"}
+      onPress={() => (induction ? router.push("/induction") : router.navigate(TAB.training))}
       style={({ pressed }) => ({
         flexDirection: "row",
         gap: 12,
@@ -205,7 +213,7 @@ function TrainingAlert({ alert }: { alert: HomeAlert }) {
       })}
     >
       <View style={{ paddingTop: 2 }}>
-        <Icon name={c.icon} size={22} color={t[c.fg]} />
+        <Icon name={icon} size={22} color={t[c.fg]} />
       </View>
       <View style={{ flex: 1, gap: 2 }}>
         <Text variant="bodyBold" tone={c.fg}>

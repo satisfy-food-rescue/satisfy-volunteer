@@ -1,8 +1,10 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { db } from "./db";
+import { ACTIVE_POOL } from "./pool";
 import { dateToISO, isoToDate, todayISO } from "./dates";
 import { ABSENCE_REASON_LABEL, ROLE_LABEL, fullName, isAdHocKind, type ShiftKind } from "./domain";
 import { eligibilityFor, moduleStatuses } from "./training";
+import { inductionsFor } from "./induction-data";
 
 export const shiftInclude = {
   template: { include: { route: true } },
@@ -113,7 +115,7 @@ export async function availableForShift(view: ShiftView) {
   const today = todayISO();
   const [volunteers, modules, sameDay] = await Promise.all([
     db.volunteer.findMany({
-      where: { status: "ACTIVE", role: "VOLUNTEER", roles: { has: view.kind } },
+      where: { ...ACTIVE_POOL, roles: { has: view.kind } },
       include: {
         trainingRecords: true,
         absences: { where: { startDate: { lte: view.shift.date }, endDate: { gte: view.shift.date } } },
@@ -130,11 +132,12 @@ export async function availableForShift(view: ShiftView) {
     }),
   ]);
   const busy = new Set(sameDay.map((a) => a.volunteerId));
-  return volunteers
-    .filter((v) => !busy.has(v.id) && v.absences.length === 0)
+  const free = volunteers.filter((v) => !busy.has(v.id) && v.absences.length === 0);
+  const inductions = await inductionsFor(free, today);
+  return free
     .map((v) => {
       const statuses = moduleStatuses(v, modules, v.trainingRecords, today);
-      const elig = eligibilityFor(v, view.kind, statuses);
+      const elig = eligibilityFor(v, view.kind, statuses, inductions.get(v.id) ?? null);
       return { volunteer: v, eligibility: elig, coversBefore: v.assignments.length };
     })
     .filter((x) => x.eligibility.eligible);
@@ -146,7 +149,7 @@ export async function availableForShift(view: ShiftView) {
 export async function shiftFormTemplates() {
   const [templates, volunteers] = await Promise.all([
     db.shiftTemplate.findMany({ where: { active: true }, include: { route: true }, orderBy: { order: "asc" } }),
-    db.volunteer.findMany({ where: { status: "ACTIVE", role: "VOLUNTEER" }, select: { roles: true } }),
+    db.volunteer.findMany({ where: ACTIVE_POOL, select: { roles: true } }),
   ]);
   return templates
     .map((t) => ({

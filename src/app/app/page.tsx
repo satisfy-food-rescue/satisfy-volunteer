@@ -74,7 +74,7 @@ export default async function HomePage() {
     alert && !onboarding && (
       <Link
         key="alert"
-        href="/app/training"
+        href={alert.target === "induction" ? "/app/induction" : "/app/training"}
         className={cn(
           "flex items-start gap-3 rounded-2xl p-4 ring-1 transition-colors",
           alert.tone === "bad" && "bg-status-bad-bg text-status-bad ring-status-bad/20 hover:ring-status-bad/40",
@@ -191,7 +191,7 @@ export default async function HomePage() {
               <p className="mt-1 text-sm text-muted-foreground @3xl/app:mt-2 @3xl/app:text-base">
                 {onboarding?.text ?? empty.text}
               </p>
-              <Button className="mt-4 h-12 w-full text-base @3xl/app:mt-6 @3xl/app:w-auto @3xl/app:px-6" render={<Link href={empty.target === "training" ? "/app/training" : "/app/shifts"} />}>
+              <Button className="mt-4 h-12 w-full text-base @3xl/app:mt-6 @3xl/app:w-auto @3xl/app:px-6" render={<Link href={empty.target === "induction" ? "/app/induction" : empty.target === "training" ? "/app/training" : "/app/shifts"} />}>
                 {empty.cta}
               </Button>
             </div>

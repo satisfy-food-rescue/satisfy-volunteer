@@ -1,9 +1,11 @@
 import { requireAdmin } from "@/lib/session";
 import { isDemo } from "@/lib/env";
 import { db } from "@/lib/db";
+import { ACTIVE_POOL } from "@/lib/pool";
 import { addDays, todayISO } from "@/lib/dates";
 import { gapsBetween } from "@/lib/roster";
 import { moduleStatuses, trainingSummary } from "@/lib/training";
+import { inductionsFor } from "@/lib/induction-data";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { BrandFooter, LogoIcon } from "@/components/brand/logo";
@@ -16,14 +18,17 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const [applications, gaps, volunteers, modules] = await Promise.all([
     db.application.count({ where: { status: "PENDING" } }),
     gapsBetween(today, addDays(today, 14)),
-    db.volunteer.findMany({ where: { status: "ACTIVE", role: "VOLUNTEER" }, include: { trainingRecords: true } }),
+    db.volunteer.findMany({ where: ACTIVE_POOL, include: { trainingRecords: true } }),
     db.trainingModule.findMany(),
   ]);
   const overdue = volunteers.filter((v) => trainingSummary(moduleStatuses(v, modules, v.trainingRecords, today)).overdue > 0).length;
+  // Checks that need the coordinator: renewals coming up or already lapsed.
+  const inductions = await inductionsFor(volunteers, today);
+  const mojDue = [...inductions.values()].filter((i) => i.moj.status === "RENEWAL_DUE" || i.moj.status === "EXPIRED").length;
 
   return (
     <SidebarProvider>
-      <AdminSidebar user={{ firstName: user.firstName, lastName: user.lastName, email: user.email }} demo={isDemo()} badges={{ applications, gaps: gaps.length, training: overdue }} />
+      <AdminSidebar user={{ firstName: user.firstName, lastName: user.lastName, email: user.email }} demo={isDemo()} badges={{ applications, gaps: gaps.length, training: overdue, induction: mojDue }} />
       <SidebarInset id="main" className="min-w-0 bg-background">
         <header className="sticky top-0 z-30 flex h-14 items-center gap-2 bg-teal px-3 text-white md:hidden">
           <SidebarTrigger className="tap rounded-full text-white hover:bg-white/10 hover:text-white" />

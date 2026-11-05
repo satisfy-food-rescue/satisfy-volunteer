@@ -7,6 +7,8 @@ import {
   BarChart3,
   CalendarOff,
   CalendarRange,
+  ClipboardCheck,
+  FileSignature,
   FileText,
   GraduationCap,
   Inbox,
@@ -43,7 +45,7 @@ type NavLink = {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   exact?: boolean;
-  badge?: "applications" | "gaps" | "training";
+  badge?: "applications" | "gaps" | "training" | "induction";
 };
 
 // Grouped by the job in hand rather than by data type: what needs doing
@@ -70,6 +72,7 @@ const SECTIONS: { label: string; links: NavLink[] }[] = [
     links: [
       { href: "/admin/volunteers", label: "Volunteers", icon: Users },
       { href: "/admin/applications", label: "Applications", icon: Inbox, badge: "applications" },
+      { href: "/admin/induction", label: "Induction", icon: ClipboardCheck, badge: "induction" },
       { href: "/admin/training", label: "Training", icon: GraduationCap, badge: "training" },
     ],
   },
@@ -84,6 +87,7 @@ const SECTIONS: { label: string; links: NavLink[] }[] = [
     label: "Set-up",
     links: [
       { href: "/admin/shift-types", label: "Shift types", icon: ListChecks },
+      { href: "/admin/policies", label: "Policies", icon: FileSignature },
       { href: "/admin/coordinators", label: "Coordinators", icon: ShieldCheck },
       { href: "/admin/settings", label: "Emails and import", icon: FileText },
     ],
@@ -95,6 +99,7 @@ const BADGE_NOUN: Record<NonNullable<NavLink["badge"]>, string> = {
   gaps: "shifts need cover",
   applications: "waiting for review",
   training: "volunteers overdue",
+  induction: "Ministry of Justice checks due or expired",
 };
 
 export function AdminSidebar({

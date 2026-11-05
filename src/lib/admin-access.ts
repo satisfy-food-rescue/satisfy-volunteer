@@ -10,15 +10,17 @@ import { queueEmail } from "./emails";
 import { adminAccessGranted, adminAccessRemoved } from "./email-templates";
 import type { ActionResult } from "./volunteer-actions";
 
-// Who can use the coordinator admin. An admin (shown as a coordinator) is not
-// in the volunteer pool: the roster, announcements, training figures and
-// reports count role VOLUNTEER only. So making a volunteer an admin takes
-// them off their regular slots and upcoming shifts, like deactivating does,
-// and keeps their roles, training records and history, so removing the
-// access again puts them back in the pool where they left off. There is
-// always at least one active admin, and nobody removes their own access.
-// The server actions in src/app/admin/actions.ts check requireAdmin() and
-// pass the signed-in admin in as `actor`.
+// Who can use the coordinator admin. An admin (shown as a coordinator) can
+// also volunteer: then they are in the volunteer pool (src/lib/pool.ts) and
+// show up on the roster, in the volunteer and training lists and in
+// announcements, like anyone else. A volunteer made a coordinator keeps
+// volunteering, slots and all. Someone added as a coordinator from scratch is
+// staff and not in the pool until they book a shift or do training in the
+// volunteer app, or a coordinator turns on "Also volunteers". Turning it off
+// takes them off their regular slots and upcoming shifts, after asking.
+// There is always at least one active admin, and nobody removes their own
+// access. The server actions in src/app/admin/actions.ts check
+// requireAdmin() and pass the signed-in admin in as `actor`.
 
 type Actor = Pick<Volunteer, "id" | "firstName">;
 
@@ -26,23 +28,20 @@ export const newAdminSchema = z.object({
   firstName: z.string().trim().min(1, "Add a first name.").max(60),
   lastName: z.string().trim().max(60),
   email: z.email("Check the email address."),
-  /** Set once the coordinator has been told what making an existing
-   *  volunteer an admin releases. */
-  releaseConfirmed: z.boolean(),
 });
 export type NewAdminInput = z.infer<typeof newAdminSchema>;
 type NewAdminField = "firstName" | "lastName" | "email";
 const isNewAdminField = (k: unknown): k is NewAdminField => k === "firstName" || k === "lastName" || k === "email";
 
-/** What making an existing volunteer an admin would take them off. */
+/** Errors about one field name it. */
+export type GrantAdminResult = { ok: true; message: string } | { ok: false; error: string; field?: NewAdminField };
+
+/** What taking a coordinator out of the volunteer pool would release. */
 export type ReleasePreview = { name: string; firstName: string; upcomingShifts: number; regularSlots: number };
 
-/** `confirm` asks the coordinator to agree to releasing a volunteer's slots
- *  and shifts first; sending the form again with `releaseConfirmed` goes
- *  ahead. Errors about one field name it. */
-export type GrantAdminResult =
-  | { ok: true; message: string }
-  | { ok: false; error: string; field?: NewAdminField; confirm?: ReleasePreview };
+/** `confirm` asks the coordinator to agree to releasing slots and shifts
+ *  first; sending it again with `releaseConfirmed` goes ahead. */
+export type VolunteeringResult = { ok: true; message: string } | { ok: false; error: string; confirm?: ReleasePreview };
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
@@ -68,17 +67,18 @@ export async function grantAdminAccess(actor: Actor, input: NewAdminInput): Prom
   const email = normaliseEmail(d.email);
   const existing = await db.volunteer.findUnique({ where: { email } });
   if (!existing) return createAdmin(actor, { firstName: d.firstName, lastName: d.lastName || null, email });
+  if (existing.status === "DELETED") return { ok: false, error: "That account was deleted. Add them with a different email.", field: "email" };
   if (existing.role === "ADMIN" && existing.status === "ACTIVE") {
     return { ok: false, error: `${fullName(existing)} is already a coordinator.`, field: "email" };
   }
-  return promoteToAdmin(actor, existing, d.releaseConfirmed);
+  return promoteToAdmin(actor, existing);
 }
 
 async function createAdmin(actor: Actor, data: { firstName: string; lastName: string | null; email: string }): Promise<GrantAdminResult> {
   let admin: Volunteer;
   try {
     admin = await db.$transaction(async (tx) => {
-      const created = await tx.volunteer.create({ data: { ...data, role: "ADMIN" } });
+      const created = await tx.volunteer.create({ data: { ...data, role: "ADMIN", alsoVolunteers: false } });
       await tx.contactLog.create({ data: { volunteerId: created.id, authorId: actor.id, kind: "ACCOUNT_CREATED", summary: `Added as a coordinator by ${actor.firstName}.` } });
       return created;
     });
@@ -96,34 +96,16 @@ async function createAdmin(actor: Actor, data: { firstName: string; lastName: st
   };
 }
 
-async function promoteToAdmin(actor: Actor, volunteer: Volunteer, releaseConfirmed: boolean): Promise<GrantAdminResult> {
-  const [upcoming, regularSlots] = await Promise.all([upcomingBookings(db, volunteer.id), db.regularSlot.count({ where: { volunteerId: volunteer.id } })]);
-  if ((upcoming.length > 0 || regularSlots > 0) && !releaseConfirmed) {
-    return {
-      ok: false,
-      error: `${fullName(volunteer)} is rostered as a volunteer. Confirm to take them off their shifts.`,
-      confirm: { name: fullName(volunteer), firstName: volunteer.firstName, upcomingShifts: upcoming.length, regularSlots },
-    };
-  }
+/** A volunteer made a coordinator keeps volunteering: their slots, shifts,
+ *  training and history carry on. */
+async function promoteToAdmin(actor: Actor, volunteer: Volunteer): Promise<GrantAdminResult> {
   const reactivated = volunteer.status !== "ACTIVE";
-  const released = await db.$transaction(async (tx) => {
-    // Read again inside the transaction, so a booking made since the
-    // confirmation is released too.
-    const bookings = await upcomingBookings(tx, volunteer.id);
-    const slots = await tx.regularSlot.deleteMany({ where: { volunteerId: volunteer.id } });
-    await tx.assignment.updateMany({ where: { id: { in: bookings.map((b) => b.id) } }, data: { status: "CANCELLED" } });
-    await tx.volunteer.update({ where: { id: volunteer.id }, data: { role: "ADMIN", status: "ACTIVE", isRegular: false } });
-    const releasedText =
-      bookings.length + slots.count > 0
-        ? ` Removed from ${[slots.count > 0 && plural(slots.count, "regular slot", "regular slots"), bookings.length > 0 && plural(bookings.length, "upcoming shift", "upcoming shifts")].filter(Boolean).join(" and ")}.`
-        : "";
-    await tx.contactLog.create({
-      data: { volunteerId: volunteer.id, authorId: actor.id, kind: "ADMIN_ACCESS", summary: `Made a coordinator by ${actor.firstName}.${reactivated ? " Reactivated." : ""}${releasedText}` },
-    });
-    return { shiftIds: [...new Set(bookings.map((b) => b.shiftId))], shifts: bookings.length, slots: slots.count };
-  });
-  let gaps = 0;
-  for (const shiftId of released.shiftIds) if (await afterShiftReleased(shiftId, null)) gaps++;
+  await db.$transaction([
+    db.volunteer.update({ where: { id: volunteer.id }, data: { role: "ADMIN", status: "ACTIVE", alsoVolunteers: true } }),
+    db.contactLog.create({
+      data: { volunteerId: volunteer.id, authorId: actor.id, kind: "ADMIN_ACCESS", summary: `Made a coordinator by ${actor.firstName}. Still volunteers.${reactivated ? " Reactivated." : ""}` },
+    }),
+  ]);
 
   // Someone who has never signed in needs a way to; anyone else just hears
   // about the change.
@@ -131,15 +113,66 @@ async function promoteToAdmin(actor: Actor, volunteer: Volunteer, releaseConfirm
   const admin = { ...volunteer, role: "ADMIN" as const, status: "ACTIVE" as const };
   let emailed: string;
   if (hasSignedIn) {
-    await queueEmail(admin, adminAccessGranted({ firstName: volunteer.firstName, grantedBy: actor.firstName, releasedShifts: released.shifts, releasedSlots: released.slots }));
+    await queueEmail(admin, adminAccessGranted({ firstName: volunteer.firstName, grantedBy: actor.firstName }));
     emailed = `${volunteer.firstName} has been emailed.`;
   } else {
     emailed = (await sendSignInLink(admin, "INVITE"))
       ? `${volunteer.firstName} has been emailed a link to set up their account.`
       : "The invite email could not be sent: use Send invite to try again.";
   }
-  const cover = released.shifts > 0 ? ` and has come off ${plural(released.shifts, "upcoming shift", "upcoming shifts")}${gaps > 0 ? `, ${gaps === released.shifts && gaps === 1 ? "which now needs" : `${gaps} of which now ${gaps === 1 ? "needs" : "need"}`} cover` : ""}` : "";
-  return { ok: true, message: `${fullName(volunteer)} is now a coordinator${cover}. ${emailed}` };
+  return { ok: true, message: `${fullName(volunteer)} is now a coordinator and stays in the volunteer lists. ${emailed}` };
+}
+
+/** Puts a coordinator in the volunteer pool, or takes them out. Taking them
+ *  out releases their regular slots and upcoming shifts, so it asks first. */
+export async function setCoordinatorVolunteering(actor: Actor, volunteerId: string, on: boolean, releaseConfirmed: boolean): Promise<VolunteeringResult> {
+  const target = await db.volunteer.findUnique({ where: { id: volunteerId } });
+  if (!target || target.role !== "ADMIN") return { ok: false, error: "That person is not a coordinator any more." };
+  if (target.alsoVolunteers === on) return { ok: true, message: "No change." };
+  const self = target.id === actor.id;
+  if (on) {
+    await db.$transaction([
+      db.volunteer.update({ where: { id: target.id }, data: { alsoVolunteers: true } }),
+      db.contactLog.create({ data: { volunteerId: target.id, authorId: actor.id, kind: "ADMIN_ACCESS", summary: `Added to the volunteer lists by ${actor.firstName}.` } }),
+    ]);
+    return { ok: true, message: `${self ? "You are" : `${fullName(target)} is`} now in the volunteer lists and can be rostered.` };
+  }
+  const [upcoming, regularSlots] = await Promise.all([upcomingBookings(db, target.id), db.regularSlot.count({ where: { volunteerId: target.id } })]);
+  if ((upcoming.length > 0 || regularSlots > 0) && !releaseConfirmed) {
+    return {
+      ok: false,
+      error: `${fullName(target)} is rostered. Confirm to take them off their shifts.`,
+      confirm: { name: fullName(target), firstName: target.firstName, upcomingShifts: upcoming.length, regularSlots },
+    };
+  }
+  const released = await db.$transaction(async (tx) => {
+    // Read again inside the transaction, so a booking made since the
+    // confirmation is released too.
+    const bookings = await upcomingBookings(tx, target.id);
+    const slots = await tx.regularSlot.deleteMany({ where: { volunteerId: target.id } });
+    await tx.assignment.updateMany({ where: { id: { in: bookings.map((b) => b.id) } }, data: { status: "CANCELLED" } });
+    await tx.volunteer.update({ where: { id: target.id }, data: { alsoVolunteers: false, isRegular: false } });
+    const releasedText =
+      bookings.length + slots.count > 0
+        ? ` Removed from ${[slots.count > 0 && plural(slots.count, "regular slot", "regular slots"), bookings.length > 0 && plural(bookings.length, "upcoming shift", "upcoming shifts")].filter(Boolean).join(" and ")}.`
+        : "";
+    await tx.contactLog.create({ data: { volunteerId: target.id, authorId: actor.id, kind: "ADMIN_ACCESS", summary: `Taken out of the volunteer lists by ${actor.firstName}.${releasedText}` } });
+    return { shiftIds: [...new Set(bookings.map((b) => b.shiftId))], shifts: bookings.length };
+  });
+  let gaps = 0;
+  for (const shiftId of released.shiftIds) if (await afterShiftReleased(shiftId, null)) gaps++;
+  const cover = released.shifts > 0 ? ` Came off ${plural(released.shifts, "upcoming shift", "upcoming shifts")}${gaps > 0 ? `; ${plural(gaps, "shift now needs", "shifts now need")} cover` : ""}.` : "";
+  return { ok: true, message: `${self ? "You are" : `${fullName(target)} is`} no longer in the volunteer lists.${cover}` };
+}
+
+/** A coordinator who books a shift or does training in the volunteer app is
+ *  volunteering, so they join the pool and show up in the lists. */
+export async function joinPoolIfCoordinator(me: Pick<Volunteer, "id" | "role" | "alsoVolunteers">) {
+  if (me.role !== "ADMIN" || me.alsoVolunteers) return;
+  await db.$transaction([
+    db.volunteer.update({ where: { id: me.id }, data: { alsoVolunteers: true } }),
+    db.contactLog.create({ data: { volunteerId: me.id, authorId: me.id, kind: "ADMIN_ACCESS", summary: "Joined the volunteer lists by booking or training in the volunteer app." } }),
+  ]);
 }
 
 /** Makes an admin a volunteer again. Refused for your own account and for
@@ -158,7 +191,7 @@ export async function revokeAdminAccess(actor: Actor, volunteerId: string): Prom
     const target = await tx.volunteer.findUnique({ where: { id: id.data } });
     if (!target || target.role !== "ADMIN") return { ok: false, error: "That person is not a coordinator any more." } as const;
     if (!active.some((a) => a.id !== target.id)) return { ok: false, error: `${target.firstName} is the only active coordinator, so their access stays.` } as const;
-    await tx.volunteer.update({ where: { id: target.id }, data: { role: "VOLUNTEER" } });
+    await tx.volunteer.update({ where: { id: target.id }, data: { role: "VOLUNTEER", alsoVolunteers: false } });
     await tx.contactLog.create({ data: { volunteerId: target.id, authorId: actor.id, kind: "ADMIN_ACCESS", summary: `Coordinator access removed by ${actor.firstName}.` } });
     return { ok: true, target } as const;
   });

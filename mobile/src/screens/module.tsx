@@ -2,7 +2,7 @@ import { router } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import { Linking, Pressable, View, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 
-import type { TrainingModuleDetail } from "@satisfy/core/api";
+import type { ModuleSummary, TrainingModuleDetail } from "@satisfy/core/api";
 import { formatDate } from "@satisfy/core/dates";
 import { completionGate, isVideo, linkKindLabel, type Gate, type ModuleLink } from "@satisfy/core/training";
 import { QueryScreen } from "@/components/screen";
@@ -10,11 +10,13 @@ import { SessionCard } from "@/components/session-card";
 import { useToast } from "@/components/toast";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { TrainingChip } from "@/components/ui/chip";
+import { CheckRow } from "@/components/ui/check-row";
+import { Chip, TrainingChip } from "@/components/ui/chip";
 import { Icon } from "@/components/ui/icon";
 import { Section } from "@/components/ui/section";
 import { EmptyLine } from "@/components/ui/states";
 import { Text } from "@/components/ui/text";
+import { TAB } from "@/lib/links";
 import { actions, useAction, useModule, useTraining } from "@/lib/queries";
 import { radius, useTheme } from "@/theme";
 
@@ -71,6 +73,7 @@ function Module({ detail, readToEnd, onEndLayout }: { detail: TrainingModuleDeta
     setOpened(next);
   };
   const gate = completionGate({ hasContent: detail.paragraphs.length > 0, readToEnd, links: detail.links, opened });
+  const comingSoon = m.lockKind === "development";
   return (
     <>
       <View style={{ gap: 8 }}>
@@ -78,7 +81,7 @@ function Module({ detail, readToEnd, onEndLayout }: { detail: TrainingModuleDeta
           <Text variant="eyebrow" tone="tealText">
             {online ? (detail.links.length ? "Online: read, watch and confirm" : "Online: read and confirm") : "In-person session"}
           </Text>
-          <TrainingChip status={m.status} small />
+          {comingSoon ? <Chip tone="neutral" icon="inDevelopment" label="Coming soon" small /> : <TrainingChip status={m.status} small />}
         </View>
         <Text variant="display" accessibilityRole="header">
           {m.name}
@@ -92,7 +95,9 @@ function Module({ detail, readToEnd, onEndLayout }: { detail: TrainingModuleDeta
           </Text>
         )}
       </View>
-      {online ? (
+      {m.lockedReason ? (
+        <ModuleLock module={m} />
+      ) : online ? (
         <>
           {detail.paragraphs.length > 0 && (
             <View style={{ gap: 10 }} onLayout={(e) => onEndLayout(e.nativeEvent.layout.y + e.nativeEvent.layout.height)}>
@@ -131,6 +136,32 @@ function Module({ detail, readToEnd, onEndLayout }: { detail: TrainingModuleDeta
         <InPersonSessions moduleId={m.id} />
       )}
     </>
+  );
+}
+
+/** Why the module cannot be done yet, in place of its content, with the step
+ *  that opens it, as on the web. */
+function ModuleLock({ module: m }: { module: ModuleSummary }) {
+  const t = useTheme();
+  const after = m.after;
+  const unlock =
+    m.lockKind === "development"
+      ? { label: "Back to my training", onPress: () => router.navigate(TAB.training) }
+      : m.lockKind === "after" && after
+        ? { label: `Go to ${after.name}`, onPress: () => router.push({ pathname: "/module/[code]", params: { code: after.code } }) }
+        : { label: "Finish my induction", onPress: () => router.push("/induction") };
+  return (
+    <Card style={{ padding: 20, gap: 16 }}>
+      <View style={{ flexDirection: "row", gap: 12 }}>
+        <View style={{ paddingTop: 2 }}>
+          <Icon name="lock" size={18} color={t.mutedText} />
+        </View>
+        <Text variant="body" style={{ flex: 1 }}>
+          {m.lockedReason}
+        </Text>
+      </View>
+      <Button label={unlock.label} variant="outline" block onPress={unlock.onPress} />
+    </Card>
   );
 }
 
@@ -199,31 +230,9 @@ function ConfirmModule({ moduleId, moduleName, gate }: { moduleId: string; modul
           ))}
         </View>
       )}
-      <Pressable
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked: on, disabled: locked }}
-        disabled={locked}
-        onPress={() => setChecked((c) => !c)}
-        style={{ flexDirection: "row", gap: 12, padding: 14, borderRadius: radius.lg, borderCurve: "continuous", backgroundColor: t.card, borderWidth: 1, borderColor: on ? t.tealText : t.border, opacity: locked ? 0.6 : 1 }}
-      >
-        <View
-          style={{
-            width: 24,
-            height: 24,
-            borderRadius: 7,
-            borderWidth: 2,
-            borderColor: on ? t.primary : t.input,
-            backgroundColor: on ? t.primary : "transparent",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          {on && <Icon name="check" size={14} color={t.white} />}
-        </View>
-        <Text variant="body" style={{ flex: 1 }}>
-          I have read and understood {moduleName} and will follow it on every shift.
-        </Text>
-      </Pressable>
+      <CheckRow checked={checked} disabled={locked} onToggle={() => setChecked((c) => !c)}>
+        I have read and understood {moduleName} and will follow it on every shift.
+      </CheckRow>
       {locked && (
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: -4 }}>
           <Icon name="lock" size={14} color={t.mutedText} />

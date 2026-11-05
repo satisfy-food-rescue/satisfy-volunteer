@@ -19,7 +19,13 @@ describe("routeForWebPath", () => {
     expect(routeForWebPath("/app/training/MANUAL_HANDLING")).toEqual({ pathname: "/module/[code]", params: { code: "MANUAL_HANDLING" } });
     expect(routeForWebPath("/app/slot")).toBe("/slot");
     expect(routeForWebPath("/app/harvest")).toBe("/harvest");
+    expect(routeForWebPath("/app/induction")).toBe("/induction");
+    expect(routeForWebPath("/app/policies")).toBe("/policies");
     expect(routeForWebPath("/app/profile")).toBe(TAB.me);
+  });
+
+  it("maps a policy link from a reminder to that policy", () => {
+    expect(routeForWebPath("/app/policies/cm456")).toEqual({ pathname: "/policies/[id]", params: { id: "cm456" } });
   });
 
   it("sends anything else home", () => {

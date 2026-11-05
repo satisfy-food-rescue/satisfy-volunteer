@@ -55,12 +55,12 @@ describe("harvest shifts", () => {
 describe("the harvest training gate", () => {
   it("asks volunteers outside the pool to join it", () => {
     const me = { roles: ["WAREHOUSE" as const] };
-    expect(eligibilityFor(me, "HARVEST", moduleStatuses(me, modules, [], TODAY)).reason).toBe("Join the harvest pool to sign up for harvests.");
+    expect(eligibilityFor(me, "HARVEST", moduleStatuses(me, modules, [], TODAY), null).reason).toBe("Join the harvest pool to sign up for harvests.");
   });
 
   it("needs the harvest modules but not the warehouse initial visit", () => {
     const me = { roles: ["HARVEST" as const] };
-    const elig = eligibilityFor(me, "HARVEST", moduleStatuses(me, modules, [], TODAY));
+    const elig = eligibilityFor(me, "HARVEST", moduleStatuses(me, modules, [], TODAY), null);
     expect(elig.eligible).toBe(false);
     expect(elig.blockers.map((b) => b.module.code)).toEqual(["MANUAL_HANDLING"]);
   });

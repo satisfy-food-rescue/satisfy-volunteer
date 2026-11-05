@@ -3,6 +3,7 @@ import { CheckCircle2, HandHelping } from "lucide-react";
 import { requireAdmin } from "@/lib/session";
 import { shiftName } from "@/lib/roster";
 import { db } from "@/lib/db";
+import { ACTIVE_POOL } from "@/lib/pool";
 import { addDays, dateToISO, formatDay, formatDayShort, isoToDate, todayISO, weekMonday, workWeek, WEEKDAY_SHORT, weekdayOf } from "@/lib/dates";
 import { ABSENCE_REASON_LABEL, fullName } from "@/lib/domain";
 import { PageHeader } from "@/components/shared/page-header";
@@ -35,7 +36,7 @@ export default async function AbsencesPage() {
       include: { volunteer: true, releasedAssignments: { include: { shift: { include: { template: true, assignments: true } } } } },
       orderBy: { startDate: "asc" },
     }),
-    db.volunteer.findMany({ where: { status: "ACTIVE", role: "VOLUNTEER" }, orderBy: [{ firstName: "asc" }], select: { id: true, firstName: true, lastName: true } }),
+    db.volunteer.findMany({ where: ACTIVE_POOL, orderBy: [{ firstName: "asc" }], select: { id: true, firstName: true, lastName: true } }),
   ]);
   const days = weeks.flat();
 
