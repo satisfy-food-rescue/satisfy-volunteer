@@ -25,7 +25,7 @@ export function TrainingScreen() {
           <Summary training={training} />
           <View style={{ gap: 10 }}>
             {training.required.map((m) => (
-              <ModuleRow key={m.id} module={m} today={training.today} inductionComplete={training.induction.complete} />
+              <ModuleRow key={m.id} module={m} today={training.today} />
             ))}
           </View>
           <Section title="Upcoming sessions">
@@ -151,7 +151,7 @@ function statusLine(m: ModuleSummary, today: string): string {
   }
 }
 
-function ModuleRow({ module: m, today, inductionComplete }: { module: ModuleSummary; today: string; inductionComplete: boolean }) {
+function ModuleRow({ module: m, today }: { module: ModuleSummary; today: string }) {
   const t = useTheme();
   const online = m.delivery === "ONLINE_CONFIRM";
   const locked = m.status !== "COMPLETE" && m.lockedReason !== null;
@@ -178,7 +178,7 @@ function ModuleRow({ module: m, today, inductionComplete }: { module: ModuleSumm
             <Icon name="lock" size={14} color={t.mutedText} />
           </View>
           <Text variant="small" tone="mutedText" style={{ flex: 1 }}>
-            {m.after && inductionComplete ? `Opens once ${m.after.name} is done.` : "Opens once your induction is done."}
+            {m.lockKind === "after" && m.after ? `Opens once ${m.after.name} is done.` : "Opens once your induction is done."}
           </Text>
         </View>
       )}
