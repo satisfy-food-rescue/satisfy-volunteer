@@ -148,7 +148,8 @@ export async function runMojReminders(today: string) {
     const renewsISO = mojRenewsISO(dateToISO(check.checkedOn));
     const days = daysBetween(today, renewsISO);
     if (days > MOJ_RENEWAL_DAYS) continue;
-    const gone = days <= 0;
+    // Matches mojStatus: the check still counts on its renewal date.
+    const gone = days < 0;
     const ref = `${gone ? "moj-expired" : "moj-due"}:${check.id}`;
     if (await db.email.findFirst({ where: { ref }, select: { id: true } })) continue;
     await queueEmail(v, gone ? mojExpired({ firstName: v.firstName, renewsISO, checkUrl: MOJ_CHECK_URL }) : mojRenewalDue({ firstName: v.firstName, renewsISO, checkUrl: MOJ_CHECK_URL }), ref);

@@ -5,7 +5,7 @@ import { formatDate, formatInstantRange, relativeDays, todayISO } from "@/lib/da
 import { trainingContext } from "@/lib/volunteer-data";
 import { DELIVERY_LABEL } from "@/lib/domain";
 import { Chip, TrainingChip } from "@/components/shared/status-chip";
-import { inductionToDo, trainingLock } from "@/lib/induction";
+import { inductionToDo, trainingLockOf } from "@/lib/induction";
 import { SessionRsvp } from "@/components/app/session-rsvp";
 import { EmptyState } from "@/components/shared/empty-state";
 import { AppPage, AppPageHeader } from "@/components/app/app-page-header";
@@ -29,7 +29,7 @@ export default async function TrainingPage() {
   // In development: shown as coming soon to the people it will be for.
   const comingSoon = statuses.filter((s) => s.module.inDevelopment && s.module.requiredRoles.some((r) => me.roles.includes(r)));
   const notRequired = statuses.filter((s) => !s.required && !s.module.inDevelopment);
-  const locks = new Map(statuses.map((s) => [s.module.id, trainingLock(me, s, induction)]));
+  const locks = new Map(statuses.map((s) => [s.module.id, trainingLockOf(me, s, induction)]));
   const currentCount = required.filter((s) => s.status === "COMPLETE" || s.status === "DUE_SOON").length;
   const relevantSessions = sessions.filter((s) => {
     const st = statuses.find((x) => x.module.id === s.moduleId);
@@ -150,7 +150,7 @@ export default async function TrainingPage() {
                   {lock && s.status !== "COMPLETE" && (
                     <p className="mt-2 flex items-start gap-1.5 text-sm text-muted-foreground">
                       <Lock className="mt-0.5 size-4 shrink-0" aria-hidden />
-                      {s.lockedBy && induction.complete ? `Opens once ${s.lockedBy.name} is done.` : "Opens once your induction is done."}
+                      {lock.kind === "after" && s.lockedBy ? `Opens once ${s.lockedBy.name} is done.` : "Opens once your induction is done."}
                     </p>
                   )}
                   {actionable && (
@@ -198,7 +198,7 @@ export default async function TrainingPage() {
                       {!relevant && <p className="mt-2 text-sm text-muted-foreground">Your record for this module is current; come along if you would like a refresher.</p>}
                       <div className="mt-3 @6xl/app:mt-auto @6xl/app:pt-3">
                         {lock ? (
-                          <p className="flex items-start gap-1.5 text-sm text-muted-foreground"><Lock className="mt-0.5 size-4 shrink-0" aria-hidden />{lock}</p>
+                          <p className="flex items-start gap-1.5 text-sm text-muted-foreground"><Lock className="mt-0.5 size-4 shrink-0" aria-hidden />{lock.text}</p>
                         ) : (
                           <SessionRsvp sessionId={s.id} status={mine} full={going >= s.capacity && mine !== "GOING"} />
                         )}

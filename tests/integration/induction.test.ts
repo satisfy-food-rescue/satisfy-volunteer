@@ -120,24 +120,28 @@ describe("Ministry of Justice renewals", () => {
   afterEach(() => vi.restoreAllMocks());
 
   it("remind the volunteer and the coordinator once when due, and again when it runs out", async () => {
-    const [due, gone, fresh, harvester] = [await makeVolunteer({ firstName: "Due" }), await makeVolunteer({ firstName: "Gone" }), await makeVolunteer({ firstName: "Fresh" }), await makeVolunteer({ firstName: "Picker", roles: ["HARVEST"] })];
+    const [due, lastDay, gone, fresh, harvester] = [await makeVolunteer({ firstName: "Due" }), await makeVolunteer({ firstName: "Lastday" }), await makeVolunteer({ firstName: "Gone" }), await makeVolunteer({ firstName: "Fresh" }), await makeVolunteer({ firstName: "Picker", roles: ["HARVEST"] })];
     await saveMojRoles({ roles: ["WAREHOUSE"] });
     const at = (yearsAndDays: number) => isoToDate(addDays(addMonths(today, -36), yearsAndDays));
     await db.mojCheck.createMany({
       data: [
         { volunteerId: due.id, checkedOn: at(30) },
+        // Renews today: still current, so it is due, not run out.
+        { volunteerId: lastDay.id, checkedOn: at(0) },
         { volunteerId: gone.id, checkedOn: at(-2) },
         { volunteerId: fresh.id, checkedOn: isoToDate(addDays(today, -100)) },
         { volunteerId: harvester.id, checkedOn: at(-2) },
       ],
     });
 
-    expect(await runMojReminders(today)).toEqual({ due: 1, expired: 1, checked: 3 });
-    expect(await runMojReminders(today)).toEqual({ due: 0, expired: 0, checked: 3 });
+    expect(await runMojReminders(today)).toEqual({ due: 2, expired: 1, checked: 4 });
+    expect(await runMojReminders(today)).toEqual({ due: 0, expired: 0, checked: 4 });
     const emails = await db.email.findMany({ orderBy: { createdAt: "asc" } });
     expect(emails.filter((e) => e.volunteerId === due.id)).toMatchObject([{ kind: "MOJ_CHECK_RENEWAL", subject: "Time to renew your Ministry of Justice check" }]);
+    expect(emails.filter((e) => e.volunteerId === lastDay.id)).toMatchObject([{ subject: "Time to renew your Ministry of Justice check" }]);
+    expect(await inductionFor(lastDay)).toMatchObject({ moj: { status: "RENEWAL_DUE" } });
     expect(emails.filter((e) => e.volunteerId === gone.id)).toMatchObject([{ kind: "MOJ_CHECK_RENEWAL", subject: "Action needed: your Ministry of Justice check has run out" }]);
-    expect(emails.filter((e) => e.volunteerId === null).map((e) => e.kind)).toEqual(["MOJ_CHECK_RENEWAL_COORDINATOR", "MOJ_CHECK_RENEWAL_COORDINATOR"]);
+    expect(emails.filter((e) => e.volunteerId === null).map((e) => e.kind)).toEqual(["MOJ_CHECK_RENEWAL_COORDINATOR", "MOJ_CHECK_RENEWAL_COORDINATOR", "MOJ_CHECK_RENEWAL_COORDINATOR"]);
   });
 });
 
