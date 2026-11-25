@@ -121,6 +121,8 @@ export type EmailKind =
   | "APPLICATION_APPROVED"
   | "TRAINING_COMPLETED"
   | "SESSION_CONFIRMED"
+  | "SESSION_CHANGED"
+  | "SESSION_CANCELLED"
   | "HARVEST_CALLOUT"
   | "LAST_MINUTE_CALLOUT"
   | "GAP_ESCALATION"
@@ -153,6 +155,8 @@ export const EMAIL_KIND_LABEL: Record<EmailKind, string> = {
   APPLICATION_APPROVED: "Application approved",
   TRAINING_COMPLETED: "Training completed",
   SESSION_CONFIRMED: "Session RSVP confirmed",
+  SESSION_CHANGED: "Session changed",
+  SESSION_CANCELLED: "Session cancelled",
   HARVEST_CALLOUT: "Harvest callout",
   LAST_MINUTE_CALLOUT: "Last-minute cover",
   GAP_ESCALATION: "Uncovered shift alert",

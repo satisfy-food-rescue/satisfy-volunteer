@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { Home, HomeAlert, ShiftSummary } from "@satisfy/core/api";
 import { formatDay, formatDayLong, formatTimeRange, relativeDays, todayISO } from "@satisfy/core/dates";
 import { BrandWaves, FoodIcon, Logo, type FoodKind } from "@/components/brand/logo";
+import { BookedSessionsCard } from "@/components/booked-session";
 import { Photo, shiftPhoto } from "@/components/photo";
 import { usePullToRefresh } from "@/components/screen";
 import { StatusBarScrim } from "@/components/status-bar-scrim";
@@ -113,6 +114,7 @@ function HomeContent({ home }: { home: Home }) {
       {home.next ? <NextShift shift={home.next} today={home.today} /> : <NoShift home={home} />}
       {home.alert && <AlertCard alert={home.alert} />}
       <QuickActions />
+      {home.sessions?.length > 0 && <BookedSessionsCard sessions={home.sessions} />}
       {home.cover.count > 0 && <CoverCard cover={home.cover} />}
       {home.harvest && <HarvestCard harvest={home.harvest} />}
       <Impact impact={home.impact} />

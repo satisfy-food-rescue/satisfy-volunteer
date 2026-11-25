@@ -28,9 +28,13 @@ export function TrainingScreen() {
               <ModuleRow key={m.id} module={m} today={training.today} />
             ))}
           </View>
-          <Section title="Upcoming sessions">
-            {training.sessions.length === 0 ? <EmptyLine text="No sessions scheduled right now." /> : training.sessions.map((s) => <SessionCard key={s.id} session={s} />)}
-          </Section>
+          {/* Only for someone with in-person training still to do, or a
+              session booked: a harvester never needs the warehouse stages. */}
+          {(training.sessions.length > 0 || training.required.some((m) => m.delivery === "IN_PERSON" && m.status !== "COMPLETE")) && (
+            <Section title="Upcoming sessions">
+              {training.sessions.length === 0 ? <EmptyLine text="No sessions for your training scheduled right now. New ones show up here." /> : training.sessions.map((s) => <SessionCard key={s.id} session={s} />)}
+            </Section>
+          )}
           {training.comingSoon.length > 0 && (
             <View style={{ gap: 8 }}>
               <Text variant="bodyBold" tone="mutedText" accessibilityRole="header">

@@ -60,6 +60,23 @@ export function moduleStatuses(
     });
 }
 
+/** Whether a volunteer's sessions list offers this module's sessions: one
+ *  their roles need that is not complete (a refresher due soon or overdue
+ *  counts). A module done already, or not for their roles, is not offered
+ *  or bookable; a session they booked before stays listed so they can
+ *  cancel it. Shared by the web, the app API and the booking rule. */
+export function sessionWanted(status: ModuleStatus | undefined): boolean {
+  return Boolean(status?.required && status.status !== "COMPLETE" && !status.module.inDevelopment);
+}
+
+/** Why a volunteer cannot book onto a session for this module, or null. */
+export function sessionUnwantedReason(status: ModuleStatus | undefined): string | null {
+  if (sessionWanted(status)) return null;
+  if (!status || status.module.inDevelopment) return "This session is not open for booking.";
+  if (!status.required) return `${status.module.name} is not part of the training for your roles.`;
+  return `You have already completed ${status.module.name}.`;
+}
+
 export function trainingSummary(statuses: ModuleStatus[]) {
   const count = (s: TrainingStatus) => statuses.filter((m) => m.status === s).length;
   const overdue = count("OVERDUE");

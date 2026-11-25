@@ -8,6 +8,7 @@ import { formatDate, formatInstant } from "./dates";
 import { inductionToDo, type Induction } from "./induction";
 import { INITIAL_VISIT_CODE, inHarvestPool } from "./domain";
 import { coverGaps, coverableGaps, myUpcomingShifts, myYear, trainingContext, upcomingHarvests } from "./volunteer-data";
+import { myUpcomingSessions } from "./sessions";
 
 type Summary = { overdue: number; notStarted: number; dueSoon: number };
 /** The volunteer's booked initial visit, if any. */
@@ -25,11 +26,13 @@ function inductionAlert(induction: Induction): HomeAlert | null {
   return null;
 }
 
+const VISIT_ALERT_LEAD = "Your initial visit: ";
+
 export function homeAlert(s: Summary, needsVisit: boolean, visit: Visit, induction: Induction): HomeAlert | null {
   const ind = inductionAlert(induction);
   if (ind && ind.tone !== "warn") return ind;
   if (s.overdue > 0) return { tone: "bad", title: `${s.overdue} training ${s.overdue === 1 ? "refresher is" : "refreshers are"} overdue`, text: `New bookings for shifts that need ${s.overdue === 1 ? "it are blocked until it is" : "them are blocked until they are"} done. Most refreshers take ten minutes online.` };
-  if (needsVisit && visit) return { tone: "info", title: `Your initial visit: ${formatInstant(visit.startsAt)}`, text: `At ${visit.location}. Shifts open up once your in-person training is done.` };
+  if (needsVisit && visit) return { tone: "info", title: `${VISIT_ALERT_LEAD}${formatInstant(visit.startsAt)}`, text: `At ${visit.location}. Shifts open up once your in-person training is done.` };
   if (needsVisit) return { tone: "info", title: "Your initial visit comes first", text: "Our coordinator will call to arrange your first visit to the warehouse, or you can book an open time. Shifts open up once your in-person training is done." };
   if (s.notStarted > 0) return { tone: "info", title: "Finish your training to start booking shifts", text: "Tick off the remaining modules. The online ones take about ten minutes each." };
   if (ind) return ind;
@@ -51,8 +54,9 @@ export function homeEmpty(s: Summary, needsVisit: boolean, visit: Visit, inducti
 }
 
 export async function loadHome(me: Volunteer, today: string) {
-  const [upcoming, training, gaps, harvests, visitRsvp, year] = await Promise.all([
+  const [upcoming, sessions, training, gaps, harvests, visitRsvp, year] = await Promise.all([
     myUpcomingShifts(me.id, today),
+    myUpcomingSessions(me.id),
     trainingContext(me, today),
     coverGaps(me.id, today),
     inHarvestPool(me) ? upcomingHarvests(today) : Promise.resolve([]),
@@ -61,6 +65,9 @@ export async function loadHome(me: Volunteer, today: string) {
   ]);
   const visit = visitRsvp?.session ?? null;
   const needsVisit = training.statuses.some((m) => m.module.code === INITIAL_VISIT_CODE && m.status === "NOT_STARTED");
+  const alert = homeAlert(training.summary, needsVisit, visit, training.induction);
+  // The alert already gives a booked initial visit's time.
+  const visitInAlert = Boolean(alert?.title.startsWith(VISIT_ALERT_LEAD));
   return {
     next: upcoming[0] ?? null,
     /** Booked shifts after the next one, for the home agenda. */
@@ -72,7 +79,9 @@ export async function loadHome(me: Volunteer, today: string) {
     /** The next harvest, for pool members: their own if booked, else the
      *  soonest with a place left. */
     harvest: harvests.find((h) => h.confirmed.some((a) => a.volunteerId === me.id)) ?? harvests.find((h) => !h.isFull) ?? null,
-    alert: homeAlert(training.summary, needsVisit, visit, training.induction),
+    /** Training sessions booked, soonest first. */
+    sessions: visitInAlert ? sessions.filter((v) => v.session.module.code !== INITIAL_VISIT_CODE) : sessions,
+    alert,
     empty: homeEmpty(training.summary, needsVisit, visit, training.induction),
   };
 }

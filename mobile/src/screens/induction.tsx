@@ -42,7 +42,7 @@ function Induction({ induction, firstName }: { induction: InductionOverview; fir
         </Text>
         <Text variant="body" tone="inkSoft">
           {induction.complete
-            ? "All done. Thank you: your training and shifts are open to you."
+            ? "All done. Thank you: your training is open to you."
             : `Before your first training session or shift, we need ${induction.toDo}. It keeps everyone safe, including you.`}
         </Text>
       </View>
@@ -79,7 +79,7 @@ function Induction({ induction, firstName }: { induction: InductionOverview; fir
         <Step n={++step} done={false} icon="training" title="Training" last>
           <Text variant="body" tone="inkSoft">
             {induction.complete
-              ? "Your training is open. Start with your initial visit to the warehouse, then the online modules."
+              ? "Your training is open. The Training page shows what to do first."
               : "Your training opens as soon as the steps above are done. You can look at what is involved now."}
           </Text>
           <Button label="Go to my training" variant={induction.complete ? "primary" : "outline"} block onPress={() => router.navigate(TAB.training)} />

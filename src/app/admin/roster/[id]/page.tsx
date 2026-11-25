@@ -180,7 +180,7 @@ export default async function AdminShiftPage({ params }: { params: Promise<{ id:
           {cancelled && toldOfCancellation.length > 0 ? (
             <p className="flex items-start gap-2 rounded-xl bg-muted px-3 py-2.5 text-sm text-ink">
               <Mail className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
-              <span>Emailed and sent a push notification {formatInstant(cancelNotices[0].createdAt)}: {toldOfCancellation.join(", ")}.</span>
+              <span>Emailed (and pushed to anyone using the app) {formatInstant(cancelNotices[0].createdAt)}: {toldOfCancellation.join(", ")}.</span>
             </p>
           ) : draft ? null : isPast || cancelled ? (
             <p className="rounded-2xl border border-dashed border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">This shift is {cancelled ? "cancelled" : "in the past"}.</p>

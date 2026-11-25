@@ -114,6 +114,8 @@ enum EmailKind {
   APPLICATION_APPROVED
   TRAINING_COMPLETED
   SESSION_CONFIRMED
+  SESSION_CHANGED
+  SESSION_CANCELLED
   HARVEST_CALLOUT
   LAST_MINUTE_CALLOUT
   GAP_ESCALATION
@@ -571,6 +573,8 @@ model TrainingRecord {
   method      TrainingMethod
   sessionId   String?
   session     TrainingSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  // The coordinator's optional comment on how it went. Coordinators only.
+  comment     String?
 
   @@index([volunteerId])
   @@index([expiresAt])

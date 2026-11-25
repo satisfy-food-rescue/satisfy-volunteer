@@ -42,3 +42,27 @@ test("the outbox shows delivery status", async ({ page }) => {
   await page.goto("/admin/outbox");
   await expect(page.getByRole("heading", { name: "Outbox", level: 1 })).toBeVisible();
 });
+
+test("a coordinator moves a training session, then cancels it, and the people booked are emailed each time", async ({ page }) => {
+  await signInAs(page, "phillipa");
+  await page.goto("/admin/training?tab=sessions");
+  await page.getByRole("link", { name: /Route and Vehicle Safety/ }).first().click();
+  await expect(page.getByRole("heading", { name: "Route and Vehicle Safety", level: 1 })).toBeVisible();
+
+  await page.getByRole("button", { name: "Edit session" }).click();
+  const edit = page.getByRole("dialog");
+  await edit.getByLabel("Location").fill("Satisfy warehouse, Kaiapoi");
+  await edit.getByRole("button", { name: "Save session" }).click();
+  await expect(page.getByText(/Session saved\. \d+ (person booked in has|people booked in have) been emailed the new details\./)).toBeVisible();
+  await expect(page.getByText("Satisfy warehouse, Kaiapoi")).toBeVisible();
+  await expect.poll(() => latestEmailTo("trevor.hansen@example.nz", "SESSION_CHANGED")).toMatchObject({ subject: expect.stringContaining("Route and Vehicle Safety has moved") });
+
+  await page.getByRole("button", { name: "Cancel session" }).click();
+  const cancel = page.getByRole("dialog");
+  await cancel.getByLabel("Reason (optional)").fill("The trainer is unwell");
+  await cancel.getByRole("button", { name: "Cancel session" }).click();
+  await expect(page).toHaveURL(/\/admin\/training\?tab=sessions$/);
+  await expect(page.getByText(/Session cancelled\. \d+ (person has|people have) been emailed\./)).toBeVisible();
+  await expect(page.getByRole("link", { name: /Route and Vehicle Safety/ })).toHaveCount(0);
+  await expect.poll(() => latestEmailTo("trevor.hansen@example.nz", "SESSION_CANCELLED")).toMatchObject({ subject: expect.stringContaining("is cancelled") });
+});

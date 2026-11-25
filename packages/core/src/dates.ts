@@ -177,7 +177,8 @@ export function relativeDays(iso: string, today: string): string {
 }
 
 /** Wall-clock time of an instant in NZ, as "HH:MM" for formatTime. */
-function nzClock(d: Date): string {
+/** Wall-clock time of an instant in NZ, as "HH:MM" (24-hour). */
+export function nzClock(d: Date): string {
   const parts = new Intl.DateTimeFormat("en-NZ", { timeZone: NZ_TZ, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(d);
   const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "00";
   return `${get("hour")}:${get("minute")}`;

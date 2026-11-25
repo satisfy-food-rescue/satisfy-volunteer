@@ -4,6 +4,7 @@ import { isoToDate, todayISO, weekMonday, workWeek } from "@/lib/dates";
 import { json, mobileHandler } from "@/lib/mobile-auth";
 import { shiftSummary } from "@/lib/mobile-api/shifts";
 import { shiftsBetween } from "@/lib/roster";
+import { bookedSession, sessionsBetween } from "@/lib/sessions";
 import { trainingContext } from "@/lib/volunteer-data";
 
 export const dynamic = "force-dynamic";
@@ -14,8 +15,9 @@ export const GET = mobileHandler(async (me, request) => {
   const week = request.nextUrl.searchParams.get("week");
   const monday = weekMonday(week && /^\d{4}-\d{2}-\d{2}$/.test(week) ? week : today);
   const days = workWeek(monday);
-  const [shifts, training, absences] = await Promise.all([
+  const [shifts, sessions, training, absences] = await Promise.all([
     shiftsBetween(days[0], days[4]),
+    sessionsBetween(days[0], days[4], { volunteerId: me.id }),
     trainingContext(me, today),
     db.absence.findMany({ where: { volunteerId: me.id, startDate: { lte: isoToDate(days[4]) }, endDate: { gte: isoToDate(days[0]) } } }),
   ]);
@@ -24,6 +26,6 @@ export const GET = mobileHandler(async (me, request) => {
   return json<ShiftsWeek>({
     today,
     monday,
-    days: days.map((iso) => ({ iso, away: isAway(iso), shifts: shifts.filter((s) => s.iso === iso).map((s) => shiftSummary(s, ctx)) })),
+    days: days.map((iso) => ({ iso, away: isAway(iso), shifts: shifts.filter((s) => s.iso === iso).map((s) => shiftSummary(s, ctx)), sessions: sessions.filter((s) => s.iso === iso).map(bookedSession) })),
   });
 });

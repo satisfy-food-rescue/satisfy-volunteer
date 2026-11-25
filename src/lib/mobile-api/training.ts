@@ -2,7 +2,7 @@
 import type { ModuleSummary, TrainingSessionItem } from "@satisfy/core/api";
 import type { TrainingModule, TrainingSession, SessionRsvp, Volunteer } from "@/generated/prisma/client";
 import { formatInstant, formatInstantTime } from "../dates";
-import type { ModuleStatus } from "../training";
+import { sessionWanted, type ModuleStatus } from "../training";
 import { trainingLock, trainingLockOf, type Induction } from "../induction";
 
 /** Who is asking, for what holds a module back. */
@@ -31,15 +31,12 @@ export function moduleSummary(s: ModuleStatus, viewer: TrainingViewer): ModuleSu
 
 type SessionRow = TrainingSession & { module: TrainingModule; rsvps: SessionRsvp[] };
 
-/** Sessions the volunteer needs (a required module not yet complete) first,
- *  then the rest, each in the order given (soonest first). */
+/** The sessions the volunteer still needs, plus any they have booked that
+ *  they no longer need (so they can cancel), soonest first, as on the web. */
 export function trainingSessionItems(sessions: SessionRow[], statuses: ModuleStatus[], meId: string, viewer: TrainingViewer): TrainingSessionItem[] {
-  const isRelevant = (s: SessionRow) => {
-    const st = statuses.find((x) => x.module.id === s.moduleId);
-    return Boolean(st?.required && st.status !== "COMPLETE");
-  };
-  const ordered = [...sessions.filter(isRelevant), ...sessions.filter((s) => !isRelevant(s))];
-  return ordered.map((s) => {
+  const isRelevant = (s: SessionRow) => sessionWanted(statuses.find((x) => x.module.id === s.moduleId));
+  const booked = (s: SessionRow) => s.rsvps.some((r) => r.volunteerId === meId && r.status === "GOING");
+  return sessions.filter((s) => isRelevant(s) || booked(s)).map((s) => {
     const mine = (s.rsvps.find((r) => r.volunteerId === meId)?.status ?? null) as TrainingSessionItem["mine"];
     const going = s.rsvps.filter((r) => r.status === "GOING").length;
     const st = statuses.find((x) => x.module.id === s.moduleId);

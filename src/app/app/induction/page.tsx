@@ -36,7 +36,7 @@ export default async function InductionPage() {
         title="Your induction"
         description={
           induction.complete
-            ? "All done. Thank you: your training and shifts are open to you."
+            ? "All done. Thank you: your training is open to you."
             : `Before your first training session or shift, we need ${inductionToDo(induction)}. It keeps everyone safe, including you.`
         }
       />
@@ -69,7 +69,7 @@ export default async function InductionPage() {
         <Step n={++step} done={false} icon={GraduationCap} title="Training" last>
           <p className="text-ink-soft">
             {induction.complete
-              ? "Your training is open. Start with your initial visit to the warehouse, then the online modules."
+              ? "Your training is open. The Training page shows what to do first."
               : "Your training opens as soon as the steps above are done. You can look at what is involved now."}
           </p>
           <Button variant={induction.complete ? "default" : "outline"} className="h-12 text-base @3xl/app:self-start @3xl/app:px-8" render={<Link href="/app/training" />}>

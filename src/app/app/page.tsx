@@ -62,7 +62,7 @@ function AgendaRow({ view, meId }: { view: ShiftView; meId: string }) {
 export default async function HomePage() {
   const me = await requireVolunteer();
   const today = todayISO();
-  const { next, later, year, coverable, harvest, alert, empty } = await loadHome(me, today);
+  const { next, later, year, coverable, harvest, alert, empty, sessions } = await loadHome(me, today);
   const others = next ? next.confirmed.filter((a) => a.volunteerId !== me.id) : [];
   // Before a first shift, the getting-started alert says what the empty
   // next-shift card would, so the card carries it and the alert goes.
@@ -88,6 +88,22 @@ export default async function HomePage() {
           <span className="mt-0.5 block text-sm leading-snug opacity-90">{alert.text}</span>
         </span>
         <ArrowRight className="mt-1 size-5 shrink-0" aria-hidden />
+      </Link>
+    ),
+    sessions.length > 0 && (
+      <Link key="sessions" href="/app/training#sessions" className="flex items-start gap-3 rounded-2xl border border-teal/40 bg-card p-4 shadow-sm transition-colors hover:border-teal">
+        <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-teal-tint text-teal-deep">
+          <GraduationCap className="size-5" aria-hidden />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-bold text-ink">{sessions.length === 1 ? "Training session booked" : `${sessions.length} training sessions booked`}</span>
+          {sessions.map((v) => (
+            <span key={v.session.id} className="mt-0.5 block text-sm text-muted-foreground">
+              <span className="font-semibold text-ink-soft">{v.session.module.name}</span>, {formatDay(v.iso)} {formatTimeRange(v.startTime, v.endTime)}
+            </span>
+          ))}
+        </span>
+        <ArrowRight className="mt-3 size-5 shrink-0 text-teal" aria-hidden />
       </Link>
     ),
     coverable.length > 0 && (

@@ -3,6 +3,7 @@ import { BookOpen, CalendarDays, ChevronRight, ClipboardCheck, Hammer, Lock, Map
 import { requireVolunteer } from "@/lib/session";
 import { formatDate, formatInstantRange, relativeDays, todayISO } from "@/lib/dates";
 import { trainingContext } from "@/lib/volunteer-data";
+import { sessionWanted } from "@/lib/training";
 import { DELIVERY_LABEL } from "@/lib/domain";
 import { Chip, TrainingChip } from "@/components/shared/status-chip";
 import { inductionToDo, trainingLockOf } from "@/lib/induction";
@@ -31,11 +32,11 @@ export default async function TrainingPage() {
   const notRequired = statuses.filter((s) => !s.required && !s.module.inDevelopment);
   const locks = new Map(statuses.map((s) => [s.module.id, trainingLockOf(me, s, induction)]));
   const currentCount = required.filter((s) => s.status === "COMPLETE" || s.status === "DUE_SOON").length;
-  const relevantSessions = sessions.filter((s) => {
-    const st = statuses.find((x) => x.module.id === s.moduleId);
-    return st?.required && st.status !== "COMPLETE";
-  });
-  const otherSessions = sessions.filter((s) => !relevantSessions.includes(s));
+  // Only sessions the volunteer still needs, plus any they booked and no
+  // longer need, so they can cancel.
+  const relevantSessions = sessions.filter((s) => sessionWanted(statuses.find((x) => x.module.id === s.moduleId)));
+  const needsSessions = required.some((s) => s.module.delivery === "IN_PERSON" && s.status !== "COMPLETE");
+  const otherSessions = sessions.filter((s) => !relevantSessions.includes(s) && s.rsvps.some((r) => r.volunteerId === me.id && r.status === "GOING"));
 
   return (
     <AppPage>
@@ -176,10 +177,13 @@ export default async function TrainingPage() {
             })}
           </ul>
 
+          {/* Only for someone with in-person training still to do, or a
+              session booked: a harvester never needs the warehouse stages. */}
+          {(needsSessions || otherSessions.length > 0) && (
           <section id="sessions" aria-labelledby="sessions-heading" className="scroll-mt-4">
             <h2 id="sessions-heading" className="mb-2 text-xl text-ink @3xl/app:mb-3 @3xl/app:text-2xl">Upcoming sessions</h2>
             {relevantSessions.length === 0 && otherSessions.length === 0 ? (
-              <EmptyState icon={CalendarDays} title="No sessions scheduled right now" description="New sessions show up here as soon as they are booked in." className="py-6" />
+              <EmptyState icon={CalendarDays} title="No sessions for your training scheduled right now" description="New sessions show up here as soon as they are booked in." className="py-6" />
             ) : (
               <ul className="grid gap-2.5 @6xl/app:grid-cols-2 @6xl/app:gap-3">
                 {[...relevantSessions, ...otherSessions].map((s) => {
@@ -195,7 +199,7 @@ export default async function TrainingPage() {
                         <span className="inline-flex items-center gap-1"><MapPin className="size-4" aria-hidden />{s.location}</span>
                         <span className="inline-flex items-center gap-1 tabular"><Users className="size-4" aria-hidden />{going} of {s.capacity} booked</span>
                       </p>
-                      {!relevant && <p className="mt-2 text-sm text-muted-foreground">Your record for this module is current; come along if you would like a refresher.</p>}
+                      {!relevant && <p className="mt-2 text-sm text-muted-foreground">You don&apos;t need this one any more, so you can let your place go.</p>}
                       <div className="mt-3 @6xl/app:mt-auto @6xl/app:pt-3">
                         {lock ? (
                           <p className="flex items-start gap-1.5 text-sm text-muted-foreground"><Lock className="mt-0.5 size-4 shrink-0" aria-hidden />{lock.text}</p>
@@ -209,6 +213,7 @@ export default async function TrainingPage() {
               </ul>
             )}
           </section>
+          )}
         </div>
       </div>
     </AppPage>

@@ -4,12 +4,13 @@ import { BadgeCheck, CalendarPlus, ChevronLeft, Clock, MapPin, Users } from "luc
 import { requireAdmin } from "@/lib/session";
 import { db } from "@/lib/db";
 import { ACTIVE_POOL } from "@/lib/pool";
-import { formatInstantRange, addMonths, todayISO, formatDate } from "@/lib/dates";
+import { formatInstantRange, addMonths, todayISO, formatDate, nzClock } from "@/lib/dates";
 import { fullName } from "@/lib/domain";
 import { moduleStatuses } from "@/lib/training";
 import { AvatarBadge } from "@/components/shared/avatar-badge";
 import { Chip } from "@/components/shared/status-chip";
-import { AttendanceToggle } from "@/components/admin/training-admin-controls";
+import { AttendanceToggle, CancelSessionButton, EditSessionButton } from "@/components/admin/training-admin-controls";
+import { TrainingCommentButton } from "@/components/admin/volunteer-admin-controls";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 
@@ -18,7 +19,7 @@ export const metadata = { title: "Training session" };
 export default async function SessionPage({ params }: { params: Promise<{ id: string }> }) {
   await requireAdmin();
   const { id } = await params;
-  const s = await db.trainingSession.findUnique({ where: { id }, include: { module: true, rsvps: { include: { volunteer: true }, orderBy: { createdAt: "asc" } } } });
+  const s = await db.trainingSession.findUnique({ where: { id }, include: { module: true, records: true, rsvps: { include: { volunteer: true }, orderBy: { createdAt: "asc" } } } });
   if (!s) notFound();
   const going = s.rsvps.filter((r) => r.status === "GOING");
   const declined = s.rsvps.filter((r) => r.status === "DECLINED");
@@ -38,8 +39,23 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
     <div className="mx-auto flex max-w-6xl flex-col gap-6">
       <Link href="/admin/training?tab=sessions" className="-ml-1 inline-flex min-h-11 items-center gap-1 self-start pr-2 text-sm font-semibold text-muted-foreground hover:text-ink"><ChevronLeft className="size-5" aria-hidden /> Sessions</Link>
       <header>
-        <p className="eyebrow">Training session</p>
-        <h1 className="mt-1 text-3xl text-ink @4xl/admin:text-4xl">{s.module.name}</h1>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="eyebrow">Training session</p>
+            <h1 className="mt-1 text-3xl text-ink @4xl/admin:text-4xl">{s.module.name}</h1>
+          </div>
+          {!isPast && (
+            <div className="flex flex-wrap gap-2">
+              <EditSessionButton
+                sessionId={s.id}
+                today={todayISO()}
+                booked={going.length}
+                initial={{ date: sessionISO, startTime: nzClock(s.startsAt), endTime: nzClock(s.endsAt), location: s.location, capacity: s.capacity, notes: s.notes ?? "" }}
+              />
+              <CancelSessionButton sessionId={s.id} label={`${s.module.name}, ${formatInstantRange(s.startsAt, s.endsAt)}`} booked={going.length} />
+            </div>
+          )}
+        </div>
         <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-ink-soft">
           <span className="inline-flex items-center gap-1.5 tabular"><Clock className="size-4 text-sky" aria-hidden />{formatInstantRange(s.startsAt, s.endsAt)}</span>
           <span className="inline-flex items-center gap-1.5"><MapPin className="size-4 text-sky" aria-hidden />{s.location}</span>
@@ -67,14 +83,21 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
           />
         ) : (
           <ul className="divide-y divide-border">
-            {going.map((r) => (
-              <li key={r.id} className="flex flex-wrap items-center gap-3 px-4 py-2.5">
-                <AvatarBadge person={r.volunteer} size="sm" />
-                <Link href={`/admin/volunteers/${r.volunteerId}`} className="min-w-0 flex-1 truncate font-bold text-ink hover:underline">{fullName(r.volunteer)}</Link>
-                {r.attendedAt && <Chip tone="good" size="sm" icon={BadgeCheck}>Record updated</Chip>}
-                <AttendanceToggle rsvpId={r.id} attended={!!r.attendedAt} />
-              </li>
-            ))}
+            {going.map((r) => {
+              const record = r.attendedAt ? s.records.find((x) => x.volunteerId === r.volunteerId) : undefined;
+              return (
+                <li key={r.id} className="flex flex-wrap items-center gap-3 px-4 py-2.5">
+                  <AvatarBadge person={r.volunteer} size="sm" />
+                  <div className="min-w-0 flex-1">
+                    <Link href={`/admin/volunteers/${r.volunteerId}`} className="block truncate font-bold text-ink hover:underline">{fullName(r.volunteer)}</Link>
+                    {record?.comment && <p className="whitespace-pre-line text-sm text-ink-soft">{record.comment}</p>}
+                  </div>
+                  {r.attendedAt && <Chip tone="good" size="sm" icon={BadgeCheck}>Record updated</Chip>}
+                  {record && <TrainingCommentButton recordId={record.id} comment={record.comment} moduleName={s.module.name} firstName={r.volunteer.firstName} />}
+                  <AttendanceToggle rsvpId={r.id} attended={!!r.attendedAt} />
+                </li>
+              );
+            })}
           </ul>
         )}
         {declined.length > 0 && <p className="border-t border-border px-4 py-2 text-xs text-muted-foreground">Can&apos;t make it: {declined.map((r) => fullName(r.volunteer)).join(", ")}</p>}

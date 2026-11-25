@@ -5,6 +5,7 @@ import type { ShiftsWeek } from "@satisfy/core/api";
 import { addDays, formatDayShort, formatMonth, WEEKDAY_LONG, weekdayOf, weekMonday } from "@satisfy/core/dates";
 import { QueryScreen } from "@/components/screen";
 import { LockBanner } from "@/components/shift/lock-banner";
+import { BookedSessionCard } from "@/components/booked-session";
 import { ShiftCard } from "@/components/shift/shift-card";
 import { Card } from "@/components/ui/card";
 import { Chip } from "@/components/ui/chip";
@@ -133,7 +134,12 @@ function Day({ day, today }: { day: WeekDay; today: string }) {
         {isToday && <TodayPill />}
         {day.away && <Chip tone="neutral" icon="calendarAway" small label="You're away" />}
       </View>
-      {day.shifts.length === 0 ? <EmptyLine text="No shifts scheduled." /> : day.shifts.map((s) => <ShiftCard key={s.id} shift={s} hideReason />)}
+      {/* An app built before sessions joined the week gets none from an
+          older server. */}
+      {(day.sessions ?? []).map((s) => (
+        <BookedSessionCard key={s.id} session={s} past={day.iso < today} />
+      ))}
+      {day.shifts.length === 0 && !day.sessions?.length ? <EmptyLine text="No shifts scheduled." /> : day.shifts.map((s) => <ShiftCard key={s.id} shift={s} hideReason />)}
     </View>
   );
 }

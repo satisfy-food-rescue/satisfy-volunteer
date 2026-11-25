@@ -3,8 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { CalendarPlus, Check, Link2, Loader2, Pencil, Play, Plus, Trash2, X } from "lucide-react";
-import { createSession, markSessionAttendance, runRemindersNow, saveModule, type ModuleInput } from "@/app/admin/actions";
+import { Ban, CalendarPlus, Check, Link2, Loader2, Pencil, Play, Plus, Save, Trash2, X } from "lucide-react";
+import { cancelSession, createSession, markSessionAttendance, runRemindersNow, saveModule, updateSession, type ModuleInput } from "@/app/admin/actions";
 import { ActionButton } from "@/components/app/action-button";
 import { ToggleActionButton } from "@/components/admin/toggle-action-button";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DatePicker } from "@/components/ui/date-picker";
 import { OptionSelect, type Option } from "@/components/shared/option-select";
 import { formatTime } from "@/lib/dates";
@@ -211,6 +212,103 @@ export function NewSessionForm({ modules, today }: { modules: { id: string; name
         <Button type="button" variant="ghost" size="sm" className="h-10" onClick={() => { setV(blank); setOpen(false); }}><X className="size-4" /> Cancel</Button>
       </div>
     </form>
+  );
+}
+
+export type SessionValues = { date: string; startTime: string; endTime: string; location: string; capacity: number; notes: string };
+
+/** Changes an upcoming session's time, place, size or notes. */
+export function EditSessionButton({ sessionId, initial, today, booked }: { sessionId: string; initial: SessionValues; today: string; booked: number }) {
+  const [open, setOpen] = useState(false);
+  const [v, setV] = useState(initial);
+  const [pending, run] = useTransition();
+  const router = useRouter();
+  const submit = () =>
+    run(async () => {
+      const r = await updateSession(sessionId, v);
+      if (r.ok) {
+        toast.success(r.message);
+        setOpen(false);
+        router.refresh();
+      } else toast.error(r.error);
+    });
+  return (
+    <>
+      <Button variant="outline" size="sm" className="h-10" onClick={() => { setV(initial); setOpen(true); }}>
+        <Pencil className="size-4" /> Edit session
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-xl text-ink">Edit session</DialogTitle>
+            <DialogDescription>
+              {booked === 0 ? "Nobody is booked in yet." : `If the time or place changes, the ${booked === 1 ? "person" : `${booked} people`} booked in will be emailed the new details. Their booking stands.`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="flex flex-col gap-1.5 sm:col-span-3"><Label htmlFor="e-date">Date</Label><DatePicker id="e-date" min={today} value={v.date} onChange={(date) => setV({ ...v, date })} /></div>
+            <div className="flex flex-col gap-1.5"><Label htmlFor="e-start">Start</Label><OptionSelect id="e-start" value={v.startTime} onValueChange={(startTime) => setV({ ...v, startTime, endTime: v.endTime > startTime ? v.endTime : TIMES[Math.min(TIMES.length - 1, TIMES.findIndex((t) => t.value === startTime) + 3)].value })} options={TIMES} /></div>
+            <div className="flex flex-col gap-1.5"><Label htmlFor="e-end">End</Label><OptionSelect id="e-end" value={v.endTime} onValueChange={(endTime) => setV({ ...v, endTime })} options={TIMES.filter((t) => t.value > v.startTime)} /></div>
+            <div className="flex flex-col gap-1.5"><Label htmlFor="e-cap">Capacity</Label><Input id="e-cap" type="number" min={Math.max(1, booked)} max={60} value={v.capacity} onChange={(e) => setV({ ...v, capacity: Number(e.target.value) })} className="h-11 text-base" /></div>
+            <div className="flex flex-col gap-1.5 sm:col-span-3"><Label htmlFor="e-loc">Location</Label><Input id="e-loc" value={v.location} onChange={(e) => setV({ ...v, location: e.target.value })} className="h-11 text-base" /></div>
+            <div className="flex flex-col gap-1.5 sm:col-span-3"><Label htmlFor="e-notes">Notes for volunteers</Label><Textarea id="e-notes" rows={2} value={v.notes} onChange={(e) => setV({ ...v, notes: e.target.value })} className="text-base" /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" disabled={pending} onClick={() => setOpen(false)}>Cancel</Button>
+            <Button disabled={pending} onClick={submit}>{pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Save className="size-4" />} Save session</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+/** Cancels an upcoming session, emailing anyone booked in. */
+export function CancelSessionButton({ sessionId, label, booked }: { sessionId: string; label: string; booked: number }) {
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState("");
+  const [pending, start] = useTransition();
+  const router = useRouter();
+  const submit = () =>
+    start(async () => {
+      const r = await cancelSession(sessionId, { reason });
+      if (r.ok) {
+        toast.success(r.message);
+        setOpen(false);
+        router.push("/admin/training?tab=sessions");
+        router.refresh();
+      } else toast.error(r.error);
+    });
+  return (
+    <>
+      <Button variant="outline" size="sm" className="h-10 text-destructive" onClick={() => { setReason(""); setOpen(true); }}>
+        <Ban className="size-4" /> Cancel session
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl text-ink">Cancel this session?</DialogTitle>
+            <DialogDescription>
+              <span className="font-semibold text-ink">{label}.</span>{" "}
+              {booked === 0 ? "Nobody is booked in yet. It comes off everyone's training page." : `The ${booked === 1 ? "person" : `${booked} people`} booked in will be emailed straight away, so nobody turns up for it.`}
+            </DialogDescription>
+          </DialogHeader>
+          {booked > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor={`cancel-session-${sessionId}`}>Reason (optional)</Label>
+              <Textarea id={`cancel-session-${sessionId}`} value={reason} onChange={(e) => setReason(e.target.value)} rows={2} maxLength={300} className="text-base" placeholder="For example, the trainer is unwell" />
+              <p className="text-xs text-muted-foreground">Included in the email.</p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" disabled={pending} onClick={() => setOpen(false)}>Keep session</Button>
+            <Button variant="destructive" disabled={pending} onClick={submit}>
+              {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Ban className="size-4" />} Cancel session
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

@@ -12,7 +12,7 @@ import { db } from "./db";
 import { VOLUNTEER_ROLES, sortRoles } from "./domain";
 import { ACTIVE_POOL } from "./pool";
 import { documentIsFor } from "./documents";
-import { queueEmail } from "./emails";
+import { queueEmailAndPush } from "./emails";
 import { documentUpdated, documentUpdatedPush } from "./email-templates";
 import type { ActionResult } from "./volunteer-actions";
 
@@ -49,8 +49,7 @@ async function notify(doc: Document): Promise<number> {
     const ref = `${prefix}${v.id}`;
     if (sent.has(ref)) continue;
     const p = { firstName: v.firstName, title: doc.title, note: doc.versionNote, agreement: doc.kind === "AGREEMENT", documentId: doc.id };
-    await queueEmail(v, documentUpdated(p), ref);
-    await queueEmail(v, documentUpdatedPush(p), ref);
+    await queueEmailAndPush(v, documentUpdated(p), documentUpdatedPush(p), ref);
     count++;
   }
   return count;

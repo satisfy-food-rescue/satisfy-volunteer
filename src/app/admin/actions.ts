@@ -16,7 +16,7 @@ import { announcementSchema, audienceSchema, resolveAudience, sendAnnouncement, 
 import { moduleStatuses } from "@/lib/training";
 import { runMojReminders, runReminders, runShiftReminders } from "@/lib/reminders";
 import { afterShiftReleased, runCoverChecks } from "@/lib/cover";
-import { queueEmail } from "@/lib/emails";
+import { queueEmail, queueEmailAndPush } from "@/lib/emails";
 import * as T from "@/lib/email-templates";
 import type { ActionResult } from "@/lib/volunteer-actions";
 
@@ -115,10 +115,9 @@ export async function addToShift(shiftId: string, volunteerId: string): Promise<
   const covering = view.isGap;
   const a = await db.assignment.create({ data: { shiftId, volunteerId, source: covering ? "COVER" : "ADMIN", status: "CONFIRMED" } });
   const p = { firstName: volunteer.firstName, shiftName: view.name, dateISO: view.iso, start: view.shift.startTime, end: view.shift.endTime, location: view.location, shiftId, addedBy: admin.firstName, covering };
-  await queueEmail(volunteer, T.shiftAdded(p), `added:${a.id}`);
-  await queueEmail(volunteer, T.shiftAddedPush(p), `added:${a.id}`);
+  await queueEmailAndPush(volunteer, T.shiftAdded(p), T.shiftAddedPush(p), `added:${a.id}`);
   revalidateAll();
-  return { ok: true, message: `${volunteer.firstName} added${covering ? " and the gap is covered" : ""}. They have been emailed and sent a push notification.` };
+  return { ok: true, message: `${volunteer.firstName} added${covering ? " and the gap is covered" : ""}. They have been emailed, and sent a push notification if they use the app.` };
 }
 
 // --- One-off shifts: harvests, extra sorting mornings. Draft first if needed ---
@@ -186,7 +185,7 @@ export async function saveShift(input: ShiftFormInput): Promise<ShiftFormResult>
   const message = !d.publish
     ? "Saved as a draft. Only coordinators can see it."
     : publishing
-      ? `Published.${d.callout ? ` ${told} ${told === 1 ? "volunteer has" : "volunteers have"} been emailed and sent a push notification.` : " Volunteers can now see and book it."}`
+      ? `Published.${d.callout ? ` ${told} ${told === 1 ? "volunteer has" : "volunteers have"} been emailed, with a push notification for anyone using the app.` : " Volunteers can now see and book it."}`
       : before && before.confirmedCount > 0
         ? "Saved. Use Message crew to tell the people booked on it what changed."
         : "Saved.";
@@ -208,7 +207,7 @@ export async function publishShift(shiftId: string, callout: boolean): Promise<A
     if (published) told = await sendShiftCallout(published);
   }
   revalidateAll();
-  return { ok: true, message: callout ? `Published. ${told} ${told === 1 ? "volunteer has" : "volunteers have"} been emailed and sent a push notification.` : "Published. Volunteers can now see and book it." };
+  return { ok: true, message: callout ? `Published. ${told} ${told === 1 ? "volunteer has" : "volunteers have"} been emailed, with a push notification for anyone using the app.` : "Published. Volunteers can now see and book it." };
 }
 
 export async function deleteDraftShift(shiftId: string): Promise<ActionResult> {
@@ -270,13 +269,12 @@ export async function cancelShift(input: z.infer<typeof cancelSchema>): Promise<
     const ref = `shift-cancelled:${shiftId}:${a.volunteerId}`;
     if (already.has(ref)) continue;
     const p = { firstName: a.volunteer.firstName, shiftName: view.name, dateISO: view.iso, start: view.shift.startTime, end: view.shift.endTime, shiftId, regular: a.source === "REGULAR", cancelledBy: admin.firstName, reason };
-    await queueEmail(a.volunteer, T.shiftCancelled(p), ref);
-    await queueEmail(a.volunteer, T.shiftCancelledPush(p), ref);
+    await queueEmailAndPush(a.volunteer, T.shiftCancelled(p), T.shiftCancelledPush(p), ref);
     await db.contactLog.create({ data: { volunteerId: a.volunteerId, authorId: admin.id, kind: "SHIFT_CANCELLED", summary: `${view.name}, ${when}.${reason ? ` Reason: ${T.sentence(reason)}` : ""}` } });
   }
   revalidateAll();
   const n = booked.length;
-  return { ok: true, message: n === 0 ? "Shift cancelled. Nobody was booked on it." : `Shift cancelled. ${n} ${n === 1 ? "volunteer has" : "volunteers have"} been emailed and sent a push notification.` };
+  return { ok: true, message: n === 0 ? "Shift cancelled. Nobody was booked on it." : `Shift cancelled. ${n} ${n === 1 ? "volunteer has" : "volunteers have"} been emailed, with a push notification for anyone using the app.` };
 }
 
 // --- Absences on behalf of a volunteer ---
@@ -359,6 +357,58 @@ export async function createSession(input: z.infer<typeof sessionSchema>): Promi
   return { ok: true, message: "Session scheduled." };
 }
 
+const sessionEditSchema = sessionSchema.omit({ moduleId: true });
+
+/** Changes an upcoming session. Anyone booked is emailed when the time or
+ *  place moves; their booking stands. */
+export async function updateSession(id: string, input: z.infer<typeof sessionEditSchema>): Promise<ActionResult> {
+  const admin = await requireAdmin();
+  const parsed = sessionEditSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Please check the session details." };
+  const d = parsed.data;
+  if (d.endTime <= d.startTime) return { ok: false, error: "End time must be after the start time." };
+  const session = await db.trainingSession.findUnique({ where: { id }, include: { module: true, rsvps: { where: { status: "GOING" }, include: { volunteer: true } } } });
+  if (!session) return { ok: false, error: "That session no longer exists.", notFound: true };
+  if (session.startsAt <= new Date()) return { ok: false, error: "This session has already started, so it can no longer be changed." };
+  const { nzInstant } = await import("@/lib/dates");
+  const startsAt = nzInstant(d.date, d.startTime);
+  if (startsAt <= new Date()) return { ok: false, error: "Pick a time that is still to come." };
+  const going = session.rsvps.filter((r) => r.volunteer.status === "ACTIVE");
+  if (d.capacity < session.rsvps.length) return { ok: false, error: `${session.rsvps.length} people are booked in, so the capacity cannot go below that.` };
+  const moved = startsAt.getTime() !== session.startsAt.getTime() || d.location !== session.location;
+  await db.trainingSession.update({ where: { id }, data: { startsAt, endsAt: nzInstant(d.date, d.endTime), location: d.location, capacity: d.capacity, notes: d.notes || null } });
+  if (moved) {
+    for (const r of going) {
+      await queueEmail(r.volunteer, T.sessionChanged({ firstName: r.volunteer.firstName, moduleName: session.module.name, startsAt, location: d.location, changedBy: admin.firstName }), `session-changed:${id}:${startsAt.toISOString()}:${r.volunteerId}`);
+    }
+  }
+  revalidateAll();
+  if (!moved || going.length === 0) return { ok: true, message: "Session saved." };
+  return { ok: true, message: `Session saved. ${going.length} ${going.length === 1 ? "person booked in has" : "people booked in have"} been emailed the new details.` };
+}
+
+const cancelSessionSchema = z.object({ reason: z.string().trim().max(300) });
+
+/** Cancels an upcoming session: everyone booked is emailed, then it goes, with
+ *  its bookings. A session that has started is part of the record and stays. */
+export async function cancelSession(id: string, input: z.infer<typeof cancelSessionSchema>): Promise<ActionResult> {
+  const admin = await requireAdmin();
+  const parsed = cancelSessionSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Please keep the note under 300 characters." };
+  const session = await db.trainingSession.findUnique({ where: { id }, include: { module: true, rsvps: { where: { status: "GOING" }, include: { volunteer: true } } } });
+  if (!session) return { ok: false, error: "That session has already been cancelled.", notFound: true };
+  if (session.startsAt <= new Date()) return { ok: false, error: "This session has already started, so it cannot be cancelled." };
+  // Conditional, so two coordinators cancelling at once email people once.
+  const { count } = await db.trainingSession.deleteMany({ where: { id } });
+  if (count === 0) return { ok: false, error: "That session has already been cancelled." };
+  const going = session.rsvps.filter((r) => r.volunteer.status === "ACTIVE");
+  for (const r of going) {
+    await queueEmail(r.volunteer, T.sessionCancelled({ firstName: r.volunteer.firstName, moduleName: session.module.name, startsAt: session.startsAt, cancelledBy: admin.firstName, reason: parsed.data.reason || null }), `session-cancelled:${id}:${r.volunteerId}`);
+  }
+  revalidateAll();
+  return { ok: true, message: going.length === 0 ? "Session cancelled. Nobody was booked in." : `Session cancelled. ${going.length} ${going.length === 1 ? "person has" : "people have"} been emailed.` };
+}
+
 const linkSchema = z.object({
   label: z.string().trim().min(2).max(100),
   url: z.url({ protocol: /^https$/, error: "Links must start with https://" }).max(500),
@@ -438,10 +488,13 @@ export async function saveModule(input: ModuleInput): Promise<ActionResult> {
   return { ok: true, message: d.id ? "Module saved." : "Module added. Volunteers with those roles now see it on their training list." };
 }
 
+const commentSchema = z.string().trim().max(500, "Please keep the comment under 500 characters.");
+
 const completionSchema = z.object({
   volunteerId: z.string(),
   moduleId: z.string(),
   completedISO: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  comment: commentSchema.optional(),
 });
 
 /** The supervisor marks an in-person stage done on the day it happened, which
@@ -449,8 +502,8 @@ const completionSchema = z.object({
 export async function recordCoordinatorCompletion(input: z.infer<typeof completionSchema>): Promise<ActionResult> {
   await requireAdmin();
   const parsed = completionSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: "Please pick a date." };
-  const { volunteerId, moduleId, completedISO } = parsed.data;
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.path[0] === "comment" ? parsed.error.issues[0].message : "Please pick a date." };
+  const { volunteerId, moduleId, completedISO, comment } = parsed.data;
   const today = todayISO();
   if (completedISO > today) return { ok: false, error: "The completion date cannot be in the future." };
   const [volunteer, mod] = await Promise.all([db.volunteer.findUnique({ where: { id: volunteerId } }), db.trainingModule.findUnique({ where: { id: moduleId } })]);
@@ -459,10 +512,22 @@ export async function recordCoordinatorCompletion(input: z.infer<typeof completi
   const first = await prerequisiteMissing(volunteerId, moduleId);
   if (first) return { ok: false, error: `${volunteer.firstName} has not done ${first} yet, and it comes first. Record that, then this.` };
   const expiresISO = mod.validityMonths ? addMonths(completedISO, mod.validityMonths) : null;
-  await db.trainingRecord.create({ data: { volunteerId, moduleId, completedAt: isoToDate(completedISO), expiresAt: expiresISO ? isoToDate(expiresISO) : null, method: "COORDINATOR" } });
+  await db.trainingRecord.create({ data: { volunteerId, moduleId, completedAt: isoToDate(completedISO), expiresAt: expiresISO ? isoToDate(expiresISO) : null, method: "COORDINATOR", comment: comment || null } });
   await queueEmail(volunteer, T.trainingCompleted({ firstName: volunteer.firstName, moduleName: mod.name, completedISO: completedISO === today ? undefined : completedISO, expiresISO }));
   revalidateAll();
   return { ok: true, message: `${mod.name} recorded for ${volunteer.firstName}${completedISO === today ? "" : `, as of ${formatDay(completedISO)}`}.` };
+}
+
+/** Adds, changes or clears the coordinator's comment on a training record,
+ *  for a session attendance or an earlier completion. */
+export async function saveTrainingComment(recordId: string, comment: string): Promise<ActionResult> {
+  await requireAdmin();
+  const parsed = commentSchema.safeParse(comment);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]!.message };
+  const { count } = await db.trainingRecord.updateMany({ where: { id: recordId }, data: { comment: parsed.data || null } });
+  if (count === 0) return { ok: false, error: "That training record no longer exists. Reload the page.", notFound: true };
+  revalidateAll();
+  return { ok: true, message: parsed.data ? "Comment saved." : "Comment removed." };
 }
 
 export async function runRemindersNow(): Promise<ActionResult> {
