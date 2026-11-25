@@ -36,7 +36,7 @@ export function SessionCard({ session }: { session: TrainingSessionItem }) {
       </View>
       {!session.relevant && (
         <Text variant="small" tone="mutedText">
-          Your record for this module is current; come along if you would like a refresher.
+          You don&apos;t need this one any more, so you can let your place go.
         </Text>
       )}
       <View style={{ marginTop: 8 }}>

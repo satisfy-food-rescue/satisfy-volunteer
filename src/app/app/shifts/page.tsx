@@ -3,6 +3,8 @@ import { CalendarOff, ChevronDown, ChevronLeft, ChevronRight, Lock } from "lucid
 import { requireVolunteer } from "@/lib/session";
 import { addDays, formatDayShort, isWeekday, todayISO, weekMonday, workWeek, WEEKDAY_LONG, weekdayOf, isoToDate, formatMonth } from "@/lib/dates";
 import { shiftsBetween, type ShiftView } from "@/lib/roster";
+import { sessionsBetween } from "@/lib/sessions";
+import { SessionCard } from "@/components/app/session-card";
 import { trainingContext } from "@/lib/volunteer-data";
 import { eligibilityFor, lockFix } from "@/lib/training";
 import { LockedShiftCard, ShiftCard } from "@/components/app/shift-card";
@@ -22,8 +24,9 @@ export default async function ShiftsPage({ searchParams }: { searchParams: Promi
   // At the weekend the week worth showing is the coming one.
   const monday = weekMonday(week && /^\d{4}-\d{2}-\d{2}$/.test(week) ? week : isWeekday(today) ? today : addDays(today, 2));
   const days = workWeek(monday);
-  const [shifts, training, absences] = await Promise.all([
+  const [shifts, sessions, training, absences] = await Promise.all([
     shiftsBetween(days[0], days[4]),
+    sessionsBetween(days[0], days[4], { volunteerId: me.id }),
     trainingContext(me, today),
     db.absence.findMany({ where: { volunteerId: me.id, startDate: { lte: isoToDate(days[4]) }, endDate: { gte: isoToDate(days[0]) } } }),
   ]);
@@ -46,6 +49,7 @@ export default async function ShiftsPage({ searchParams }: { searchParams: Promi
   // once all five fit side by side.
   const renderDay = (iso: string, idPrefix: string, className?: string) => {
     const dayShifts = shifts.filter((s) => s.iso === iso);
+    const daySessions = sessions.filter((s) => s.iso === iso);
     const past = iso < today;
     const isToday = iso === today;
     const away = isAway(iso);
@@ -79,10 +83,15 @@ export default async function ShiftsPage({ searchParams }: { searchParams: Promi
           <span className={cn("text-sm text-muted-foreground tabular", past && "@3xl/app:opacity-80")}>{formatDayShort(iso)}</span>
           {away && <Chip tone="neutral" icon={CalendarOff} size="sm">You&apos;re away</Chip>}
         </div>
-        {dayShifts.length === 0 ? (
+        {dayShifts.length === 0 && daySessions.length === 0 ? (
           <EmptyState title="No shifts scheduled" className="py-4 @6xl/app:border-transparent @6xl/app:bg-transparent" />
         ) : (
           <div className="flex flex-col gap-2.5 @4xl/app:gap-3">
+            {daySessions.length > 0 && (
+              <div className={cn("grid gap-2.5 @4xl/app:grid-cols-2 @4xl/app:gap-3 @6xl/app:grid-cols-1", past && "@3xl/app:opacity-75")}>
+                {daySessions.map((v) => <SessionCard key={v.session.id} view={v} past={past} />)}
+              </div>
+            )}
             {open.length > 0 && (
               <div className={cn("grid gap-2.5 @4xl/app:grid-cols-2 @4xl/app:gap-3 @6xl/app:grid-cols-1", past && "@3xl/app:opacity-75")}>
                 {open.map((view) => {

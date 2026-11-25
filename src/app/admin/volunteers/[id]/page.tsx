@@ -15,7 +15,7 @@ import { RecordMojCheckButton, RemoveMojCheckButton } from "@/components/admin/i
 import { moduleStatuses, trainingSummary } from "@/lib/training";
 import { AvatarBadge } from "@/components/shared/avatar-badge";
 import { Chip, TrainingChip } from "@/components/shared/status-chip";
-import { AccountControls, BookInitialVisitButton, ContactLogForm, NotesEditor, ProfileEditor, RecordCompletionButton, RolesEditor } from "@/components/admin/volunteer-admin-controls";
+import { AccountControls, BookInitialVisitButton, ContactLogForm, NotesEditor, ProfileEditor, RecordCompletionButton, RolesEditor, TrainingCommentButton } from "@/components/admin/volunteer-admin-controls";
 import { ContactTimeline } from "@/components/admin/contact-timeline";
 import { Disclosure } from "@/components/admin/disclosure";
 import { RecordAbsenceForm } from "@/components/admin/record-absence-form";
@@ -192,7 +192,9 @@ export default async function VolunteerProfilePage({ params, searchParams }: { p
                     </p>
                     {s.module.code === INITIAL_VISIT_CODE && s.status === "NOT_STARTED" && visitBooked && <p className="text-xs font-semibold text-green-text">Booked for {formatInstant(visitBooked.startsAt)}</p>}
                     {s.expiresISO && <p className={cn("text-xs tabular", s.status === "OVERDUE" ? "text-status-bad" : s.status === "DUE_SOON" ? "text-status-warn" : "text-muted-foreground")}>{s.status === "OVERDUE" ? "Expired" : "Expires"} {formatDate(s.expiresISO)}</p>}
+                    {s.record?.comment && <p className="mt-1 whitespace-pre-line text-sm text-ink-soft">{s.record.comment}</p>}
                   </div>
+                  {s.record && <TrainingCommentButton recordId={s.record.id} comment={s.record.comment} moduleName={s.module.name} firstName={v.firstName} />}
                   <TrainingChip status={s.status} size="sm" />
                   {s.status !== "COMPLETE" && (s.lockedBy ? (
                     <span className="text-xs font-semibold text-muted-foreground">After {s.lockedBy.name}</span>

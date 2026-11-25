@@ -1,28 +1,35 @@
 import Link from "next/link";
-import { AlertTriangle, Ban, ChevronLeft, ChevronRight, PencilLine } from "lucide-react";
+import { AlertTriangle, Ban, ChevronLeft, ChevronRight, GraduationCap, PencilLine } from "lucide-react";
 import type { ShiftView } from "@/lib/roster";
+import type { SessionView } from "@/lib/sessions";
 import { addDays, formatDayShort, formatMonth, monthEnd, monthStart, weekdayOf, workWeek, WEEKDAY_SHORT, isoToDate, dateToISO, formatDay, formatTime } from "@/lib/dates";
 import { SHIFT_KIND_LABEL } from "@/lib/domain";
 import { ShiftKindIcon } from "@/components/app/shift-card";
 import { cn } from "@/lib/utils";
 
-export function WeekView({ monday, shifts, today }: { monday: string; shifts: ShiftView[]; today: string }) {
+export function WeekView({ monday, shifts, sessions, today }: { monday: string; shifts: ShiftView[]; sessions: SessionView[]; today: string }) {
   const days = workWeek(monday);
   return (
     <div className="grid grid-cols-1 gap-4 @2xl/admin:grid-cols-5 @2xl/admin:gap-2 @6xl/admin:gap-3">
       {days.map((iso) => {
         const items = shifts.filter((s) => s.iso === iso);
+        const daySessions = sessions.filter((s) => s.iso === iso);
         const gaps = items.filter((s) => s.isGap).length;
+        // Shifts and training sessions in one list, by start time.
+        const entries = [
+          ...items.map((s) => ({ key: s.shift.id, start: s.shift.startTime, node: <CompactShift key={s.shift.id} view={s} /> })),
+          ...daySessions.map((s) => ({ key: s.session.id, start: s.startTime, node: <CompactSession key={s.session.id} view={s} /> })),
+        ].sort((a, b) => a.start.localeCompare(b.start));
         return (
           <section key={iso} className={cn("flex min-w-0 flex-col gap-2 rounded-2xl border bg-card/50 p-3 @2xl/admin:p-2 @6xl/admin:p-2.5", iso === today ? "border-teal" : "border-border")}>
             <header className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1 px-0.5">
               <h2 className={cn("text-lg text-ink", iso === today && "text-teal")}>{WEEKDAY_SHORT[weekdayOf(iso)]} <span className="font-sans text-sm text-muted-foreground tabular">{formatDayShort(iso)}</span></h2>
               {gaps > 0 && <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-status-warn-bg px-2 py-0.5 text-xs font-bold text-status-warn"><AlertTriangle className="size-3" aria-hidden />{gaps} gap{gaps === 1 ? "" : "s"}</span>}
             </header>
-            {items.length === 0 ? (
+            {entries.length === 0 ? (
               <p className="rounded-xl border border-dashed border-border px-3 py-4 text-center text-sm text-muted-foreground">No shifts</p>
             ) : (
-              items.map((s) => <CompactShift key={s.shift.id} view={s} />)
+              entries.map((e) => e.node)
             )}
           </section>
         );
@@ -113,7 +120,42 @@ function CompactShift({ view }: { view: ShiftView }) {
   );
 }
 
-export function MonthView({ anchor, shifts, today }: { anchor: string; shifts: ShiftView[]; today: string }) {
+/** A training session on the week board: who is booked in, against its
+ *  capacity. Teal, the colour of training, so it reads apart from shifts. */
+function CompactSession({ view }: { view: SessionView }) {
+  const fill = Math.min(100, Math.round((view.going.length / Math.max(1, view.session.capacity)) * 100));
+  return (
+    <Link
+      href={`/admin/training/sessions/${view.session.id}`}
+      title={`Training: ${view.session.module.name}`}
+      className="flex flex-col gap-1 rounded-xl bg-teal-tint-soft p-2 shadow-sm ring-1 ring-teal/40 transition-colors hover:ring-teal @6xl/admin:p-2.5"
+    >
+      <span lang="en-NZ" className="hyphens-auto break-words text-sm font-bold leading-tight text-ink">
+        <span className="sr-only">Training: </span>
+        {view.session.module.name}
+      </span>
+      <span className="flex items-start gap-1 text-xs text-muted-foreground">
+        <GraduationCap className="mt-px size-3.5 shrink-0 text-teal" aria-hidden />
+        <span className="tabular">
+          {formatTime(view.startTime)}
+          <span aria-hidden> · Training</span>
+        </span>
+      </span>
+      <span className="text-xs leading-snug text-ink-soft">{view.going.map((v) => v.firstName).join(", ") || "Nobody booked yet"}</span>
+      <span className="mt-0.5 flex items-center gap-2">
+        <span className="block h-1 min-w-0 flex-1 overflow-hidden rounded-full bg-card" aria-hidden>
+          <span className="block h-full rounded-full bg-teal" style={{ width: `${fill}%` }} />
+        </span>
+        <span className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full bg-teal-tint px-1.5 py-0.5 font-display text-xs font-bold leading-none text-teal-deep tabular">
+          {view.going.length}/{view.session.capacity}
+          <span className="sr-only"> booked</span>
+        </span>
+      </span>
+    </Link>
+  );
+}
+
+export function MonthView({ anchor, shifts, sessions, today }: { anchor: string; shifts: ShiftView[]; sessions: SessionView[]; today: string }) {
   const start = monthStart(anchor);
   const end = monthEnd(anchor);
   // Grid from the Monday on/before the 1st to the Friday on/after the last.
@@ -143,6 +185,12 @@ export function MonthView({ anchor, shifts, today }: { anchor: string; shifts: S
                     {items.length} {items.length === 1 ? "shift" : "shifts"} · {filled} on
                   </Link>
                 )}
+                {inMonth && sessions.filter((t) => t.iso === iso).map((t) => (
+                  <Link key={t.session.id} href={`/admin/training/sessions/${t.session.id}`} title={`Training: ${t.session.module.name}`} className="mt-1 flex items-center gap-1 truncate rounded bg-teal-tint px-1.5 py-0.5 text-xs font-semibold text-teal-deep hover:underline">
+                    <GraduationCap className="size-3 shrink-0" aria-hidden />
+                    <span className="truncate">{t.session.module.name}</span>
+                  </Link>
+                ))}
                 {gaps.slice(0, 2).map((g) => (
                   <Link key={g.shift.id} href={`/admin/roster/${g.shift.id}`} title={g.name} className="mt-1 block truncate rounded bg-orange-tint px-1.5 py-0.5 text-xs font-semibold text-orange-text hover:underline">
                     {shortName(g)}

@@ -260,6 +260,44 @@ export function sessionConfirmed(p: { firstName: string; moduleName: string; sta
   return build(SESSION_CONFIRMED, { firstName: p.firstName, moduleName: p.moduleName, when: formatInstant(p.startsAt), location: p.location }, { ctaHref: "/app/training" });
 }
 
+const SESSION_CHANGED = spec({
+  key: "session-changed",
+  kind: "SESSION_CHANGED",
+  channel: "EMAIL",
+  name: "Training session changed",
+  audience: "volunteer",
+  when: "When you change the time or place of a session they are booked into.",
+  placeholders: { firstName: FIRST_NAME, moduleName: "The module", when: "The new day and time", location: "Where it is now", changedBy: "Your first name" },
+  sample: { firstName: "Jess", moduleName: "T2 Sorting", when: "Fri 13 Nov, 10:30am", location: "Satisfy warehouse, Rangiora", changedBy: "Phillipa" },
+  subject: "{moduleName} has moved: now {when}",
+  preview: "At {location}.",
+  body: `Kia ora {firstName},\n\n{changedBy} has changed the {moduleName} session you are booked into. It is now on {when} at {location}.\n\nYou are still booked in. If the new time does not suit, let us know from your training page so the place can go to someone else.\n\n${SIGN_OFF}`,
+  ctaLabel: "View my training",
+});
+
+export function sessionChanged(p: { firstName: string; moduleName: string; startsAt: Date; location: string; changedBy: string }): EmailDraft {
+  return build(SESSION_CHANGED, { firstName: p.firstName, moduleName: p.moduleName, when: formatInstant(p.startsAt), location: p.location, changedBy: p.changedBy }, { ctaHref: "/app/training" });
+}
+
+const SESSION_CANCELLED = spec({
+  key: "session-cancelled",
+  kind: "SESSION_CANCELLED",
+  channel: "EMAIL",
+  name: "Training session cancelled",
+  audience: "volunteer",
+  when: "When you cancel a session they are booked into.",
+  placeholders: { firstName: FIRST_NAME, moduleName: "The module", when: "The day and time it was", cancelledBy: "Your first name", reason: "Your note, if you wrote one" },
+  sample: { firstName: "Jess", moduleName: "T2 Sorting", when: "Fri 13 Nov, 10:30am", cancelledBy: "Phillipa", reason: "The trainer is unwell." },
+  subject: "{moduleName} on {when} is cancelled",
+  preview: "Please do not come in for it.",
+  body: `Kia ora {firstName},\n\nSorry to say the {moduleName} session on {when} has been cancelled, so please do not come in for it.\n\nA note from {cancelledBy}: {reason}\n\nWhen another session is scheduled, you can book it from your training page.\n\n${SIGN_OFF}`,
+  ctaLabel: "View my training",
+});
+
+export function sessionCancelled(p: { firstName: string; moduleName: string; startsAt: Date; cancelledBy: string; reason: string | null }): EmailDraft {
+  return build(SESSION_CANCELLED, { firstName: p.firstName, moduleName: p.moduleName, when: formatInstant(p.startsAt), cancelledBy: p.cancelledBy, reason: p.reason ? sentence(p.reason) : "" }, { ctaHref: "/app/training" });
+}
+
 const INITIAL_VISIT_BOOKED = spec({
   key: "initial-visit-booked",
   kind: "SESSION_CONFIRMED",
@@ -1226,6 +1264,8 @@ export const TEMPLATES = [
   TRAINING_OVERDUE,
   TRAINING_COMPLETED,
   SESSION_CONFIRMED,
+  SESSION_CHANGED,
+  SESSION_CANCELLED,
   INITIAL_VISIT_BOOKED,
   MOJ_CHECK_RECORDED,
   MOJ_RENEWAL_DUE,

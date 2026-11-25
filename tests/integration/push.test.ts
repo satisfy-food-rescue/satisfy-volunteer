@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/lib/db";
 import * as expoPush from "@/lib/expo-push";
 import * as mailer from "@/lib/mailer";
-import { queueEmail, withCapturedEmails } from "@/lib/emails";
+import { queueEmail, queueEmailAndPush, withCapturedEmails } from "@/lib/emails";
 import * as T from "@/lib/email-templates";
 import { makeVolunteer, resetDb } from "./helpers";
 
@@ -48,6 +48,24 @@ describe("push notifications", () => {
     expect(await settled(row.id)).toMatchObject({ status: "SENT", channel: "EMAIL", providerId: "re_2" });
     expect(send).toHaveBeenCalledTimes(1);
     expect(await db.pushToken.count()).toBe(0);
+  });
+
+  it("paired with an email are left out for someone without the app, so they get one email", async () => {
+    vi.spyOn(mailer, "sendEmail").mockResolvedValue("re_3");
+    const v = await makeVolunteer({ firstName: "Fiona" });
+    const p = { firstName: "Fiona", shiftName: "Warehouse sorting (AM)", dateISO: "2026-10-20", start: "09:00", end: "12:00", location: "Rangiora", shiftId: "s1", addedBy: "Phillipa", covering: false };
+    await queueEmailAndPush(v, T.shiftAdded(p), T.shiftAddedPush(p), "added:a1");
+    expect(await db.email.findMany({ where: { volunteerId: v.id }, select: { channel: true, kind: true } })).toEqual([{ channel: "EMAIL", kind: "SHIFT_ADDED" }]);
+  });
+
+  it("paired with an email still reach a phone signed in to the app", async () => {
+    vi.spyOn(mailer, "sendEmail").mockResolvedValue("re_4");
+    vi.spyOn(expoPush, "sendExpoPush").mockResolvedValue({ delivered: [TOKEN], ticketIds: ["ticket-2"], unregistered: [] });
+    const v = await makeVolunteer({ firstName: "Fiona" });
+    await db.pushToken.create({ data: { token: TOKEN, volunteerId: v.id, platform: "ios" } });
+    const p = { firstName: "Fiona", shiftName: "Warehouse sorting (AM)", dateISO: "2026-10-20", start: "09:00", end: "12:00", location: "Rangiora", shiftId: "s1", addedBy: "Phillipa", covering: false };
+    await queueEmailAndPush(v, T.shiftAdded(p), T.shiftAddedPush(p), "added:a1");
+    expect((await db.email.findMany({ where: { volunteerId: v.id }, orderBy: { createdAt: "asc" } })).map((e) => e.channel)).toEqual(["EMAIL", "PUSH"]);
   });
 
   it("are retried when Expo cannot be reached", async () => {

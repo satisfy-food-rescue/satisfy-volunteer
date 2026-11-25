@@ -232,10 +232,27 @@ export type ShiftDetail = ShiftSummary & {
 
 /** GET /api/mobile/shifts?week=YYYY-MM-DD (any day in the week; defaults to
  *  this week). Monday to Friday. */
+/** A training session the volunteer has booked into, shown beside their
+ *  shifts. Tapping it opens the Training tab. */
+export type BookedSession = {
+  id: string;
+  moduleName: string;
+  /** The NZ calendar day it is on. */
+  iso: string;
+  /** "Wed 21 Oct, 10am - 11:30am" */
+  whenLabel: string;
+  /** "Wed 21 Oct, 10am" */
+  startLabel: string;
+  /** "10am - 11:30am" */
+  timeLabel: string;
+  location: string;
+};
+
 export type ShiftsWeek = {
   today: string;
   monday: string;
-  days: { iso: string; away: boolean; shifts: ShiftSummary[] }[];
+  /** `sessions` are the training sessions the volunteer is booked into. */
+  days: { iso: string; away: boolean; shifts: ShiftSummary[]; sessions: BookedSession[] }[];
 };
 
 /** GET /api/mobile/shifts/:id returns ShiftDetail.
@@ -268,6 +285,8 @@ export type Home = {
   /** For harvest pool members: the next harvest they are on, else the
    *  soonest with a place left. `id` is the shift id. */
   harvest: { id: string; title: string; iso: string; going: boolean } | null;
+  /** Training sessions the volunteer is booked into, soonest first. */
+  sessions: BookedSession[];
   impact: {
     kgRescued: number;
     meals: number;
@@ -315,7 +334,8 @@ export type TrainingSessionItem = {
   capacity: number;
   going: number;
   mine: "GOING" | "DECLINED" | null;
-  /** The volunteer needs this module and it is not complete. */
+  /** The volunteer needs this module and it is not complete. False only for
+   *  a session they booked and no longer need. */
   relevant: boolean;
   full: boolean;
   /** Why they cannot book in yet (see ModuleSummary.lockedReason). Null when
@@ -340,7 +360,7 @@ export type TrainingOverview = {
   /** Modules still in development for the volunteer's roles: shown as
    *  coming soon, never required. */
   comingSoon: ModuleSummary[];
-  /** Relevant sessions first, then the rest, each soonest first. */
+  /** Sessions the volunteer still needs, plus any they booked and no longer need, soonest first. */
   sessions: TrainingSessionItem[];
   /** Training opens once induction is done. `toDo` says what is still
    *  needed, e.g. "your Ministry of Justice check and your signature on the

@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { CalendarPlus, Check, ClipboardCheck, Loader2, MessageSquareText, Pencil, PhoneCall, Power, Save, Send, UserPlus, X } from "lucide-react";
-import { bookInitialVisit, createVolunteer, type CreateVolunteerResult, logContact, recordCoordinatorCompletion, saveVolunteerNotes, sendVolunteerInvite, setVolunteerRoles, setVolunteerStatus, updateVolunteerProfile } from "@/app/admin/actions";
+import { bookInitialVisit, createVolunteer, type CreateVolunteerResult, logContact, recordCoordinatorCompletion, saveTrainingComment, saveVolunteerNotes, sendVolunteerInvite, setVolunteerRoles, setVolunteerStatus, updateVolunteerProfile } from "@/app/admin/actions";
 import type { ActionResult } from "@/lib/volunteer-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -86,10 +86,11 @@ export function RolesEditor({ volunteerId, initial }: { volunteerId: string; ini
 export function RecordCompletionButton({ volunteerId, moduleId, moduleName, firstName, today }: { volunteerId: string; moduleId: string; moduleName: string; firstName: string; today: string }) {
   const [open, setOpen] = useState(false);
   const [date, setDate] = useState(today);
+  const [comment, setComment] = useState("");
   const [pending, run] = useAction();
   return (
     <>
-      <Button size="sm" variant="outline" className="h-9" onClick={() => { setDate(today); setOpen(true); }}>
+      <Button size="sm" variant="outline" className="h-9" onClick={() => { setDate(today); setComment(""); setOpen(true); }}>
         <ClipboardCheck className="size-4" /> Mark complete
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
@@ -102,10 +103,52 @@ export function RecordCompletionButton({ volunteerId, moduleId, moduleName, firs
             <Label htmlFor={`done-${moduleId}`}>Completed on</Label>
             <DatePicker id={`done-${moduleId}`} value={date} max={today} onChange={setDate} />
           </div>
+          <CommentField id={`comment-${moduleId}`} value={comment} onChange={setComment} />
           <DialogFooter>
             <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button disabled={pending || !date} onClick={() => run(() => recordCoordinatorCompletion({ volunteerId, moduleId, completedISO: date }), () => setOpen(false))}>
+            <Button disabled={pending || !date} onClick={() => run(() => recordCoordinatorCompletion({ volunteerId, moduleId, completedISO: date, comment }), () => setOpen(false))}>
               {pending ? <Spinner /> : <Check className="size-4" />} Mark complete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+function CommentField({ id, value, onChange }: { id: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Label htmlFor={id}>
+        Comments <span className="font-normal text-muted-foreground">(optional)</span>
+      </Label>
+      <Textarea id={id} value={value} onChange={(e) => onChange(e.target.value)} rows={3} maxLength={500} className="text-base" placeholder="How it went, anything to follow up. Only coordinators see this." />
+    </div>
+  );
+}
+
+/** Adds or edits the coordinator's comment on a training record that is
+ *  already there: a session attendance, or a completion recorded earlier. */
+export function TrainingCommentButton({ recordId, comment, moduleName, firstName }: { recordId: string; comment: string | null; moduleName: string; firstName: string }) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState(comment ?? "");
+  const [pending, run] = useAction();
+  return (
+    <>
+      <Button size="sm" variant="ghost" className="h-9 text-muted-foreground" onClick={() => { setText(comment ?? ""); setOpen(true); }}>
+        <MessageSquareText className="size-4" /> {comment ? "Edit comment" : "Add comment"}
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl text-ink">{comment ? "Edit" : "Add"} comment</DialogTitle>
+            <DialogDescription>On {firstName}&apos;s {moduleName}. Only coordinators see it.</DialogDescription>
+          </DialogHeader>
+          <CommentField id={`comment-${recordId}`} value={text} onChange={setText} />
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button disabled={pending || text.trim() === (comment ?? "")} onClick={() => run(() => saveTrainingComment(recordId, text), () => setOpen(false))}>
+              {pending ? <Spinner /> : <Save className="size-4" />} Save comment
             </Button>
           </DialogFooter>
         </DialogContent>

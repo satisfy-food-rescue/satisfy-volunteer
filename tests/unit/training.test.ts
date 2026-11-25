@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { TrainingModule, TrainingRecord } from "@/generated/prisma/client";
 import { isoToDate } from "@/lib/dates";
-import { eligibilityFor, moduleStatuses, trainingSummary } from "@/lib/training";
+import { eligibilityFor, moduleStatuses, sessionUnwantedReason, sessionWanted, trainingSummary } from "@/lib/training";
 
 const TODAY = "2026-10-02";
 
@@ -22,7 +22,7 @@ function mod(over: Partial<TrainingModule> & Pick<TrainingModule, "id" | "code">
 }
 
 function record(moduleId: string, completedISO: string, expiresISO: string | null): TrainingRecord {
-  return { id: `${moduleId}-${completedISO}`, volunteerId: "v", moduleId, completedAt: isoToDate(completedISO), expiresAt: expiresISO ? isoToDate(expiresISO) : null, method: "ONLINE", sessionId: null };
+  return { id: `${moduleId}-${completedISO}`, volunteerId: "v", moduleId, completedAt: isoToDate(completedISO), expiresAt: expiresISO ? isoToDate(expiresISO) : null, method: "ONLINE", sessionId: null, comment: null };
 }
 
 const visit = mod({ id: "m1", code: "INITIAL_VISIT", validityMonths: null, mandatoryBeforeFirstShift: true, delivery: "IN_PERSON", requiredRoles: ["WAREHOUSE", "DRIVERS_ASSISTANT"], order: 1 });
@@ -119,5 +119,32 @@ describe("stages in order", () => {
     const st = moduleStatuses({ roles: ["WAREHOUSE"] }, all, [], TODAY);
     expect(st.find((s) => s.module.code === "SOON")).toMatchObject({ required: false, status: "NOT_REQUIRED" });
     expect(eligibilityFor({ roles: ["WAREHOUSE"] }, "WAREHOUSE", st, null).blockers.map((b) => b.module.code)).not.toContain("SOON");
+  });
+});
+
+describe("which sessions a volunteer is offered", () => {
+  const t1 = mod({ id: "s1", code: "T1", name: "T1 Sorting", delivery: "IN_PERSON", validityMonths: null, requiredRoles: ["WAREHOUSE"] });
+  const refresher = mod({ id: "s2", code: "FIRST_AID", name: "First aid", delivery: "IN_PERSON", validityMonths: 12, requiredRoles: ["WAREHOUSE", "HARVEST"] });
+  const modules = [t1, refresher];
+  const of = (roles: ("WAREHOUSE" | "HARVEST")[], records: TrainingRecord[], id: string) => moduleStatuses({ roles }, modules, records, TODAY).find((s) => s.module.id === id);
+
+  it("offers a stage the volunteer's roles need and they have not done", () => {
+    expect(sessionWanted(of(["WAREHOUSE"], [], "s1"))).toBe(true);
+    expect(sessionUnwantedReason(of(["WAREHOUSE"], [], "s1"))).toBeNull();
+  });
+
+  it("does not offer a stage outside the volunteer's roles, such as T1 to a harvester", () => {
+    expect(sessionWanted(of(["HARVEST"], [], "s1"))).toBe(false);
+    expect(sessionUnwantedReason(of(["HARVEST"], [], "s1"))).toBe("T1 Sorting is not part of the training for your roles.");
+  });
+
+  it("does not offer a stage already completed", () => {
+    expect(sessionUnwantedReason(of(["WAREHOUSE"], [record("s1", "2026-09-01", null)], "s1"))).toBe("You have already completed T1 Sorting.");
+  });
+
+  it("offers a refresher once it is due soon or overdue", () => {
+    expect(sessionWanted(of(["WAREHOUSE"], [record("s2", "2025-10-20", "2026-10-20")], "s2"))).toBe(true);
+    expect(sessionWanted(of(["WAREHOUSE"], [record("s2", "2025-09-01", "2026-09-01")], "s2"))).toBe(true);
+    expect(sessionWanted(of(["WAREHOUSE"], [record("s2", "2026-06-01", "2027-06-01")], "s2"))).toBe(false);
   });
 });

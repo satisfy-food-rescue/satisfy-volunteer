@@ -8,7 +8,7 @@ import type { Volunteer } from "@/generated/prisma/client";
 import { db } from "./db";
 import { addMonths, daysBetween, isoToDate, todayISO, dateToISO } from "./dates";
 import { ABSENCE_REASON_LABEL, HARVEST_ROLE, fullName, sortRoles, type VolunteerRole } from "./domain";
-import { eligibilityFor } from "./training";
+import { eligibilityFor, sessionUnwantedReason } from "./training";
 import { trainingLock } from "./induction";
 import { joinPoolIfCoordinator } from "./admin-access";
 import { shiftById } from "./roster";
@@ -150,7 +150,11 @@ export async function rsvpSession(me: Volunteer, sessionId: string, going: boole
   }
   if (going) {
     const { statuses, induction } = await trainingContext(me);
-    const lock = trainingLock(me, statuses.find((s) => s.module.id === session.moduleId)!, induction);
+    const status = statuses.find((s) => s.module.id === session.moduleId);
+    const alreadyGoing = session.rsvps.some((r) => r.volunteerId === me.id && r.status === "GOING");
+    const unwanted = alreadyGoing ? null : sessionUnwantedReason(status);
+    if (unwanted) return { ok: false, error: unwanted };
+    const lock = status ? trainingLock(me, status, induction) : null;
     if (lock) return { ok: false, error: lock };
   }
   await db.sessionRsvp.upsert({

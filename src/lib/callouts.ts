@@ -7,7 +7,7 @@ import { db } from "./db";
 import { ACTIVE_POOL } from "./pool";
 import { SHIFT_KIND_LABEL } from "./domain";
 import type { ShiftView } from "./roster";
-import { queueEmail } from "./emails";
+import { queueEmailAndPush } from "./emails";
 import * as T from "./email-templates";
 
 const calloutRef = (shiftId: string, volunteerId: string) => `callout:${shiftId}:${volunteerId}`;
@@ -46,8 +46,7 @@ export async function sendShiftCallout(view: ShiftView): Promise<number> {
       spotsLeft: view.spotsLeft,
       shiftId: view.shift.id,
     };
-    await queueEmail(v, T.shiftCallout(p), ref);
-    await queueEmail(v, T.shiftCalloutPush(p), ref);
+    await queueEmailAndPush(v, T.shiftCallout(p), T.shiftCalloutPush(p), ref);
     sent++;
   }
   return sent;

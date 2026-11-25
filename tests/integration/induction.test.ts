@@ -95,7 +95,8 @@ describe("policies", () => {
     expect(await acknowledgeDocument(margaret, doc.id, 1)).toMatchObject({ ok: true });
     expect(await publishVersion({ id: doc.id, note: "New ramp", notify: true })).toMatchObject({ ok: true, message: "Version 2 published. Volunteers are asked to read it again; 2 volunteers have been emailed." });
     const sent = await db.email.findMany({ where: { kind: "DOCUMENT_UPDATED" } });
-    expect(sent.map((e) => e.volunteerId).sort()).toEqual([emma.id, emma.id, margaret.id, margaret.id].sort());
+    // One email each: neither has the app on a phone, so there is no push.
+    expect(sent.map((e) => [e.volunteerId, e.channel]).sort()).toEqual([[emma.id, "EMAIL"], [margaret.id, "EMAIL"]].sort());
     expect(sent.some((e) => e.volunteerId === coordinator.id)).toBe(false);
     expect(sent.find((e) => e.channel === "EMAIL")).toMatchObject({ subject: "Please read: Health and Safety Policy", body: expect.stringContaining("New ramp."), ctaHref: `/app/policies/${doc.id}` });
 

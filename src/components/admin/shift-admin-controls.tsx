@@ -133,7 +133,7 @@ export function CancelShiftButton({ shiftId, label, booked }: { shiftId: string;
               <span className="font-semibold text-ink">{label}.</span>{" "}
               {booked === 0
                 ? "Nobody is booked on it yet. It comes off the roster for everyone."
-                : `The ${booked === 1 ? "volunteer" : `${booked} volunteers`} booked on it will get an email and a push notification straight away, so nobody turns up for it.`}
+                : `The ${booked === 1 ? "volunteer" : `${booked} volunteers`} booked on it will be emailed straight away, with a push notification for anyone using the app, so nobody turns up for it.`}
             </DialogDescription>
           </DialogHeader>
           {booked > 0 && (

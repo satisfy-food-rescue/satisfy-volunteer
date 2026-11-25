@@ -3,6 +3,7 @@ import { CalendarPlus, Plus } from "lucide-react";
 import { requireAdmin } from "@/lib/session";
 import { addDays, monthEnd, monthStart, todayISO, weekMonday } from "@/lib/dates";
 import { shiftsBetween } from "@/lib/roster";
+import { sessionsBetween } from "@/lib/sessions";
 import { PageHeader } from "@/components/shared/page-header";
 import { MonthView, RosterNav, WeekView } from "@/components/admin/roster-calendar";
 import { Button } from "@/components/ui/button";
@@ -17,7 +18,7 @@ export default async function RosterPage({ searchParams }: { searchParams: Promi
   const date = sp.date && /^\d{4}-\d{2}-\d{2}$/.test(sp.date) ? sp.date : today;
   const anchor = view === "week" ? weekMonday(date) : monthStart(date);
   const [from, to] = view === "week" ? [anchor, addDays(anchor, 4)] : [addDays(monthStart(anchor), -6), addDays(monthEnd(anchor), 6)];
-  const shifts = await shiftsBetween(from, to, { drafts: true });
+  const [shifts, sessions] = await Promise.all([shiftsBetween(from, to, { drafts: true }), sessionsBetween(from, to)]);
   const gaps = shifts.filter((s) => s.isGap && s.iso >= today);
 
   return (
@@ -34,7 +35,7 @@ export default async function RosterPage({ searchParams }: { searchParams: Promi
         }
       />
       <RosterNav view={view} anchor={anchor} today={today} />
-      {view === "week" ? <WeekView monday={anchor} shifts={shifts} today={today} /> : <MonthView anchor={anchor} shifts={shifts} today={today} />}
+      {view === "week" ? <WeekView monday={anchor} shifts={shifts} sessions={sessions} today={today} /> : <MonthView anchor={anchor} shifts={shifts} sessions={sessions} today={today} />}
     </div>
   );
 }

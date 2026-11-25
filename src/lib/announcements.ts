@@ -10,7 +10,7 @@ import { ACTIVE_POOL } from "./pool";
 import { formatDay, formatTimeRange, isoToDate, todayISO } from "./dates";
 import { ROLE_LABEL, VOLUNTEER_ROLES, sortRoles, type VolunteerRole } from "./domain";
 import { shiftById } from "./roster";
-import { queueEmail } from "./emails";
+import { queueEmail, queueEmailAndPush } from "./emails";
 import * as T from "./email-templates";
 
 export const audienceSchema = z.discriminatedUnion("audience", [
@@ -97,8 +97,8 @@ export async function sendAnnouncement(author: Volunteer, input: AnnouncementInp
   for (const v of resolved.recipients) {
     const ref = `announcement:${row.id}:${v.id}`;
     const p = { firstName: v.firstName, subject: input.subject, body: input.body, from: author.firstName, shiftId: resolved.shiftId ?? undefined };
-    await queueEmail(v, T.announcement(p), ref);
-    if (input.push) await queueEmail(v, T.announcementPush(p), ref);
+    if (input.push) await queueEmailAndPush(v, T.announcement(p), T.announcementPush(p), ref);
+    else await queueEmail(v, T.announcement(p), ref);
   }
   return { ok: true as const, count: resolved.recipients.length };
 }

@@ -102,6 +102,16 @@ export async function queueEmail(to: Recipient | ApplicantRecipient | null, temp
   return row;
 }
 
+/** An email plus the same news as a push, for messages worth having in
+ *  writing and on the phone. Someone with no phone signed in to the app gets
+ *  the email only: queueEmail would otherwise send them the push as a second
+ *  email. The demo keeps the push, captured, so the Outbox shows it. */
+export async function queueEmailAndPush(to: Recipient, email: EmailDraft, push: EmailDraft, ref?: string) {
+  await queueEmail(to, email, ref);
+  if (!seeding() && !isDemo() && (await db.pushToken.count({ where: { volunteerId: to.id } })) === 0) return;
+  await queueEmail(to, push, ref);
+}
+
 /** Sends a sign-in link (invite or password reset) straight away. The link is
  *  never stored: the logged row has no call to action, so a failed send can
  *  only be fixed by sending a new link. Returns whether it was handed over. */

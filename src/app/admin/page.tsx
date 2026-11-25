@@ -5,6 +5,8 @@ import { db } from "@/lib/db";
 import { ACTIVE_POOL } from "@/lib/pool";
 import { addDays, formatDay, formatDayLong, formatInstant, isWeekday, isoToDate, relativeDay, todayISO, weekMonday, formatDate } from "@/lib/dates";
 import { decorateShift, shiftInclude, shiftsBetween } from "@/lib/roster";
+import { sessionsBetween } from "@/lib/sessions";
+import { SessionRow } from "@/components/admin/session-row";
 import { moduleStatuses, trainingSummary } from "@/lib/training";
 import { applicationSourceLabel, fullName } from "@/lib/domain";
 import { PageHeader } from "@/components/shared/page-header";
@@ -23,7 +25,7 @@ export default async function AdminDashboard() {
   // The board shows this working week and the next; at the weekend, next
   // week and the one after.
   const monday = isWeekday(today) ? weekMonday(today) : weekMonday(addDays(today, 7));
-  const [board, fortnight, volunteers, modules, applications, sessions, harvests] = await Promise.all([
+  const [board, fortnight, volunteers, modules, applications, sessions, harvests, todaysSessions] = await Promise.all([
     shiftsBetween(monday, addDays(monday, 11), { drafts: true }),
     shiftsBetween(today, addDays(today, 14)),
     db.volunteer.findMany({ where: ACTIVE_POOL, include: { trainingRecords: true } }),
@@ -31,6 +33,7 @@ export default async function AdminDashboard() {
     db.application.findMany({ where: { status: "PENDING" }, orderBy: { submittedAt: "desc" } }),
     db.trainingSession.findMany({ where: { startsAt: { gte: new Date() } }, include: { module: true, rsvps: true }, orderBy: { startsAt: "asc" }, take: 3 }),
     db.shift.findMany({ where: { template: { kind: "HARVEST" }, date: { gte: isoToDate(today) }, status: { not: "CANCELLED" } }, include: shiftInclude, orderBy: [{ date: "asc" }, { startTime: "asc" }], take: 3 }),
+    sessionsBetween(today, today),
   ]);
   const weeks = [0, 7].map((offset, i) => ({
     label: i === 0 ? (monday === weekMonday(today) ? "This week" : "Next week") : monday === weekMonday(today) ? "Next week" : "The week after",
@@ -46,6 +49,12 @@ export default async function AdminDashboard() {
   const compliant = volunteers.length - attention.filter((x) => !x.summary.compliant).length;
   const compliance = volunteers.length ? Math.round((compliant / volunteers.length) * 100) : 100;
   const onToday = todays.reduce((n, s) => n + s.confirmedCount, 0);
+  const sessionsLabel = todaysSessions.length === 1 ? "a training session" : `${todaysSessions.length} training sessions`;
+  // Shifts and training sessions in one list, by start time.
+  const todayEntries = [
+    ...todays.map((s) => ({ start: s.shift.startTime, node: <ShiftRow key={s.shift.id} view={s} /> })),
+    ...todaysSessions.map((s) => ({ start: s.startTime, node: <SessionRow key={s.session.id} view={s} /> })),
+  ].sort((a, b) => a.start.localeCompare(b.start));
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-8">
@@ -54,8 +63,10 @@ export default async function AdminDashboard() {
         title={`Kia ora, ${user.firstName}`}
         description={
           todays.length === 0
-            ? isWeekday(today) ? "No shifts today." : "No shifts at the weekend. Here is the roster ahead."
-            : `${onToday} ${onToday === 1 ? "volunteer" : "volunteers"} across ${todays.length} ${todays.length === 1 ? "shift" : "shifts"} today.`
+            ? todaysSessions.length > 0
+              ? `No shifts today, and ${sessionsLabel}.`
+              : isWeekday(today) ? "No shifts today." : "No shifts at the weekend. Here is the roster ahead."
+            : `${onToday} ${onToday === 1 ? "volunteer" : "volunteers"} across ${todays.length} ${todays.length === 1 ? "shift" : "shifts"} today${todaysSessions.length > 0 ? `, and ${sessionsLabel}` : ""}.`
         }
         actions={<Button size="lg" className="h-11" render={<Link href="/admin/roster/bulk" />}><CalendarDays className="size-4" /> Bulk schedule</Button>}
       />
@@ -68,10 +79,10 @@ export default async function AdminDashboard() {
             <h2 id="today-h" className="text-2xl text-ink">Today&apos;s roster</h2>
             <Link href="/admin/roster" className="text-sm font-semibold text-teal hover:underline">Full roster</Link>
           </div>
-          {todays.length === 0 ? (
+          {todayEntries.length === 0 ? (
             <EmptyState icon={CalendarDays} title={isWeekday(today) ? "Nothing scheduled today" : "No shifts at the weekend"} className="py-8" />
           ) : (
-            <div className="flex flex-col gap-2">{todays.map((s) => <ShiftRow key={s.shift.id} view={s} />)}</div>
+            <div className="flex flex-col gap-2">{todayEntries.map((e) => e.node)}</div>
           )}
 
           <div className="mt-4 flex items-baseline justify-between">
