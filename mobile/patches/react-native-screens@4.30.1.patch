@@ -1,3 +1,40 @@
+diff --git a/ios/RNSScreen.mm b/ios/RNSScreen.mm
+index 049fd22427b2bde17fd7ca59b8de65d0ee07b4b5..578a3d21faf8156740ae4a675f613c13de7bb6d5 100644
+--- a/ios/RNSScreen.mm
++++ b/ios/RNSScreen.mm
+@@ -10,6 +10,7 @@
+ #import <React/RCTFabricComponentsPlugins.h>
+ #import <React/RCTRootComponentView.h>
+ #import <React/RCTScrollViewComponentView.h>
++#import <React/RCTStatusBarAppearance.h>
+ #import <React/RCTSurfaceTouchHandler.h>
+ #import <react/renderer/components/rnscreens/EventEmitters.h>
+ #import <react/renderer/components/rnscreens/Props.h>
+@@ -1953,8 +1954,14 @@ Class<RCTComponentViewProtocol> RNSScreenCls(void)
+   return vc == self ? nil : vc;
+ }
+ 
++// With view controller-based status bar appearance, which apps built with the iOS 27 SDK must use,
++// the status bar follows this controller. A screen that sets no status bar option of its own follows
++// the StatusBar component from JavaScript, as the root view controller would, rather than a default.
+ - (BOOL)prefersStatusBarHidden
+ {
++  if (!self.screenView.hasStatusBarHiddenSet) {
++    return RCTStatusBarAppearance.hidden;
++  }
+   return self.screenView.statusBarHidden;
+ }
+ 
+@@ -1966,6 +1973,9 @@ Class<RCTComponentViewProtocol> RNSScreenCls(void)
+ 
+ - (UIStatusBarStyle)preferredStatusBarStyle
+ {
++  if (!self.screenView.hasStatusBarStyleSet) {
++    return RCTStatusBarAppearance.style;
++  }
+   return [RNSScreenWindowTraits statusBarStyleForRNSStatusBarStyle:self.screenView.statusBarStyle];
+ }
+ 
 diff --git a/ios/tabs/RNSTabBarAppearanceCoordinator.mm b/ios/tabs/RNSTabBarAppearanceCoordinator.mm
 index b3bc98dd720850ed88344368162360493957f0b9..1b9e8ec273ab0a1df109109e5bd26801b082a009 100644
 --- a/ios/tabs/RNSTabBarAppearanceCoordinator.mm

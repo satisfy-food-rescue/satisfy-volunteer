@@ -18,6 +18,13 @@ allowBuilds:
 # each tab was visited. The patch only assigns values that changed
 # (ios/tabs/RNSTabBarAppearanceCoordinator.mm).
 #
+# Apps built with the iOS 27 SDK must use view controller-based status bar
+# appearance, so the status bar follows the top screen's controller, and
+# react-native-screens answers with its own default ("auto") when a screen
+# sets no statusBarStyle. <StatusBar style="light"> on the teal heroes had no
+# effect. The patch makes such a screen follow the StatusBar component from
+# JavaScript, as the root view controller does (ios/RNSScreen.mm).
+#
 # masked-view's types extend React Native's NativeMethods, which React Native
 # 0.87 removed, so TypeScript no longer accepts <MaskedView> as a component.
 # The patch types it as a plain component; the native code is unchanged.
