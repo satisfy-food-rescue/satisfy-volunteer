@@ -1,11 +1,11 @@
-import { TextInput, View, type TextInputProps } from "react-native";
+import { TextInput, View, type TextInputInstance, type TextInputProps } from "react-native";
 
 import { font, radius, useTheme } from "@/theme";
 
 import { Icon } from "./icon";
 import { Text } from "./text";
 
-type Props = TextInputProps & { label: string; hint?: string; optional?: boolean; error?: string; ref?: React.Ref<TextInput> };
+type Props = TextInputProps & { label: string; hint?: string; optional?: boolean; error?: string; ref?: React.Ref<TextInputInstance> };
 
 /** A labelled text input. Readonly fields show as muted, not disabled grey.
  *  An error shows under it with an icon, never colour alone. */

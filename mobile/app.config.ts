@@ -49,7 +49,7 @@ const config: ExpoConfig = {
   slug: "satisfy-volunteers",
   owner: "malinmw",
   scheme: "satisfy",
-  version: "1.0.1",
+  version: "1.0.2",
   orientation: "portrait",
   userInterfaceStyle: "automatic",
   icon: "./assets/images/icon.png",
