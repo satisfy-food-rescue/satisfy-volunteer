@@ -70,7 +70,7 @@ export default async function ReportsPage() {
       <section className="flex flex-col gap-4" aria-labelledby="now-h">
         <h2 id="now-h" className="text-2xl text-ink">Volunteers now</h2>
         <div className="grid grid-cols-1 gap-4 @xl/admin:grid-cols-3">
-          <StatTile label="Active volunteers" value={active.length} hint={`${volunteers.length - active.length} inactive`} icon={Users} href="/admin/volunteers" />
+          <StatTile label="Active volunteers" value={active.length} hint={`${volunteers.filter((v) => v.status === "INACTIVE").length} inactive`} icon={Users} href="/admin/volunteers" />
           <StatTile label="In training" value={trainees} hint="Induction and training stages, before a role" icon={GraduationCap} href="/admin/volunteers?role=TRAINING" />
           <StatTile label="Harvest pool" value={harvest} hint={`${onlyHarvest} harvest only`} icon={Sprout} href="/admin/volunteers?role=HARVEST" />
         </div>
