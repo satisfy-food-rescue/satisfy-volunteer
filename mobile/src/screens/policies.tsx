@@ -12,8 +12,8 @@ import { Text } from "@/components/ui/text";
 import { usePolicies } from "@/lib/queries";
 import { radius, useTheme } from "@/theme";
 
-/** Satisfy's policies, always the latest version, and the agreements the
- *  volunteer has signed. */
+/** The agreements from the volunteer's induction, and Satisfy's policies,
+ *  always the latest version. */
 export function PoliciesScreen() {
   const query = usePolicies();
   return (
@@ -28,23 +28,23 @@ export function PoliciesScreen() {
                 Health, safety and how we work
               </Text>
               <Text variant="body" tone="inkSoft">
-                Satisfy&apos;s policies, always the latest version, and the agreements you have signed. When a policy changes, we ask you to read it and tick to confirm.
+                The agreements from your induction and Satisfy&apos;s policies, always the latest version. When one changes, we ask you to read it and tick to confirm.
               </Text>
             </View>
             {documents.length === 0 ? (
-              <EmptyState icon="document" title="No policies here yet" text="The coordinator adds them here as they are published." />
+              <EmptyState icon="document" title="Nothing here yet" text="The coordinator adds agreements and policies here as they are published." />
             ) : (
               <>
-                {policies.length > 0 && (
-                  <Section title="Policies">
-                    {policies.map((d) => (
+                {agreements.length > 0 && (
+                  <Section title="Your agreements">
+                    {agreements.map((d) => (
                       <DocumentRow key={d.id} doc={d} />
                     ))}
                   </Section>
                 )}
-                {agreements.length > 0 && (
-                  <Section title="Your agreements">
-                    {agreements.map((d) => (
+                {policies.length > 0 && (
+                  <Section title="Policies">
+                    {policies.map((d) => (
                       <DocumentRow key={d.id} doc={d} />
                     ))}
                   </Section>
@@ -61,15 +61,16 @@ export function PoliciesScreen() {
 function DocumentRow({ doc: d }: { doc: DocumentItem }) {
   const t = useTheme();
   const agreement = d.kind === "AGREEMENT";
+  const signs = agreement && d.acceptance !== "READ";
   const line = d.needsAction
     ? d.version > 1
       ? `Updated ${formatDate(d.versionISO)}`
       : d.summary
     : d.readISO
-      ? `${agreement ? "Signed" : "Read"} ${formatDate(d.readISO)}`
+      ? `${signs ? "Signed" : agreement ? "Read and understood" : "Read"} ${formatDate(d.readISO)}`
       : d.summary;
-  const chip = agreement ? "To sign" : d.version > 1 ? "Updated" : "To read";
-  const done = agreement ? "Signed" : "Read";
+  const chip = signs ? "To sign" : agreement ? "To read" : d.version > 1 ? "Updated" : "To read";
+  const done = signs ? "Signed" : "Read";
   return (
     <Pressable
       onPress={() => router.push({ pathname: "/policies/[id]", params: { id: d.id } })}

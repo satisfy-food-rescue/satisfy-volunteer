@@ -6,7 +6,7 @@ import { Alert, AppState, Linking, Platform, Pressable, View } from "react-nativ
 
 import type { Me, MobileSession, ProfileInput, SecurityOverview } from "@satisfy/core/api";
 import { formatDate } from "@satisfy/core/dates";
-import { fullName, ROLE_LABEL } from "@satisfy/core/domain";
+import { DOCUMENTS_TITLE, fullName, harvestOnly, inTraining, ROLE_LABEL } from "@satisfy/core/domain";
 import { AppleMark } from "@/components/brand/apple-mark";
 import { LegalLinks } from "@/components/legal-links";
 import { QueryScreen } from "@/components/screen";
@@ -21,7 +21,7 @@ import { useAuth } from "@/lib/auth";
 import { pushAvailability, pushPermission, registerForPush } from "@/lib/push";
 import { actions, useAction, useAppleSupported, useSecurity, useSession } from "@/lib/queries";
 import { addPasskey, connectApple, passkeysSupported } from "@/lib/sign-in";
-import { useTheme } from "@/theme";
+import { radius, useTheme } from "@/theme";
 
 export function MeScreen() {
   const query = useSession();
@@ -68,11 +68,37 @@ function Roles({ me }: { me: Me }) {
       </View>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
         {me.roles.map((r) => (
-          <Chip key={r} tone="good" label={ROLE_LABEL[r]} />
+          <Chip key={r} tone={r === "TRAINING" ? "info" : "good"} label={ROLE_LABEL[r]} />
         ))}
       </View>
-      <Button label="Ask to change my roles" variant="outline" size="md" onPress={() => router.push("/role-request")} />
+      {inTraining(me) && (
+        <Text variant="small" tone="inkSoft">
+          Once your induction and training are done, the coordinator gives you a role and its shifts open.
+        </Text>
+      )}
+      {harvestOnly(me) ? <StartTraining /> : <Button label="Ask to change my roles" variant="outline" size="md" onPress={() => router.push("/role-request")} />}
     </Card>
+  );
+}
+
+/** For a harvest-only volunteer who would like to help regularly: puts them
+ *  in training straight away. Harvests stay open to them. */
+function StartTraining() {
+  const t = useTheme();
+  const start = useAction(actions.startTraining);
+  const onPress = () =>
+    Alert.alert("Start training for a regular role?", "Your induction and training stages open on the Training tab, and the coordinator is told. Once they are done, the coordinator gives you a role.", [
+      { text: "Not now", style: "cancel" },
+      { text: "Start training", onPress: () => start.mutate() },
+    ]);
+  return (
+    <View style={{ gap: 10, padding: 12, borderRadius: radius.md, borderCurve: "continuous", borderWidth: 1, borderColor: t.tealTint, backgroundColor: t.tealTintSoft }}>
+      <Text variant="small">
+        <Text variant="smallSemibold">Like to help regularly too?</Text>{" "}
+        Warehouse sorting and driver help start with an induction and in-person training. You can keep picking at harvests while you train.
+      </Text>
+      <Button label="Start training" icon="training" variant="outline" size="md" loading={start.isPending} onPress={onPress} />
+    </View>
   );
 }
 
@@ -80,7 +106,7 @@ const LINKS: { href: Href; label: string; icon: IconName; count?: (badges: Mobil
   { href: "/slot", label: "My regular slot and absences", icon: "calendarCheck" },
   { href: "/harvest", label: "Harvest", icon: "leaf" },
   { href: "/induction", label: "Induction", icon: "induction", count: (b) => b.induction },
-  { href: "/policies", label: "Policies", icon: "document", count: (b) => b.policies },
+  { href: "/policies", label: DOCUMENTS_TITLE, icon: "document", count: (b) => b.policies },
 ];
 
 function Links({ badges }: { badges: MobileSession["badges"] }) {

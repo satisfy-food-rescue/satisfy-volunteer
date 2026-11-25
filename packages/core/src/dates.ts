@@ -47,6 +47,24 @@ export function daysBetween(fromISO: string, toISO: string): number {
   );
 }
 
+/** How long from one day to another, in the largest units that read well:
+ *  "2 years 3 months", "8 months", "3 weeks", "5 days", "less than a day". */
+export function formatTenure(fromISO: string, toISO: string): string {
+  const days = daysBetween(fromISO, toISO);
+  if (days < 1) return "less than a day";
+  let months = 0;
+  while (addMonths(fromISO, months + 1) <= toISO) months++;
+  const plural = (n: number, unit: string) => `${n} ${unit}${n === 1 ? "" : "s"}`;
+  if (months >= 12) {
+    const years = Math.floor(months / 12);
+    const rest = months % 12;
+    return rest ? `${plural(years, "year")} ${plural(rest, "month")}` : plural(years, "year");
+  }
+  if (months >= 1) return plural(months, "month");
+  if (days >= 7) return plural(Math.floor(days / 7), "week");
+  return plural(days, "day");
+}
+
 /** ISO weekday: 1 = Monday .. 7 = Sunday. */
 export function weekdayOf(iso: string): number {
   const d = isoToDate(iso).getUTCDay();

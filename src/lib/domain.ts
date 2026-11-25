@@ -28,4 +28,5 @@ export type EnumsMatch = [
   Assert<Same<Core.AnnouncementAudience, Db.AnnouncementAudience>>,
   Assert<Same<Core.ContactLogKind, Db.ContactLogKind>>,
   Assert<Same<Core.DocumentKind, Db.DocumentKind>>,
+  Assert<Same<Core.DocumentAcceptance, Db.DocumentAcceptance>>,
 ];

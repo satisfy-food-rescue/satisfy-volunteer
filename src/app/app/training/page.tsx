@@ -47,7 +47,7 @@ export default async function TrainingPage() {
           <ClipboardCheck className="mt-0.5 size-6 shrink-0 text-status-info" aria-hidden />
           <span className="min-w-0 flex-1">
             <span className="block font-bold text-ink">Start with your induction</span>
-            <span className="block text-sm text-ink-soft">Training opens once we have {inductionToDo(induction)}.</span>
+            <span className="block text-sm text-ink-soft">Before training, we need {inductionToDo(induction)}.</span>
           </span>
           <ChevronRight className="mt-0.5 size-5 shrink-0 text-status-info transition-transform group-hover:translate-x-0.5" aria-hidden />
         </Link>
@@ -131,7 +131,7 @@ export default async function TrainingPage() {
                       below keep the card's full width. */}
                   <div className="flex items-start justify-between gap-3">
                     <p className="min-w-0 font-bold text-ink">{s.module.name}</p>
-                    <TrainingChip status={s.status} size="sm" className="shrink-0" />
+                    <TrainingChip status={s.status} notApplicable={s.notApplicable} size="sm" className="shrink-0" />
                   </div>
                   <p className="mt-0.5 text-sm text-muted-foreground">
                     {s.module.validityMonths ? `Valid ${s.module.validityMonths} months` : "Once only"} · {DELIVERY_LABEL[s.module.delivery]}
@@ -139,7 +139,8 @@ export default async function TrainingPage() {
                   <p className="mt-2 text-sm text-ink-soft tabular">
                     {s.status === "NOT_STARTED" && (s.module.mandatoryBeforeFirstShift ? "Required before your first shift." : "Not yet completed.")}
                     {/* Each half keeps its date whole when the line wraps. */}
-                    {s.status === "COMPLETE" && (
+                    {s.notApplicable && "The coordinator has marked this as not needed for you."}
+                    {s.status === "COMPLETE" && !s.notApplicable && (
                       <>
                         <span className="whitespace-nowrap">Completed {formatDate(s.completedISO!)}</span> ·{" "}
                         <span className="whitespace-nowrap">{s.expiresISO ? `expires ${formatDate(s.expiresISO)}` : "does not expire"}</span>

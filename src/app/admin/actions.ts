@@ -6,7 +6,8 @@ import { db } from "@/lib/db";
 import { moduleParagraphs } from "@satisfy/core/training";
 import { requireAdmin } from "@/lib/session";
 import { addDays, addMonths, dateToISO, isoToDate, isWeekday, nzInstant, todayISO, weekdayOf, formatDay, formatInstant, formatTimeRange } from "@/lib/dates";
-import { ABSENCE_REASON_LABEL, INITIAL_VISIT_CODE, ROLE_LABEL, VOLUNTEER_ROLES, fullName, isAdHocKind, normaliseEmail, sortRoles } from "@/lib/domain";
+import { ABSENCE_REASON_LABEL, INITIAL_VISIT_CODE, ROLE_LABEL, SHIFT_KINDS, VOLUNTEER_ROLES, fullName, isAdHocKind, normaliseEmail, sortRoles } from "@/lib/domain";
+import { changeRoles, openRolePeriods } from "@/lib/roles";
 import { sendSignInLink } from "@/lib/auth";
 import { grantAdminAccess, revokeAdminAccess, setCoordinatorVolunteering, type GrantAdminResult, type NewAdminInput, type VolunteeringResult } from "@/lib/admin-access";
 import { approveSignUp } from "@/lib/applications";
@@ -518,6 +519,57 @@ export async function recordCoordinatorCompletion(input: z.infer<typeof completi
   return { ok: true, message: `${mod.name} recorded for ${volunteer.firstName}${completedISO === today ? "" : `, as of ${formatDay(completedISO)}`}.` };
 }
 
+const notApplicableSchema = z.object({
+  volunteerId: z.string(),
+  moduleId: z.string(),
+  comment: commentSchema.optional(),
+});
+
+/** A stage this volunteer does not need, e.g. T3 for someone who has done it
+ *  elsewhere. It counts as done, never expires, and opens the next stage. */
+export async function markNotApplicable(input: z.infer<typeof notApplicableSchema>): Promise<ActionResult> {
+  await requireAdmin();
+  const parsed = notApplicableSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.path[0] === "comment" ? parsed.error.issues[0].message : "Please check the form." };
+  const { volunteerId, moduleId, comment } = parsed.data;
+  const [volunteer, mod] = await Promise.all([db.volunteer.findUnique({ where: { id: volunteerId } }), db.trainingModule.findUnique({ where: { id: moduleId } })]);
+  if (!volunteer || !mod) return { ok: false, error: "Not found." };
+  const today = todayISO();
+  await db.trainingRecord.create({ data: { volunteerId, moduleId, completedAt: isoToDate(today), expiresAt: null, method: "NOT_APPLICABLE", comment: comment || null } });
+  revalidateAll();
+  return { ok: true, message: `${mod.name} marked not applicable for ${volunteer.firstName}.` };
+}
+
+/** Takes back a "not applicable", so the module is needed again. */
+export async function undoNotApplicable(recordId: string): Promise<ActionResult> {
+  await requireAdmin();
+  const record = await db.trainingRecord.findUnique({ where: { id: recordId }, include: { module: { select: { name: true } } } });
+  if (!record || record.method !== "NOT_APPLICABLE") return { ok: false, error: "That record has already changed. Reload the page.", notFound: true };
+  await db.trainingRecord.delete({ where: { id: recordId } });
+  revalidateAll();
+  return { ok: true, message: `${record.module.name} is needed again.` };
+}
+
+const roleStartSchema = z.object({ periodId: z.string(), startedISO: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) });
+
+/** Corrects when someone started a role, e.g. a volunteer imported from the
+ *  spreadsheet who has been sorting for years. */
+export async function setRoleStartDate(input: z.infer<typeof roleStartSchema>): Promise<ActionResult> {
+  const admin = await requireAdmin();
+  const parsed = roleStartSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Please pick a date." };
+  const { periodId, startedISO } = parsed.data;
+  if (startedISO > todayISO()) return { ok: false, error: "The start date cannot be in the future." };
+  const period = await db.rolePeriod.findUnique({ where: { id: periodId } });
+  if (!period) return { ok: false, error: "That role has changed. Reload the page.", notFound: true };
+  if (period.endedOn && startedISO > dateToISO(period.endedOn)) return { ok: false, error: "The start date has to be before the role ended." };
+  if (dateToISO(period.startedOn) === startedISO) return { ok: true, message: "Start date unchanged." };
+  await db.rolePeriod.update({ where: { id: periodId }, data: { startedOn: isoToDate(startedISO) } });
+  await db.contactLog.create({ data: { volunteerId: period.volunteerId, authorId: admin.id, kind: "ROLES_CHANGED", summary: `${ROLE_LABEL[period.role]} start date set to ${formatDay(startedISO)}.` } });
+  revalidateAll();
+  return { ok: true, message: "Start date saved." };
+}
+
 /** Adds, changes or clears the coordinator's comment on a training record,
  *  for a session attendance or an earlier completion. */
 export async function saveTrainingComment(recordId: string, comment: string): Promise<ActionResult> {
@@ -624,15 +676,12 @@ export async function setVolunteerRoles(volunteerId: string, roles: string[]): P
     db.trainingModule.findMany(),
   ]);
   if (!volunteer) return { ok: false, error: "Volunteer not found." };
-  const prev = volunteer.roles;
-  const added = next.filter((r) => !prev.includes(r));
-  const removed = prev.filter((r) => !next.includes(r));
+  const { added, removed } = await changeRoles(volunteerId, volunteer.roles, next);
   if (added.length + removed.length === 0) return { ok: true, message: "Roles unchanged." };
-  await db.volunteer.update({ where: { id: volunteerId }, data: { roles: next } });
   // Training that the new roles bring in and the volunteer does not hold yet.
   const statuses = moduleStatuses({ roles: next }, modules, volunteer.trainingRecords, todayISO());
   const trainingNeeded = statuses
-    .filter((s) => (s.status === "NOT_STARTED" || s.status === "OVERDUE") && s.module.requiredRoles.some((r) => added.includes(r)))
+    .filter((s) => (s.status === "NOT_STARTED" || s.status === "OVERDUE") && s.module.requiredRoles.some((r) => added.includes(r)) && !s.module.requiredRoles.some((r) => volunteer.roles.includes(r)))
     .map((s) => s.module.name);
   const name = fullName(volunteer);
   const summary = [added.length && `Added ${added.map((r) => ROLE_LABEL[r]).join(", ")}`, removed.length && `Removed ${removed.map((r) => ROLE_LABEL[r]).join(", ")}`].filter(Boolean).join(". ");
@@ -740,7 +789,7 @@ export async function updateShiftType(input: z.infer<typeof shiftTypeSchema>): P
 }
 
 const newShiftTypeSchema = shiftTypeSchema.omit({ id: true }).extend({
-  kind: z.enum(VOLUNTEER_ROLES),
+  kind: z.enum(SHIFT_KINDS),
   routeId: z.string().min(1).nullable(),
   /** ISO weekdays it runs on; none for ad hoc kinds (harvests). */
   weekdays: z.array(z.number().int().min(1).max(5)),
@@ -814,8 +863,12 @@ export async function createVolunteer(input: z.infer<typeof newVolunteerSchema>)
   if (await db.volunteer.findUnique({ where: { email }, select: { id: true } })) {
     return { ok: false, error: "Someone with that email is already on the system.", field: "email" };
   }
-  const volunteer = await db.volunteer.create({
-    data: { firstName: d.firstName, lastName: d.lastName || null, email, phone: d.phone || null, roles: sortRoles(d.roles) },
+  const volunteer = await db.$transaction(async (tx) => {
+    const created = await tx.volunteer.create({
+      data: { firstName: d.firstName, lastName: d.lastName || null, email, phone: d.phone || null, roles: sortRoles(d.roles) },
+    });
+    await openRolePeriods(tx, created.id, created.roles);
+    return created;
   });
   await db.contactLog.create({ data: { volunteerId: volunteer.id, authorId: admin.id, kind: "ACCOUNT_CREATED", summary: `Added by ${admin.firstName}.` } });
   const invited = d.sendInvite ? await sendSignInLink(volunteer, "INVITE") : false;

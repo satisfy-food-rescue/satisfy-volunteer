@@ -5,7 +5,8 @@ import { inductionFor } from "@/lib/induction-data";
 import { documentsFor } from "@/lib/documents";
 import { isDemo } from "@/lib/env";
 import { formatDate, dateToISO } from "@/lib/dates";
-import { ROLE_LABEL, fullName } from "@/lib/domain";
+import { DOCUMENTS_TITLE, ROLE_LABEL, fullName, harvestOnly, inTraining } from "@/lib/domain";
+import { StartTraining } from "@/components/app/start-training";
 import { AvatarBadge } from "@/components/shared/avatar-badge";
 import { Chip } from "@/components/shared/status-chip";
 import { ProfileForm } from "@/components/app/profile-form";
@@ -46,9 +47,14 @@ export default async function ProfilePage() {
               <p className="mt-0.5 text-sm text-muted-foreground">Your roles decide which shifts you can book and which training applies.</p>
             </div>
             <div className="flex flex-wrap gap-1.5">
-              {me.roles.map((r) => <Chip key={r} tone="good">{ROLE_LABEL[r]}</Chip>)}
+              {me.roles.map((r) => <Chip key={r} tone={r === "TRAINING" ? "info" : "good"}>{ROLE_LABEL[r]}</Chip>)}
             </div>
-            <RoleChangeRequest />
+            {inTraining(me) && (
+              <p className="text-sm text-ink-soft">
+                Once your induction and <Link href="/app/training" className="font-semibold text-teal hover:underline">training</Link> are done, the coordinator gives you a role and its shifts open.
+              </p>
+            )}
+            {harvestOnly(me) ? <StartTraining /> : <RoleChangeRequest />}
           </section>
 
 
@@ -58,7 +64,7 @@ export default async function ProfilePage() {
               { href: "/app/slot", label: "My regular slot and absences", icon: CalendarCheck },
               { href: "/app/harvest", label: "Harvest", icon: Sprout },
               { href: "/app/induction", label: "Induction", icon: ClipboardCheck },
-              { href: "/app/policies", label: "Policies", icon: FileText },
+              { href: "/app/policies", label: DOCUMENTS_TITLE, icon: FileText },
               { href: "/app/security", label: "Sign-in and security", icon: KeyRound },
             ].map((l) => (
               <Link key={l.href} href={l.href} className="flex min-h-14 items-center gap-3 border-b border-border px-4 last:border-b-0 hover:bg-muted">

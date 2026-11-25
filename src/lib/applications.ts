@@ -8,7 +8,8 @@ import type { SignUpField, SignUpInput } from "@satisfy/core/api";
 import type { Volunteer } from "@/generated/prisma/client";
 import { db } from "./db";
 import { todayISO } from "./dates";
-import { INITIAL_VISIT_CODE, ROLE_LABEL, VOLUNTEER_ROLES, fullName, normaliseEmail, sortRoles, type ApplicationSource } from "./domain";
+import { HARVEST_ROLE, INITIAL_VISIT_CODE, ROLE_LABEL, SHIFT_KINDS, TRAINING_ROLE, fullName, isRegularRole, normaliseEmail, sortRoles, type ApplicationSource, type VolunteerRole } from "./domain";
+import { changeRoles, openRolePeriods } from "./roles";
 import { sendSignInLink } from "./auth";
 import type { ActionResult } from "./volunteer-actions";
 import { queueEmail } from "./emails";
@@ -39,7 +40,7 @@ export const signUpSchema = z.object({
     .refine((y) => y <= Number(todayISO().slice(0, 4)), "Enter the year you were born, like 1985.")
     .nullable()
     .default(null),
-  interests: z.array(z.enum(VOLUNTEER_ROLES, "Choose from the ways to help listed."), "Choose at least one way you would like to help.").min(1, "Choose at least one way you would like to help."),
+  interests: z.array(z.enum(SHIFT_KINDS, "Choose from the ways to help listed."), "Choose at least one way you would like to help.").min(1, "Choose at least one way you would like to help."),
   availability: required("Tell us when you are usually free.", 300),
   emergencyName: required("Enter your emergency contact's name.", 80),
   emergencyPhone: phone("Enter your emergency contact's phone number."),
@@ -127,6 +128,15 @@ export async function submitSignUp(raw: unknown, source: ApplicationSource, ip: 
 
 type Actor = Pick<Volunteer, "id" | "firstName">;
 
+/** Where someone starts: in training, unless harvests are all they want to
+ *  do, since harvest volunteers skip the in-person stages. Their interests
+ *  stay on the application for the coordinator choosing their role later. */
+export function startingRoles(interests: readonly VolunteerRole[]): VolunteerRole[] {
+  const harvest = interests.includes(HARVEST_ROLE);
+  const regular = interests.some(isRegularRole) || !harvest;
+  return sortRoles([...(regular ? [TRAINING_ROLE] : []), ...(harvest ? [HARVEST_ROLE] : [])]);
+}
+
 /** Approves a pending application: a new account, or a returning volunteer's
  *  old one reactivated with its history and training. Someone who signs up
  *  comes back as a volunteer, never as a coordinator: a former coordinator's
@@ -142,14 +152,21 @@ export async function approveSignUp(actor: Actor, id: string): Promise<ActionRes
   // Undefined leaves a returning volunteer's existing value alone.
   const details = {
     firstName: app.firstName, lastName: app.lastName, phone: app.phone ?? undefined, suburb: app.suburb ?? undefined, birthYear: app.birthYear ?? undefined,
-    roles: app.interests.length ? sortRoles(app.interests) : ["WAREHOUSE" as const], availabilityNote: app.availability,
+    availabilityNote: app.availability,
     emergencyName: app.emergencyName ?? undefined, emergencyPhone: app.emergencyPhone ?? undefined,
   };
   const wasCoordinator = existing?.role === "ADMIN";
   // Someone coming back keeps their account, history and training records.
-  const volunteer = existing
-    ? await db.volunteer.update({ where: { id: existing.id }, data: { ...details, status: "ACTIVE", role: "VOLUNTEER" } })
-    : await db.volunteer.create({ data: { ...details, email, joinedAt: new Date() } });
+  const roles = startingRoles(app.interests);
+  const volunteer = await db.$transaction(async (tx) => {
+    if (existing) {
+      await changeRoles(existing.id, existing.roles, roles, tx);
+      return tx.volunteer.update({ where: { id: existing.id }, data: { ...details, status: "ACTIVE", role: "VOLUNTEER" } });
+    }
+    const created = await tx.volunteer.create({ data: { ...details, roles, email, joinedAt: new Date() } });
+    await openRolePeriods(tx, created.id, roles);
+    return created;
+  });
   const visit = induction && (induction.rsvps.length < induction.capacity || induction.rsvps.some((r) => r.volunteerId === volunteer.id)) ? induction : null;
   if (visit) {
     await db.sessionRsvp.upsert({ where: { sessionId_volunteerId: { sessionId: visit.id, volunteerId: volunteer.id } }, create: { sessionId: visit.id, volunteerId: volunteer.id, status: "GOING" }, update: { status: "GOING" } });

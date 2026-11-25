@@ -13,15 +13,16 @@ function view(over: { iso?: string; status?: string; kind?: string; confirmed?: 
   return { iso: over.iso ?? TODAY, kind: over.kind ?? "DRIVERS_ASSISTANT", shift: { status: over.status ?? "SCHEDULED" }, confirmed: over.confirmed ?? [], isFull: over.isFull ?? false, isGap: over.isGap ?? false } as unknown as ShiftView;
 }
 
-const eligible: Eligibility = { eligible: true, hasRole: true, induction: [], blockers: [], reason: null };
+const eligible: Eligibility = { eligible: true, hasRole: true, trainee: false, induction: [], blockers: [], reason: null };
 const blocked: Eligibility = {
   eligible: false,
   hasRole: true,
+  trainee: false,
   induction: [],
   blockers: [{ module: { code: "MANUAL_HANDLING" } as TrainingModule, status: "OVERDUE", message: "Complete the Manual Handling refresher to book driver help shifts" }],
   reason: "Complete the Manual Handling refresher to book driver help shifts",
 };
-const noRole: Eligibility = { eligible: false, hasRole: false, induction: [], blockers: [], reason: "Driver help shifts need the driver help role." };
+const noRole: Eligibility = { eligible: false, hasRole: false, trainee: false, induction: [], blockers: [], reason: "Driver help shifts need the driver help role." };
 const mine = { id: "a1", volunteerId: ME, source: "REGULAR" };
 
 describe("shiftAction follows the web's ShiftActions order", () => {

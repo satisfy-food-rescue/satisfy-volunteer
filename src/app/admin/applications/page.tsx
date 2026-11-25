@@ -4,7 +4,8 @@ import { requireAdmin } from "@/lib/session";
 import { env } from "@/lib/env";
 import { db } from "@/lib/db";
 import { formatInstant } from "@/lib/dates";
-import { INITIAL_VISIT_CODE, ROLE_SHORT, applicationSourceLabel } from "@/lib/domain";
+import { INITIAL_VISIT_CODE, ROLE_SHORT, applicationSourceLabel, type VolunteerRole } from "@/lib/domain";
+import { startingRoles } from "@/lib/applications";
 import { PageHeader } from "@/components/shared/page-header";
 import { AvatarBadge } from "@/components/shared/avatar-badge";
 import { Chip } from "@/components/shared/status-chip";
@@ -58,6 +59,7 @@ export default async function ApplicationsPage() {
                   {(a.emergencyName || a.emergencyPhone) && <div><dt className="font-display text-xs font-bold uppercase tracking-wide text-muted-foreground">Emergency contact</dt><dd className="mt-0.5 inline-flex flex-wrap items-center gap-x-2 text-ink"><LifeBuoy className="size-4 text-sky" aria-hidden />{a.emergencyName}{a.emergencyPhone && <span className="tabular">{a.emergencyPhone}</span>}</dd></div>}
                   {a.message && <div className="@2xl/admin:col-span-2"><dt className="font-display text-xs font-bold uppercase tracking-wide text-muted-foreground">Message</dt><dd className="mt-0.5 text-ink">&ldquo;{a.message}&rdquo;</dd></div>}
                 </dl>
+                <p className="mt-3 text-sm text-ink-soft">{startingRolesNote(a.interests)}</p>
                 <p className="mt-3 inline-flex items-center gap-1.5 text-xs text-muted-foreground"><Clock className="size-3.5" aria-hidden />Submitted {formatInstant(a.submittedAt)} · {applicationSourceLabel(a.source)}</p>
                 {accountFor.get(a.email) && (
                   <p className="mt-3 flex items-start gap-2 rounded-xl bg-status-info-bg px-3 py-2 text-sm text-status-info">
@@ -98,4 +100,13 @@ export default async function ApplicationsPage() {
       </section>
     </div>
   );
+}
+
+/** What approving gives them, from what they are interested in. */
+function startingRolesNote(interests: readonly VolunteerRole[]): string {
+  const roles = startingRoles(interests);
+  if (!roles.includes("TRAINING")) return "Approving puts them straight in the harvest pool: harvest volunteers skip the in-person training stages.";
+  return roles.includes("HARVEST")
+    ? "Approving starts them in training and adds them to the harvest pool. Give them a regular role once their training is done."
+    : "Approving starts them in training. Give them a role once their training is done.";
 }

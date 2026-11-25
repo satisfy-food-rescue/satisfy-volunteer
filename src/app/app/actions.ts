@@ -44,6 +44,10 @@ export async function setHarvestPool(inPool: boolean): Promise<ActionResult> {
   return A.setHarvestPool(await requireVolunteer(), inPool);
 }
 
+export async function startTraining(): Promise<ActionResult> {
+  return A.startTraining(await requireVolunteer());
+}
+
 export async function updateProfile(input: z.infer<typeof A.profileSchema>): Promise<ActionResult> {
   return A.updateProfile(await requireVolunteer(), input);
 }

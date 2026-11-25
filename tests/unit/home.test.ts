@@ -42,7 +42,7 @@ describe("homeEmpty", () => {
 });
 
 describe("induction on the home screen", () => {
-  const doc = (over: Partial<Document>): Document => ({ id: "d1", kind: "AGREEMENT", title: "Volunteer Agreement", summary: "", url: null, body: null, roles: ["WAREHOUSE"], version: 1, versionNote: null, versionAt: new Date(), order: 0, archived: false, createdAt: new Date(), updatedAt: new Date(), ...over });
+  const doc = (over: Partial<Document>): Document => ({ id: "d1", kind: "AGREEMENT", acceptance: "SIGN", title: "Volunteer Agreement", summary: "", url: null, body: null, roles: ["WAREHOUSE"], version: 1, versionNote: null, versionAt: new Date(), order: 0, archived: false, createdAt: new Date(), updatedAt: new Date(), ...over });
   const moj = (status: Induction["moj"]["status"], renewsISO: string | null = null): Induction["moj"] => ({ status, required: status !== "NOT_REQUIRED", roles: ["WAREHOUSE"], checkedISO: null, renewsISO, daysLeft: null });
   const ind = (over: Partial<Induction>): Induction => ({ ...NO_INDUCTION, ...over });
 

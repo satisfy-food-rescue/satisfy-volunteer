@@ -1,4 +1,6 @@
-import { Clock, Repeat, ShieldCheck, UserX } from "lucide-react";
+import { Clock, FileSpreadsheet, GraduationCap, Repeat, ShieldCheck, Sprout, Users, UserX } from "lucide-react";
+import { harvestOnly, inHarvestPool, inTraining } from "@/lib/domain";
+import { ReportDownload } from "@/components/admin/report-download";
 import { requireAdmin } from "@/lib/session";
 import { db } from "@/lib/db";
 import { IN_POOL } from "@/lib/pool";
@@ -49,6 +51,9 @@ export default async function ReportsPage() {
   const totalShifts = assignments.length;
   const totalNoShow = assignments.filter((a) => a.status === "NO_SHOW").length;
   const active = volunteers.filter((v) => v.status === "ACTIVE");
+  const trainees = active.filter(inTraining).length;
+  const harvest = active.filter(inHarvestPool).length;
+  const onlyHarvest = active.filter(harvestOnly).length;
   const compliant = active.filter((v) => trainingSummary(moduleStatuses(v, modules, v.trainingRecords, today)).compliant).length;
   const last30 = assignments.filter((a) => dateToISO(a.shift.date) >= addDays(today, -30));
   const hours30 = last30.filter((a) => a.status === "ATTENDED").reduce((n, a) => n + durationHours(a.shift.startTime, a.shift.endTime), 0);
@@ -62,6 +67,22 @@ export default async function ReportsPage() {
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-8">
       <PageHeader eyebrow="Overview" title="Reports" description={`How the volunteer programme is tracking over the six months to ${formatMonth(today)}. Hours come from marked attendance, so they are only as good as the roster.`} />
+      <section className="flex flex-col gap-4" aria-labelledby="now-h">
+        <h2 id="now-h" className="text-2xl text-ink">Volunteers now</h2>
+        <div className="grid grid-cols-1 gap-4 @xl/admin:grid-cols-3">
+          <StatTile label="Active volunteers" value={active.length} hint={`${volunteers.length - active.length} inactive`} icon={Users} href="/admin/volunteers" />
+          <StatTile label="In training" value={trainees} hint="Induction and training stages, before a role" icon={GraduationCap} href="/admin/volunteers?role=TRAINING" />
+          <StatTile label="Harvest pool" value={harvest} hint={`${onlyHarvest} harvest only`} icon={Sprout} href="/admin/volunteers?role=HARVEST" />
+        </div>
+      </section>
+      <section className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-5" aria-labelledby="download-h">
+        <div>
+          <h2 id="download-h" className="flex items-center gap-2 text-xl text-ink"><FileSpreadsheet className="size-5 text-teal" aria-hidden /> Volunteer report</h2>
+          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">One row per volunteer: when they joined and started each role, their Ministry of Justice check, agreements and training dates. Opens in Excel or Google Sheets.</p>
+        </div>
+        <ReportDownload today={today} />
+      </section>
+      <h2 className="-mb-4 text-2xl text-ink">The last six months</h2>
       <div className="grid grid-cols-1 gap-4 @xl/admin:grid-cols-2 @5xl/admin:grid-cols-4">
         <StatTile label="Volunteer hours, last 30 days" value={Math.round(hours30)} hint={`${last30.filter((a) => a.status === "ATTENDED").length} attended shifts`} icon={Clock} />
         <StatTile label="No-show rate" value={`${totalShifts ? ((totalNoShow / totalShifts) * 100).toFixed(1) : "0.0"}%`} hint={`${totalNoShow} of ${totalShifts} rostered shifts, 6 months`} icon={UserX} />

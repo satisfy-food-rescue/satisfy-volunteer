@@ -3,8 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { CalendarPlus, Check, ClipboardCheck, Loader2, MessageSquareText, Pencil, PhoneCall, Power, Save, Send, UserPlus, X } from "lucide-react";
-import { bookInitialVisit, createVolunteer, type CreateVolunteerResult, logContact, recordCoordinatorCompletion, saveTrainingComment, saveVolunteerNotes, sendVolunteerInvite, setVolunteerRoles, setVolunteerStatus, updateVolunteerProfile } from "@/app/admin/actions";
+import { CalendarPlus, Check, CircleSlash, ClipboardCheck, Loader2, MessageSquareText, Pencil, PhoneCall, Power, Save, Send, Undo2, UserPlus, X } from "lucide-react";
+import { bookInitialVisit, createVolunteer, type CreateVolunteerResult, logContact, markNotApplicable, recordCoordinatorCompletion, saveTrainingComment, saveVolunteerNotes, sendVolunteerInvite, setRoleStartDate, setVolunteerRoles, setVolunteerStatus, undoNotApplicable, updateVolunteerProfile } from "@/app/admin/actions";
 import type { ActionResult } from "@/lib/volunteer-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { OptionSelect, type Option } from "@/components/shared/option-select";
 import { TIMES } from "@/components/admin/training-admin-controls";
 import { FieldError } from "@/components/admin/field-error";
-import { ROLE_LABEL, VOLUNTEER_ROLES, type VolunteerRole } from "@/lib/domain";
+import { ROLE_LABEL, TRAINING_ROLE, VOLUNTEER_ROLES, toggleRole, type VolunteerRole } from "@/lib/domain";
 import { cn } from "@/lib/utils";
 
 /** Runs a server action, toasts the result and refreshes. Resolves true on success. */
@@ -61,7 +61,7 @@ export function RolesEditor({ volunteerId, initial }: { volunteerId: string; ini
           const on = roles.includes(r);
           return (
             <label key={r} className={cn("flex h-10 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-sm font-semibold transition-colors has-focus-visible:outline-3 has-focus-visible:outline-ring", on ? "border-teal bg-teal-tint text-teal-deep" : "border-border bg-card text-muted-foreground hover:text-ink")}>
-              <input type="checkbox" className="sr-only" checked={on} onChange={() => setRoles(on ? roles.filter((x) => x !== r) : VOLUNTEER_ROLES.filter((x) => x === r || roles.includes(x)))} />
+              <input type="checkbox" className="sr-only" checked={on} onChange={() => setRoles(toggleRole(roles, r))} />
               {on && <Check className="size-4" aria-hidden />}
               {ROLE_LABEL[r]}
             </label>
@@ -116,13 +116,84 @@ export function RecordCompletionButton({ volunteerId, moduleId, moduleName, firs
   );
 }
 
-function CommentField({ id, value, onChange }: { id: string; value: string; onChange: (v: string) => void }) {
+/** Marks a module as not needed for this volunteer, e.g. a stage they have
+ *  done elsewhere. It counts as done and opens the next stage. */
+export function NotApplicableButton({ volunteerId, moduleId, moduleName, firstName }: { volunteerId: string; moduleId: string; moduleName: string; firstName: string }) {
+  const [open, setOpen] = useState(false);
+  const [comment, setComment] = useState("");
+  const [pending, run] = useAction();
+  return (
+    <>
+      <Button size="sm" variant="ghost" className="h-9 text-muted-foreground" onClick={() => { setComment(""); setOpen(true); }}>
+        <CircleSlash className="size-4" /> Not applicable
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl text-ink">{moduleName} not applicable</DialogTitle>
+            <DialogDescription>{firstName} will not need {moduleName}. It counts as done, so anything that comes after it opens. You can undo this later.</DialogDescription>
+          </DialogHeader>
+          <CommentField id={`na-${moduleId}`} value={comment} onChange={setComment} placeholder="Why it does not apply, e.g. done at another site. Only coordinators see this." />
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button disabled={pending} onClick={() => run(() => markNotApplicable({ volunteerId, moduleId, comment }), () => setOpen(false))}>
+              {pending ? <Spinner /> : <CircleSlash className="size-4" />} Mark not applicable
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+export function UndoNotApplicableButton({ recordId, moduleName }: { recordId: string; moduleName: string }) {
+  const [pending, run] = useAction();
+  return (
+    <Button size="sm" variant="ghost" className="h-9 text-muted-foreground" disabled={pending} onClick={() => run(() => undoNotApplicable(recordId))} aria-label={`Undo not applicable for ${moduleName}`}>
+      {pending ? <Spinner /> : <Undo2 className="size-4" />} Undo
+    </Button>
+  );
+}
+
+/** Corrects when someone started a role. */
+export function RoleStartButton({ periodId, roleLabel, startedISO, endedISO, today }: { periodId: string; roleLabel: string; startedISO: string; endedISO: string | null; today: string }) {
+  const [open, setOpen] = useState(false);
+  const [date, setDate] = useState(startedISO);
+  const [pending, run] = useAction();
+  return (
+    <>
+      <Button size="icon-sm" variant="ghost" className="size-9 text-muted-foreground" onClick={() => { setDate(startedISO); setOpen(true); }} aria-label={`Change when they started ${roleLabel}`}>
+        <Pencil className="size-4" />
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl text-ink">{roleLabel}: start date</DialogTitle>
+            <DialogDescription>When they started in this role. Useful for anyone who was volunteering before they were added here.</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor={`rs-${periodId}`}>Started on</Label>
+            <DatePicker id={`rs-${periodId}`} value={date} max={endedISO ?? today} onChange={setDate} />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button disabled={pending || !date} onClick={() => run(() => setRoleStartDate({ periodId, startedISO: date }), () => setOpen(false))}>
+              {pending ? <Spinner /> : <Save className="size-4" />} Save date
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+function CommentField({ id, value, onChange, placeholder = "How it went, anything to follow up. Only coordinators see this." }: { id: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
   return (
     <div className="flex flex-col gap-1.5">
       <Label htmlFor={id}>
         Comments <span className="font-normal text-muted-foreground">(optional)</span>
       </Label>
-      <Textarea id={id} value={value} onChange={(e) => onChange(e.target.value)} rows={3} maxLength={500} className="text-base" placeholder="How it went, anything to follow up. Only coordinators see this." />
+      <Textarea id={id} value={value} onChange={(e) => onChange(e.target.value)} rows={3} maxLength={500} className="text-base" placeholder={placeholder} />
     </div>
   );
 }
@@ -370,7 +441,7 @@ export function AccountControls({
   );
 }
 
-const EMPTY_VOLUNTEER = { firstName: "", lastName: "", email: "", phone: "", roles: ["WAREHOUSE"] as VolunteerRole[], sendInvite: true };
+const EMPTY_VOLUNTEER = { firstName: "", lastName: "", email: "", phone: "", roles: [TRAINING_ROLE] as VolunteerRole[], sendInvite: true };
 
 type NewVolunteerField = Extract<CreateVolunteerResult, { ok: false }>["field"] & string;
 const FIELD_INPUT: Record<NewVolunteerField, string> = { firstName: "nv-first", lastName: "nv-last", email: "nv-email", phone: "nv-phone", roles: "nv-roles" };
@@ -451,7 +522,7 @@ export function AddVolunteerButton() {
                   const on = v.roles.includes(r);
                   return (
                     <label key={r} className={cn("flex h-11 cursor-pointer items-center gap-2 rounded-full border px-4 text-sm font-semibold transition-colors has-focus-visible:outline-3 has-focus-visible:outline-ring", on ? "border-teal bg-teal-tint text-teal-deep" : "border-border bg-card text-muted-foreground hover:text-ink")}>
-                      <input type="checkbox" className="sr-only" checked={on} onChange={() => { setV({ ...v, roles: on ? v.roles.filter((x) => x !== r) : [...v.roles, r] }); if (fieldError?.field === "roles") setFieldError(null); }} />
+                      <input type="checkbox" className="sr-only" checked={on} onChange={() => { setV({ ...v, roles: toggleRole(v.roles, r) }); if (fieldError?.field === "roles") setFieldError(null); }} />
                       {on && <Check className="size-4" aria-hidden />}
                       {ROLE_LABEL[r]}
                     </label>

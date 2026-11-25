@@ -4,8 +4,10 @@
 //    Induction (Settings.mojCheckRoles). The volunteer requests it
 //    themselves; a coordinator sights it and records the date. It is renewed
 //    every three years.
-//  - the agreements (Documents of kind AGREEMENT) for their roles, signed in
-//    the app with a tick box. Publishing a new version asks for it again.
+//  - the agreements (Documents of kind AGREEMENT) for their roles, accepted
+//    in the app with a tick box: signed ("I agree"), or read and understood
+//    for the job description, which volunteers do not sign. Publishing a new
+//    version asks for it again.
 // Pure: the loaders in volunteer-data.ts and the admin pages feed it rows.
 import type { Document, Volunteer } from "@/generated/prisma/client";
 import type { ModuleStatus } from "./training";
@@ -108,11 +110,14 @@ export function inductionBlockers(induction: Induction, roles: readonly Voluntee
   }
   for (const a of induction.agreements) {
     if (!roles.some((r) => a.document.roles.includes(r))) continue;
-    if (a.status === "UNSIGNED") out.push(`Sign the ${a.document.title} first`);
-    if (a.status === "UPDATED") out.push(`Sign the updated ${a.document.title} first`);
+    const verb = a.document.acceptance === "READ" ? "Read" : "Sign";
+    if (a.status === "UNSIGNED") out.push(`${verb} the ${a.document.title} first`);
+    if (a.status === "UPDATED") out.push(`${verb} the updated ${a.document.title} first`);
   }
   return out;
 }
+
+const andList = (items: readonly string[]) => (items.length === 1 ? items[0]! : `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`);
 
 /** What is left, as what we need: "your Ministry of Justice check and your
  *  signature on the Volunteer Agreement". Empty when nothing is. */
@@ -120,8 +125,11 @@ export function inductionToDo(induction: Induction): string {
   const parts: string[] = [];
   if (induction.moj.status === "NEEDED") parts.push("your Ministry of Justice check");
   if (induction.moj.status === "EXPIRED") parts.push("a new Ministry of Justice check");
-  const toSign = induction.agreements.filter((a) => a.status === "UNSIGNED" || a.status === "UPDATED").map((a) => a.document.title);
-  if (toSign.length > 0) parts.push(`your signature on the ${toSign.length === 1 ? toSign[0] : `${toSign.slice(0, -1).join(", ")} and ${toSign.at(-1)}`}`);
+  const open = induction.agreements.filter((a) => a.status === "UNSIGNED" || a.status === "UPDATED");
+  const toSign = open.filter((a) => a.document.acceptance !== "READ").map((a) => a.document.title);
+  const toRead = open.filter((a) => a.document.acceptance === "READ").map((a) => a.document.title);
+  if (toSign.length > 0) parts.push(`your signature on the ${andList(toSign)}`);
+  if (toRead.length > 0) parts.push(`you to read the ${andList(toRead)}`);
   return parts.join(" and ");
 }
 

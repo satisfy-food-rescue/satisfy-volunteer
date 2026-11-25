@@ -16,6 +16,7 @@ import type { ModuleLink } from "./training";
 import type {
   AbsenceReason,
   AssignmentSource,
+  DocumentAcceptance,
   Delivery,
   ShiftKind,
   TrainingStatus,
@@ -308,6 +309,9 @@ export type ModuleSummary = {
   mandatoryBeforeFirstShift: boolean;
   status: TrainingStatus;
   required: boolean;
+  /** A coordinator marked it as not needed for this volunteer. `status` is
+   *  COMPLETE so it counts as done; show it as not applicable. */
+  notApplicable: boolean;
   completedISO: string | null;
   expiresISO: string | null;
   /** Days until expiry; negative when overdue; null when no expiry applies. */
@@ -387,7 +391,8 @@ export type RsvpInput = { going: boolean };
 //
 // Before training or shifts a volunteer may need a current Ministry of
 // Justice check (which a coordinator records once they have seen it) and to
-// sign the agreements for their roles. Policies are there to read at any
+// accept the agreements for their roles: sign them, or for the job
+// description, tick to say they have read and understood it. Policies are there to read at any
 // time; a new version asks them to confirm they have read it. Documents live
 // in Google Drive: `viewUrl` is Google's viewer, to open in the in-app
 // browser, else the link itself.
@@ -397,6 +402,8 @@ export type MojStatus = "NOT_REQUIRED" | "NEEDED" | "CURRENT" | "RENEWAL_DUE" | 
 export type DocumentItem = {
   id: string;
   kind: "AGREEMENT" | "POLICY";
+  /** Agreements: signed ("I agree"), or read and understood. */
+  acceptance: DocumentAcceptance;
   title: string;
   summary: string;
   /** The current version. Send it back when signing or confirming. */
@@ -514,6 +521,9 @@ export type ProfileInput = {
 
 /** POST /api/mobile/profile/role-request returns MutationOk. */
 export type RoleRequestInput = { message: string };
+
+/** POST /api/mobile/profile/start-training, no body, returns MutationOk. A
+ *  harvest-only volunteer starts training for a regular role. */
 
 // Sign-in and security -----------------------------------------------------
 

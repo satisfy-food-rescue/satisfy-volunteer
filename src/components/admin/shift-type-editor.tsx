@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Archive, ArchiveRestore, Check, Loader2, Pencil, Plus, X } from "lucide-react";
 import { createShiftType, setShiftTypeActive, updateShiftType, type NewShiftTypeInput } from "@/app/admin/actions";
 import { ActionButton } from "@/components/app/action-button";
-import { SHIFT_KIND_LABEL, VOLUNTEER_ROLES, isAdHocKind, type ShiftKind } from "@/lib/domain";
+import { SHIFT_KINDS, SHIFT_KIND_LABEL, isAdHocKind, type ShiftKind } from "@/lib/domain";
 import { WEEKDAY_SHORT } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -93,7 +93,7 @@ export function ShiftTypeEditor({ shiftType, adHoc = false }: { shiftType: Shift
 const ROUTE_KINDS: ShiftKind[] = ["DRIVERS_ASSISTANT", "VOLUNTEER_DRIVER"];
 const NO_ROUTE = "none";
 
-function blankType(kind: ShiftKind): NewShiftTypeInput {
+function blankType(kind: NewShiftTypeInput["kind"]): NewShiftTypeInput {
   const route = ROUTE_KINDS.includes(kind);
   return { kind, name: "", routeId: null, workingWith: "", startTime: "09:00", endTime: "12:00", capacity: route ? 1 : 8, needed: route ? 1 : 4, weekdays: isAdHocKind(kind) ? [] : [1, 2, 3, 4, 5], lastMinuteHours: route ? 72 : 48, escalateHours: route ? 36 : 24 };
 }
@@ -119,7 +119,7 @@ export function NewShiftType({ routes }: { routes: { id: string; name: string }[
       <h2 className="text-xl text-ink @xl/admin:col-span-2 @4xl/admin:col-span-4">New shift type</h2>
       <div className="flex flex-col gap-1.5 @xl/admin:col-span-2">
         <Label htmlFor={id("kind")}>Kind</Label>
-        <OptionSelect id={id("kind")} value={v.kind} onValueChange={(kind) => setV({ ...blankType(kind), name: v.name, workingWith: v.workingWith })} options={VOLUNTEER_ROLES.map((k) => ({ value: k, label: SHIFT_KIND_LABEL[k] }))} aria-describedby={`${id("kind")}-hint`} />
+        <OptionSelect id={id("kind")} value={v.kind} onValueChange={(kind) => setV({ ...blankType(kind), name: v.name, workingWith: v.workingWith })} options={SHIFT_KINDS.map((k) => ({ value: k, label: SHIFT_KIND_LABEL[k] }))} aria-describedby={`${id("kind")}-hint`} />
         <p id={`${id("kind")}-hint`} className="text-xs text-muted-foreground">Decides who can book it (volunteers with that role) and which training it needs.</p>
       </div>
       <div className="flex flex-col gap-1.5 @xl/admin:col-span-2">

@@ -2,6 +2,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Circle,
+  CircleSlash,
   Clock,
   EyeOff,
   MinusCircle,
@@ -68,15 +69,26 @@ const TRAINING_ICON: Record<TrainingStatus, LucideIcon> = {
   NOT_REQUIRED: MinusCircle,
 };
 
+/** A module's status. One a coordinator marked not applicable shows as that,
+ *  though it counts as complete. */
 export function TrainingChip({
   status,
+  notApplicable,
   size,
   className,
 }: {
   status: TrainingStatus;
+  notApplicable?: boolean;
   size?: "sm" | "md";
   className?: string;
 }) {
+  if (notApplicable) {
+    return (
+      <Chip tone="muted" icon={CircleSlash} size={size} className={className}>
+        Not applicable
+      </Chip>
+    );
+  }
   return (
     <Chip tone={TRAINING_TONE[status]} icon={TRAINING_ICON[status]} size={size} className={className}>
       {TRAINING_STATUS_LABEL[status]}

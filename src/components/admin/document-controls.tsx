@@ -13,14 +13,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ROLE_SHORT, VOLUNTEER_ROLES, type DocumentKind } from "@/lib/domain";
+import { ROLE_SHORT, VOLUNTEER_ROLES, type DocumentAcceptance, type DocumentKind } from "@/lib/domain";
 import { cn } from "@/lib/utils";
 
 const Spinner = () => <Loader2 className="size-4 animate-spin" aria-hidden />;
 
-export type DocumentForm = Omit<DocumentInput, "notify">;
+/** How volunteers accept a document: a policy is read at any time; an
+ *  agreement is signed, or read and understood, during induction. */
+export type DocumentAccept = "policy" | "sign" | "read";
 
-const blank = (kind: DocumentKind): DocumentForm => ({ id: null, kind, title: "", summary: "", url: "", body: "", roles: kind === "AGREEMENT" ? [...VOLUNTEER_ROLES] : [] });
+export type DocumentForm = Omit<DocumentInput, "notify" | "acceptance"> & { acceptance: DocumentAcceptance };
+
+const blank = (kind: DocumentKind): DocumentForm => ({ id: null, kind, acceptance: "SIGN", title: "", summary: "", url: "", body: "", roles: kind === "AGREEMENT" ? [...VOLUNTEER_ROLES] : [] });
+
+const ACCEPTANCE_OPTIONS: { value: DocumentAcceptance; label: string; hint: string }[] = [
+  { value: "SIGN", label: "Signed", hint: "\u201cI have read it and agree to it\u201d, like the volunteer agreement." },
+  { value: "READ", label: "Read and understood", hint: "\u201cI have read and understood it\u201d, not signed, like the job description." },
+];
 
 /** Adds a policy or agreement, or edits one. Editing changes nothing for
  *  volunteers until a new version is published. */
@@ -57,7 +66,7 @@ export function DocumentEditor({ document, kind }: { document?: DocumentForm; ki
       {!document && <h3 className="text-xl text-ink @xl/admin:col-span-2">{agreement ? "New agreement" : "New policy"}</h3>}
       <div className="flex flex-col gap-1.5 @xl/admin:col-span-2">
         <Label htmlFor={`d-title-${key}`}>Title</Label>
-        <Input id={`d-title-${key}`} required value={v.title} onChange={(e) => setV({ ...v, title: e.target.value })} className="h-11 bg-card text-base" placeholder={agreement ? "For example, Volunteer Agreement" : "For example, Health and Safety Policy"} />
+        <Input id={`d-title-${key}`} required value={v.title} onChange={(e) => setV({ ...v, title: e.target.value })} className="h-11 bg-card text-base" placeholder={agreement ? "For example, Volunteer Agreement or Volunteer Job Description" : "For example, Health and Safety Policy"} />
       </div>
       <div className="flex flex-col gap-1.5 @xl/admin:col-span-2">
         <Label htmlFor={`d-sum-${key}`}>Summary</Label>
@@ -76,8 +85,24 @@ export function DocumentEditor({ document, kind }: { document?: DocumentForm; ki
         <Label htmlFor={`d-body-${key}`}>Words shown with it <span className="font-normal text-muted-foreground">(optional)</span></Label>
         <Textarea id={`d-body-${key}`} rows={4} value={v.body} onChange={(e) => setV({ ...v, body: e.target.value })} className="bg-card text-base leading-relaxed" placeholder={agreement ? "The key points, or the whole agreement if it is not in Drive." : "A short introduction, or the whole policy if it is not in Drive."} />
       </div>
+      {agreement && (
+        <fieldset className="flex flex-col gap-2 @xl/admin:col-span-2">
+          <legend className="mb-2 text-sm font-medium">Volunteers tick to say</legend>
+          <div className="grid gap-2 @xl/admin:grid-cols-2">
+            {ACCEPTANCE_OPTIONS.map((o) => (
+              <label key={o.value} className={cn("flex cursor-pointer items-start gap-3 rounded-lg border bg-card p-3 has-focus-visible:outline-3 has-focus-visible:outline-ring", v.acceptance === o.value ? "border-teal" : "border-border")}>
+                <input type="radio" name={`d-acc-${key}`} className="mt-1 size-4 accent-teal" checked={v.acceptance === o.value} onChange={() => setV({ ...v, acceptance: o.value })} />
+                <span className="flex flex-col">
+                  <span className="text-sm font-semibold text-ink">{o.label}</span>
+                  <span className="text-xs text-muted-foreground">{o.hint}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
       <fieldset className="flex flex-col gap-2 @xl/admin:col-span-2">
-        <legend className="mb-2 text-sm font-medium">{agreement ? "Signed by" : "For"}</legend>
+        <legend className="mb-2 text-sm font-medium">{agreement ? (v.acceptance === "READ" ? "Read by" : "Signed by") : "For"}</legend>
         <div className="flex flex-wrap gap-2">
           {VOLUNTEER_ROLES.map((r) => {
             const on = v.roles.includes(r);
@@ -90,18 +115,18 @@ export function DocumentEditor({ document, kind }: { document?: DocumentForm; ki
             );
           })}
         </div>
-        <p className="text-xs text-muted-foreground">{agreement ? "Volunteers with any of these roles sign it before training or booking." : "Leave them all off for a policy everyone sees."}</p>
+        <p className="text-xs text-muted-foreground">{agreement ? `Volunteers with any of these roles ${v.acceptance === "READ" ? "read" : "sign"} it before training or booking.` : "Leave them all off for a policy everyone sees."}</p>
       </fieldset>
       {!document && (
         <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-card p-3 @xl/admin:col-span-2">
           <Checkbox className="mt-0.5 size-5" checked={notify} onCheckedChange={setNotify} />
           <span className="flex flex-col">
             <span className="text-sm font-semibold text-ink">Email and notify volunteers now</span>
-            <span className="text-xs text-muted-foreground">{agreement ? "Everyone it is for is asked to sign it. Until they do, they cannot book new shifts." : "Everyone it is for is asked to read it and tick to confirm."}</span>
+            <span className="text-xs text-muted-foreground">{agreement ? `Everyone it is for is asked to ${v.acceptance === "READ" ? "read" : "sign"} it. Until they do, they cannot book new shifts.` : "Everyone it is for is asked to read it and tick to confirm."}</span>
           </span>
         </label>
       )}
-      {!document && agreement && !notify && <p className="text-sm text-status-warn @xl/admin:col-span-2">Volunteers with these roles will need to sign it before their next booking, even without an email.</p>}
+      {!document && agreement && !notify && <p className="text-sm text-status-warn @xl/admin:col-span-2">Volunteers with these roles will need to {v.acceptance === "READ" ? "read" : "sign"} it before their next booking, even without an email.</p>}
       <div className="flex gap-2 @xl/admin:col-span-2">
         <Button type="submit" size="sm" className="h-10 px-4" disabled={pending}>{pending ? <Spinner /> : <Check className="size-4" aria-hidden />} {document ? "Save" : agreement ? "Add agreement" : "Add policy"}</Button>
         <Button type="button" variant="ghost" size="sm" className="h-10 px-4" onClick={() => { setV(initial); setOpen(false); }}><X className="size-4" aria-hidden /> Cancel</Button>
@@ -111,7 +136,7 @@ export function DocumentEditor({ document, kind }: { document?: DocumentForm; ki
 }
 
 /** A new version: volunteers read it again, or sign it again. */
-export function PublishVersionButton({ id, title, agreement, nextVersion, audience }: { id: string; title: string; agreement: boolean; nextVersion: number; audience: number }) {
+export function PublishVersionButton({ id, title, accept, nextVersion, audience }: { id: string; title: string; accept: DocumentAccept; nextVersion: number; audience: number }) {
   const [open, setOpen] = useState(false);
   const [note, setNote] = useState("");
   const [notify, setNotify] = useState(true);
@@ -126,9 +151,9 @@ export function PublishVersionButton({ id, title, agreement, nextVersion, audien
           <DialogHeader>
             <DialogTitle className="text-xl text-ink">Publish version {nextVersion} of the {title}?</DialogTitle>
             <DialogDescription>
-              {agreement
-                ? `Do this once the new wording is final in Drive. All ${audience} volunteers it is for sign it again before their next booking.`
-                : `Do this once the new wording is final in Drive. All ${audience} volunteers it is for are asked to read it and tick to confirm.`}
+              {accept === "policy"
+                ? `Do this once the new wording is final in Drive. All ${audience} volunteers it is for are asked to read it and tick to confirm.`
+                : `Do this once the new wording is final in Drive. All ${audience} volunteers it is for ${accept === "read" ? "read" : "sign"} it again before their next booking.`}
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-4">
@@ -156,7 +181,7 @@ export function PublishVersionButton({ id, title, agreement, nextVersion, audien
   );
 }
 
-export function ArchiveDocumentButton({ id, title, archived, agreement }: { id: string; title: string; archived: boolean; agreement: boolean }) {
+export function ArchiveDocumentButton({ id, title, archived, accept }: { id: string; title: string; archived: boolean; accept: DocumentAccept }) {
   return archived ? (
     <ActionButton variant="outline" size="sm" className="h-9" action={() => setDocumentArchived(id, false)}>
       <ArchiveRestore className="size-4" aria-hidden /> Restore
@@ -169,7 +194,7 @@ export function ArchiveDocumentButton({ id, title, archived, agreement }: { id: 
       action={() => setDocumentArchived(id, true)}
       confirm={{
         title: `Archive the ${title}?`,
-        description: agreement ? "Volunteers stop seeing it and no longer need to sign it. The record of who signed it is kept." : "Volunteers stop seeing it. The record of who read it is kept.",
+        description: accept === "sign" ? "Volunteers stop seeing it and no longer need to sign it. The record of who signed it is kept." : accept === "read" ? "Volunteers stop seeing it and no longer need to read it. The record of who read it is kept." : "Volunteers stop seeing it. The record of who read it is kept.",
         confirmLabel: "Archive",
         cancelLabel: "Keep it",
       }}

@@ -27,7 +27,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const mojDue = [...inductions.values()].filter((i) => i.moj.status === "RENEWAL_DUE" || i.moj.status === "EXPIRED").length;
 
   return (
-    <SidebarProvider>
+    // A little wider than the default 16rem so the longest link, Agreements
+    // and policies, fits in bold when it is the current page.
+    <SidebarProvider style={{ "--sidebar-width": "16.75rem" } as React.CSSProperties}>
       <AdminSidebar user={{ firstName: user.firstName, lastName: user.lastName, email: user.email }} demo={isDemo()} badges={{ applications, gaps: gaps.length, training: overdue, induction: mojDue }} />
       <SidebarInset id="main" className="min-w-0 bg-background">
         <header className="sticky top-0 z-30 flex h-14 items-center gap-2 bg-teal px-3 text-white md:hidden">

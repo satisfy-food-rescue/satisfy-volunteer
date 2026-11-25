@@ -3,6 +3,7 @@
 // web build if the two drift apart, so a new value needs a label here first.
 
 export const VOLUNTEER_ROLES = [
+  "TRAINING",
   "WAREHOUSE",
   "DRIVERS_ASSISTANT",
   "VOLUNTEER_DRIVER",
@@ -11,6 +12,7 @@ export const VOLUNTEER_ROLES = [
 export type VolunteerRole = (typeof VOLUNTEER_ROLES)[number];
 
 export const ROLE_LABEL: Record<VolunteerRole, string> = {
+  TRAINING: "In training",
   WAREHOUSE: "Warehouse sorting",
   DRIVERS_ASSISTANT: "Driver help",
   VOLUNTEER_DRIVER: "Volunteer driver",
@@ -18,6 +20,7 @@ export const ROLE_LABEL: Record<VolunteerRole, string> = {
 };
 
 export const ROLE_SHORT: Record<VolunteerRole, string> = {
+  TRAINING: "Trainee",
   WAREHOUSE: "Warehouse",
   DRIVERS_ASSISTANT: "Driver help",
   VOLUNTEER_DRIVER: "Driver",
@@ -26,6 +29,7 @@ export const ROLE_SHORT: Record<VolunteerRole, string> = {
 
 /** What each role involves, for someone signing up. */
 export const ROLE_DESCRIPTION: Record<VolunteerRole, string> = {
+  TRAINING: "Induction and the in-person training stages, before the coordinator gives you a role.",
   WAREHOUSE: "Sort and pack rescued kai at the warehouse in Rangiora.",
   DRIVERS_ASSISTANT: "Ride along on a pickup route and help the driver load and deliver.",
   VOLUNTEER_DRIVER: "Drive a pickup route. Needs a current full driver licence.",
@@ -36,9 +40,27 @@ export const ROLE_DESCRIPTION: Record<VolunteerRole, string> = {
  *  join and leave it themselves. */
 export const HARVEST_ROLE: VolunteerRole = "HARVEST";
 
+/** Every new volunteer starts in training: the induction and the in-person
+ *  stages. Once they are done, a coordinator gives them a regular role.
+ *  Harvest-only volunteers skip it. It is not a kind of shift, so a trainee
+ *  cannot book shifts, only training. */
+export const TRAINING_ROLE: VolunteerRole = "TRAINING";
+
+/** The roles a coordinator gives after training. */
+export const REGULAR_ROLES = ["WAREHOUSE", "DRIVERS_ASSISTANT", "VOLUNTEER_DRIVER"] as const satisfies readonly VolunteerRole[];
+
+export function isRegularRole(role: VolunteerRole): boolean {
+  return (REGULAR_ROLES as readonly VolunteerRole[]).includes(role);
+}
+
+/** The kinds of shift, and the ways to help someone signing up can pick: every
+ *  role except training. Kept the same type as VolunteerRole, since a shift
+ *  type's kind is stored as one. */
 export type ShiftKind = VolunteerRole;
+export const SHIFT_KINDS = VOLUNTEER_ROLES.filter((r) => r !== "TRAINING") as readonly Exclude<VolunteerRole, "TRAINING">[];
 
 export const SHIFT_KIND_LABEL: Record<ShiftKind, string> = {
+  TRAINING: "Training",
   WAREHOUSE: "Warehouse sorting",
   DRIVERS_ASSISTANT: "Driver help",
   VOLUNTEER_DRIVER: "Volunteer driver",
@@ -93,7 +115,9 @@ export const TRAINING_STATUS_LABEL: Record<TrainingStatus, string> = {
   NOT_REQUIRED: "Not required",
 };
 
-export type TrainingMethod = "SESSION" | "ONLINE" | "COORDINATOR";
+/** NOT_APPLICABLE: a coordinator marked the module as not needed for this
+ *  volunteer. It counts as done and never expires. */
+export type TrainingMethod = "SESSION" | "ONLINE" | "COORDINATOR" | "NOT_APPLICABLE";
 export type RsvpStatus = "GOING" | "DECLINED";
 
 export type ApplicationStatus = "PENDING" | "APPROVED" | "DECLINED";
@@ -222,12 +246,24 @@ export const CONTACT_LOG_LABEL: Record<ContactLogKind, string> = {
   AGREEMENT_SIGNED: "Agreements signed",
 };
 
-/** An agreement is signed during induction; a policy is read at any time. */
+/** An agreement is accepted during induction; a policy is read at any time. */
 export type DocumentKind = "AGREEMENT" | "POLICY";
 export const DOCUMENT_KIND_LABEL: Record<DocumentKind, string> = {
   AGREEMENT: "Agreement",
   POLICY: "Policy",
 };
+
+/** How an induction document is accepted: signed ("I agree"), like the
+ *  volunteer agreement, or read and understood, like the job description,
+ *  which volunteers do not sign. */
+export type DocumentAcceptance = "SIGN" | "READ";
+export const DOCUMENT_ACCEPTANCE_LABEL: Record<DocumentAcceptance, string> = {
+  SIGN: "Signed",
+  READ: "Read and understood",
+};
+
+/** Where volunteers find the agreements and policies, on the web and in the app. */
+export const DOCUMENTS_TITLE = "Agreements and policies";
 
 /** A Ministry of Justice check is renewed this often. */
 export const MOJ_CHECK_YEARS = 3;
@@ -256,6 +292,25 @@ export function isVolunteerRole(value: string): value is VolunteerRole {
 
 export function inHarvestPool(v: { roles: readonly VolunteerRole[] }): boolean {
   return v.roles.includes(HARVEST_ROLE);
+}
+
+/** A role ticked on or off in a coordinator's role picker. Giving someone a
+ *  regular role ends their training, as the coordinator does once it is
+ *  done; they can tick In training again if it is not. */
+export function toggleRole(roles: readonly VolunteerRole[], role: VolunteerRole): VolunteerRole[] {
+  if (roles.includes(role)) return roles.filter((r) => r !== role);
+  const next = sortRoles([...roles, role]);
+  return isRegularRole(role) ? next.filter((r) => r !== TRAINING_ROLE) : next;
+}
+
+export function inTraining(v: { roles: readonly VolunteerRole[] }): boolean {
+  return v.roles.includes(TRAINING_ROLE);
+}
+
+/** Harvests only: no regular role and not in training. They can start
+ *  training for a regular role themselves. */
+export function harvestOnly(v: { roles: readonly VolunteerRole[] }): boolean {
+  return v.roles.length > 0 && v.roles.every((r) => r === HARVEST_ROLE);
 }
 
 export function fullName(p: { firstName: string; lastName?: string | null }) {

@@ -20,6 +20,8 @@ export const documentSchema = z.object({
   /** Null adds a new document. */
   id: z.string().min(1).nullable(),
   kind: z.enum(["AGREEMENT", "POLICY"]),
+  /** Agreements: signed, or read and understood. Policies are always read. */
+  acceptance: z.enum(["SIGN", "READ"]).default("SIGN"),
   title: z.string().trim().min(2, "Add a title.").max(100),
   summary: z.string().trim().min(2, "Add a one-line summary.").max(300),
   url: z.union([z.literal(""), z.url({ protocol: /^https$/, error: "The link must start with https://" }).max(500)]),
@@ -29,7 +31,7 @@ export const documentSchema = z.object({
   /** New documents only: email and push everyone it is for. */
   notify: z.boolean(),
 });
-export type DocumentInput = z.infer<typeof documentSchema>;
+export type DocumentInput = z.input<typeof documentSchema>;
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
@@ -48,7 +50,7 @@ async function notify(doc: Document): Promise<number> {
   for (const v of people) {
     const ref = `${prefix}${v.id}`;
     if (sent.has(ref)) continue;
-    const p = { firstName: v.firstName, title: doc.title, note: doc.versionNote, agreement: doc.kind === "AGREEMENT", documentId: doc.id };
+    const p = { firstName: v.firstName, title: doc.title, note: doc.versionNote, as: doc.kind === "POLICY" ? ("policy" as const) : doc.acceptance === "READ" ? ("read" as const) : ("sign" as const), documentId: doc.id };
     await queueEmailAndPush(v, documentUpdated(p), documentUpdatedPush(p), ref);
     count++;
   }
@@ -59,9 +61,9 @@ export async function saveDocument(input: DocumentInput): Promise<ActionResult> 
   const parsed = documentSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Please check the form." };
   const d = parsed.data;
-  if (d.kind === "AGREEMENT" && d.roles.length === 0) return { ok: false, error: "Pick the roles that sign it." };
+  if (d.kind === "AGREEMENT" && d.roles.length === 0) return { ok: false, error: `Pick the roles that ${d.acceptance === "READ" ? "read" : "sign"} it.` };
   if (!d.url && !d.body) return { ok: false, error: "Add the Google Drive link, or the words volunteers read." };
-  const data = { kind: d.kind, title: d.title, summary: d.summary, url: d.url || null, body: d.body || null, roles: sortRoles(d.roles) };
+  const data = { kind: d.kind, acceptance: d.acceptance, title: d.title, summary: d.summary, url: d.url || null, body: d.body || null, roles: sortRoles(d.roles) };
   if (d.id) {
     const before = await db.document.findUnique({ where: { id: d.id } });
     if (!before) return { ok: false, error: "That document no longer exists.", notFound: true };
@@ -78,7 +80,7 @@ export async function saveDocument(input: DocumentInput): Promise<ActionResult> 
     ok: true,
     message:
       d.kind === "AGREEMENT"
-        ? `Added. ${who} need to sign it before their next booking${told ? ", and have been emailed" : ""}.`
+        ? `Added. ${who} need to ${d.acceptance === "READ" ? "read" : "sign"} it before their next booking${told ? ", and have been emailed" : ""}.`
         : `Added. ${who} can read it${told ? " and have been emailed" : ""}.`,
   };
 }
@@ -103,7 +105,7 @@ export async function publishVersion(input: z.infer<typeof publishSchema>): Prom
   const agreement = doc.kind === "AGREEMENT";
   return {
     ok: true,
-    message: `Version ${doc.version} published. ${agreement ? "Volunteers sign it again before their next booking" : "Volunteers are asked to read it again"}${told ? `; ${plural(told, "volunteer has", "volunteers have")} been emailed` : ""}.`,
+    message: `Version ${doc.version} published. ${agreement ? `Volunteers ${doc.acceptance === "READ" ? "read" : "sign"} it again before their next booking` : "Volunteers are asked to read it again"}${told ? `; ${plural(told, "volunteer has", "volunteers have")} been emailed` : ""}.`,
   };
 }
 

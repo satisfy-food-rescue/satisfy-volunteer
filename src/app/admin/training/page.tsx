@@ -193,7 +193,7 @@ export default async function TrainingAdminPage({ searchParams }: { searchParams
                         </>
                       ) : <span className="text-muted-foreground">{s.completedISO ? "Never expires" : "Not completed"}</span>}
                     </td>
-                    <td className="px-4 py-2.5"><TrainingChip status={s.status} size="sm" /></td>
+                    <td className="px-4 py-2.5"><TrainingChip status={s.status} notApplicable={s.notApplicable} size="sm" /></td>
                   </tr>
                 ))}
               </tbody>

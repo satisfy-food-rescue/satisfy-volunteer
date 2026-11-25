@@ -20,6 +20,7 @@ export function moduleSummary(s: ModuleStatus, viewer: TrainingViewer): ModuleSu
     mandatoryBeforeFirstShift: s.module.mandatoryBeforeFirstShift,
     status: s.status,
     required: s.required,
+    notApplicable: s.notApplicable,
     completedISO: s.completedISO,
     expiresISO: s.expiresISO,
     daysLeft: s.daysLeft,

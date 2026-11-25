@@ -1,6 +1,8 @@
 import { router, Stack } from "expo-router";
 import { Pressable } from "react-native";
 
+import { DOCUMENTS_TITLE } from "@satisfy/core/domain";
+
 import { Icon } from "@/components/ui/icon";
 import { TAB } from "@/lib/links";
 import { font, useTheme } from "@/theme";
@@ -61,7 +63,7 @@ export default function TabStackLayout({ segment }: { segment: string }) {
       <Stack.Screen name="slot" options={{ title: "My regular slot" }} />
       <Stack.Screen name="harvest" options={{ title: "Harvest" }} />
       <Stack.Screen name="induction" options={{ title: "Your induction" }} />
-      <Stack.Screen name="policies/index" options={{ title: "Policies" }} />
+      <Stack.Screen name="policies/index" options={{ title: DOCUMENTS_TITLE }} />
       <Stack.Screen name="policies/[id]" options={{ title: "" }} />
     </Stack>
   );
