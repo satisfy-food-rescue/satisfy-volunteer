@@ -32,7 +32,7 @@ The native app uses this same web client: it opens the website's Google sign-in 
 Passkeys made on the website work in the app and the other way round, once each platform knows the app belongs to the site:
 
 - **iOS**: set `APPLE_TEAM_ID` (Apple Developer > Membership). The site then serves `/.well-known/apple-app-site-association`, and an iOS build made with `EXPO_PUBLIC_API_URL=https://volunteer.satisfyfoodrescue.org.nz` declares `webcredentials:volunteer.satisfyfoodrescue.org.nz`. The App ID needs the Associated Domains capability (EAS turns it on when it syncs capabilities).
-- **Android**: set `ANDROID_CERT_FINGERPRINTS` to the SHA-256 fingerprints of the upload key (`eas credentials`) and of Google Play's app signing key (Play Console > Test and release > App integrity), comma-separated. The site then serves `/.well-known/assetlinks.json`, and the server accepts passkey responses from the app.
+- **Android**: set `ANDROID_CERT_FINGERPRINTS` to the SHA-256 fingerprints of the upload key (`eas credentials`) and of Google Play's app signing key (Play Console > Test and release > App integrity), comma-separated. The site then serves `/.well-known/assetlinks.json` for the package `nz.org.satisfyfoodrescue` (the Android package differs from the iOS bundle id), and the server accepts passkey responses from the app.
 
 Without them the app hides its passkey button and volunteers sign in with a password or Google.
 

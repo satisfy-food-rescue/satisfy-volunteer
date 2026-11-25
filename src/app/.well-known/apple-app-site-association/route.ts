@@ -1,5 +1,5 @@
 import { env } from "@/lib/env";
-import { NATIVE_APP_ID } from "@/lib/native-app";
+import { NATIVE_IOS_APP_ID } from "@/lib/native-app";
 
 export const dynamic = "force-dynamic";
 
@@ -9,5 +9,5 @@ export const dynamic = "force-dynamic";
 export function GET() {
   const { APPLE_TEAM_ID } = env();
   if (!APPLE_TEAM_ID) return new Response("Not found", { status: 404 });
-  return Response.json({ webcredentials: { apps: [`${APPLE_TEAM_ID}.${NATIVE_APP_ID}`] } });
+  return Response.json({ webcredentials: { apps: [`${APPLE_TEAM_ID}.${NATIVE_IOS_APP_ID}`] } });
 }
