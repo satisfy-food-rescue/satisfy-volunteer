@@ -1,5 +1,5 @@
 import { env } from "@/lib/env";
-import { NATIVE_APP_ID } from "@/lib/native-app";
+import { NATIVE_ANDROID_PACKAGE } from "@/lib/native-app";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +11,7 @@ export function GET() {
   return Response.json([
     {
       relation: ["delegate_permission/common.handle_all_urls", "delegate_permission/common.get_login_creds"],
-      target: { namespace: "android_app", package_name: NATIVE_APP_ID, sha256_cert_fingerprints: fingerprints },
+      target: { namespace: "android_app", package_name: NATIVE_ANDROID_PACKAGE, sha256_cert_fingerprints: fingerprints },
     },
   ]);
 }

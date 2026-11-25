@@ -3,7 +3,7 @@ import { SignJWT, createRemoteJWKSet, importPKCS8, jwtVerify, type JWTVerifyGetK
 import { z } from "zod";
 import { normaliseEmail } from "./domain";
 import { appOrigin, env } from "./env";
-import { NATIVE_APP_ID } from "./native-app";
+import { NATIVE_IOS_APP_ID } from "./native-app";
 import { OAuthError, checkCallback, exchangeCode, pkceChallenge, startRoundTrip, type RoundTrip } from "./oauth";
 
 // Sign in with Apple. The website (and the Android app, in the system
@@ -94,7 +94,7 @@ export async function finishAppleSignIn(search: URLSearchParams, trip: RoundTrip
 /** The iOS app's native sign-in: the identity token Apple gave the app, and
  *  the nonce whose S256 hash the app asked Apple to put in it. */
 export function verifyNativeAppleSignIn(identityToken: string, nonce: string, keys: JWTVerifyGetKey = appleKeys): Promise<AppleIdentity> {
-  return verifyAppleIdToken(identityToken, { audience: NATIVE_APP_ID, nonce: pkceChallenge(nonce) }, keys);
+  return verifyAppleIdToken(identityToken, { audience: NATIVE_IOS_APP_ID, nonce: pkceChallenge(nonce) }, keys);
 }
 
 // Apple sends booleans as either true or "true".
@@ -162,7 +162,7 @@ const Event = z.object({
 export async function readAppleNotification(signedPayload: string, keys: JWTVerifyGetKey = appleKeys): Promise<AppleEvent | null> {
   // The audience is whichever client the notification is about: the
   // website's Services ID or the app's bundle id.
-  const audience = [NATIVE_APP_ID, env().APPLE_SERVICES_ID].filter((a): a is string => Boolean(a));
+  const audience = [NATIVE_IOS_APP_ID, env().APPLE_SERVICES_ID].filter((a): a is string => Boolean(a));
   let payload: { events?: unknown };
   try {
     ({ payload } = await jwtVerify(signedPayload, keys, { issuer: ISSUER, audience, algorithms: ["RS256"] }));

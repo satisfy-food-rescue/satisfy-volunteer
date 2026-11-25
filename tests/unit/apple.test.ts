@@ -1,7 +1,7 @@
 import { SignJWT, createLocalJWKSet, exportJWK, generateKeyPair, type JWTVerifyGetKey } from "jose";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { isAppleRelay, readAppleNotification, verifyAppleIdToken, verifyNativeAppleSignIn } from "@/lib/apple";
-import { NATIVE_APP_ID } from "@/lib/native-app";
+import { NATIVE_IOS_APP_ID } from "@/lib/native-app";
 import { pkceChallenge } from "@/lib/oauth";
 
 // Apple signs with RS256. A local key set stands in for Apple's published
@@ -72,10 +72,10 @@ describe("Apple ID tokens", () => {
 
   it("from the iOS app are for its bundle id, carrying the S256 hash of the app's nonce", async () => {
     const raw = "the-apps-own-random-nonce-of-at-least-43-characters";
-    const token = await sign({ sub: "001.abc", nonce: pkceChallenge(raw), email: "tony@example.nz" }, { audience: NATIVE_APP_ID });
+    const token = await sign({ sub: "001.abc", nonce: pkceChallenge(raw), email: "tony@example.nz" }, { audience: NATIVE_IOS_APP_ID });
     expect((await verifyNativeAppleSignIn(token, raw, keys)).sub).toBe("001.abc");
     // The raw nonce in the token, or a token for the website, does not do.
-    await expect(verifyNativeAppleSignIn(await sign({ sub: "001.abc", nonce: raw }, { audience: NATIVE_APP_ID }), raw, keys)).rejects.toThrow("invalid_claims");
+    await expect(verifyNativeAppleSignIn(await sign({ sub: "001.abc", nonce: raw }, { audience: NATIVE_IOS_APP_ID }), raw, keys)).rejects.toThrow("invalid_claims");
     await expect(verifyNativeAppleSignIn(await sign({ sub: "001.abc", nonce: pkceChallenge(raw) }), raw, keys)).rejects.toThrow("invalid_claims");
   });
 });
@@ -83,18 +83,18 @@ describe("Apple ID tokens", () => {
 describe("Apple's server-to-server notifications", () => {
   it("give the event, whose claims arrive as a JSON string", async () => {
     const events = JSON.stringify({ type: "consent-revoked", sub: "001.abc", event_time: 1 });
-    const payload = await sign({ events }, { audience: NATIVE_APP_ID });
+    const payload = await sign({ events }, { audience: NATIVE_IOS_APP_ID });
     expect(await readAppleNotification(payload, keys)).toEqual({ type: "consent-revoked", sub: "001.abc", email: null });
   });
 
   it("carry the relay address for email events", async () => {
     const events = { type: "email-disabled", sub: "001.abc", email: "x7k2@privaterelay.appleid.com", is_private_email: "true" };
-    const payload = await sign({ events }, { audience: NATIVE_APP_ID });
+    const payload = await sign({ events }, { audience: NATIVE_IOS_APP_ID });
     expect(await readAppleNotification(payload, keys)).toEqual({ type: "email-disabled", sub: "001.abc", email: "x7k2@privaterelay.appleid.com" });
   });
 
   it("ignore events we do not act on", async () => {
-    const payload = await sign({ events: JSON.stringify({ type: "something-new", sub: "s" }) }, { audience: NATIVE_APP_ID });
+    const payload = await sign({ events: JSON.stringify({ type: "something-new", sub: "s" }) }, { audience: NATIVE_IOS_APP_ID });
     expect(await readAppleNotification(payload, keys)).toBeNull();
   });
 

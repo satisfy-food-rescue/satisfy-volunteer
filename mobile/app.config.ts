@@ -54,6 +54,7 @@ const config: ExpoConfig = {
   userInterfaceStyle: "automatic",
   icon: "./assets/images/icon.png",
   ios: {
+    // Must match NATIVE_IOS_APP_ID in src/lib/native-app.ts.
     bundleIdentifier: "nz.org.satisfyfoodrescue.volunteers",
     icon: "./assets/satisfy.icon",
     supportsTablet: false,
@@ -65,7 +66,11 @@ const config: ExpoConfig = {
     ...(webHost ? { associatedDomains: [`webcredentials:${webHost}`] } : {}),
   },
   android: {
-    package: "nz.org.satisfyfoodrescue.volunteers",
+    // Not the iOS bundle id: nz.org.satisfyfoodrescue.volunteers is taken on
+    // Google Play by another developer account, and Satisfy's Play app is
+    // registered as nz.org.satisfyfoodrescue. Must match
+    // NATIVE_ANDROID_PACKAGE in src/lib/native-app.ts.
+    package: "nz.org.satisfyfoodrescue",
     adaptiveIcon: {
       backgroundColor: TEAL,
       foregroundImage: "./assets/images/android-icon-foreground.png",
