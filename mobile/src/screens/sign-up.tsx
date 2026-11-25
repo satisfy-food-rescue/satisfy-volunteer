@@ -2,7 +2,7 @@ import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { createRef, useState } from "react";
-import { Pressable, TextInput, View } from "react-native";
+import { Pressable, View, type TextInputInstance } from "react-native";
 
 import type { SignUpField, SignUpInput } from "@satisfy/core/api";
 import { ROLE_DESCRIPTION, ROLE_LABEL, VOLUNTEER_ROLES, type VolunteerRole } from "@satisfy/core/domain";
@@ -57,7 +57,7 @@ function SignUpForm({ onSent }: { onSent: (who: { firstName: string; email: stri
   const [errors, setErrors] = useState<Errors>({});
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [refs] = useState(() => Object.fromEntries(TEXT_ORDER.map((k) => [k, createRef<TextInput>()])) as Record<TextKey, React.RefObject<TextInput | null>>);
+  const [refs] = useState(() => Object.fromEntries(TEXT_ORDER.map((k) => [k, createRef<TextInputInstance>()])) as Record<TextKey, React.RefObject<TextInputInstance | null>>);
 
   const set = <K extends keyof Values>(key: K, value: Values[K]) => {
     setV((prev) => ({ ...prev, [key]: value }));

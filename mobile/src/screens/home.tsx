@@ -1,5 +1,4 @@
-import { useIsFocused } from "expo-router/react-navigation";
-import { router, type Href } from "expo-router";
+import { router, useIsFocused, type Href } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useState } from "react";
 import { Pressable, RefreshControl, ScrollView, useWindowDimensions, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";

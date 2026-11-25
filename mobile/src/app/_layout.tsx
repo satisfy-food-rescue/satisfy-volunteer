@@ -4,7 +4,7 @@ import { Montserrat_600SemiBold } from "@expo-google-fonts/montserrat/600SemiBol
 import { Montserrat_700Bold } from "@expo-google-fonts/montserrat/700Bold";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { useFonts } from "expo-font";
-import { DarkTheme, DefaultTheme, router, Stack, ThemeProvider } from "expo-router";
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider, useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
@@ -115,10 +115,11 @@ function RootNavigator({ fontsReady }: { fontsReady: boolean }) {
 }
 
 /** Opens the screen a push notification points at, including the one that
- *  launched the app. */
+ *  launched the app, with its tab's root underneath so there is a way back. */
 function useNotificationRouting(enabled: boolean) {
+  const router = useRouter();
   useEffect(() => {
     if (!enabled) return;
-    return onNotificationOpened((url) => router.push(routeForWebPath(url)));
-  }, [enabled]);
+    return onNotificationOpened((url) => router.push(routeForWebPath(url), { withAnchor: true }));
+  }, [enabled, router]);
 }

@@ -1,22 +1,29 @@
-import { router, Stack } from "expo-router";
-import { Pressable } from "react-native";
+import { Stack } from "expo-router";
 
-import { Icon } from "@/components/ui/icon";
-import { TAB } from "@/lib/links";
 import { font, useTheme } from "@/theme";
 
 // One stack per tab, sharing the detail screens so a shift opened from Cover
-// stays in the Cover tab. Each tab's root screen must be declared first: the
-// first screen in a stack is its initial route.
+// stays in the Cover tab.
 const ROOTS = {
-  home: { name: "index", title: "Home", href: TAB.home },
-  shifts: { name: "shifts", title: "Shifts", href: TAB.shifts },
-  cover: { name: "cover", title: "Cover", href: TAB.cover },
-  training: { name: "training", title: "Training", href: TAB.training },
-  me: { name: "me", title: "Me", href: TAB.me },
+  home: { name: "index", title: "Home" },
+  shifts: { name: "shifts", title: "Shifts" },
+  cover: { name: "cover", title: "Cover" },
+  training: { name: "training", title: "Training" },
+  me: { name: "me", title: "Me" },
 } as const;
 
 type Tab = keyof typeof ROOTS;
+
+// A screen opened straight from a link (a notification, say) gets its tab's
+// root underneath it, so there is always a way back. Keyed by group, as the
+// stack is shared: the top-level anchor is Home's.
+export const unstable_settings = {
+  anchor: ROOTS.home.name,
+  shifts: { anchor: ROOTS.shifts.name },
+  cover: { anchor: ROOTS.cover.name },
+  training: { anchor: ROOTS.training.name },
+  me: { anchor: ROOTS.me.name },
+};
 
 export default function TabStackLayout({ segment }: { segment: string }) {
   const t = useTheme();
@@ -24,20 +31,10 @@ export default function TabStackLayout({ segment }: { segment: string }) {
   const root = ROOTS[tab] ?? ROOTS.home;
   return (
     <Stack
-      screenOptions={({ navigation, route }) => ({
+      screenOptions={({ route }) => ({
         // Another tab's root opened by a link inside this stack keeps its own
         // title rather than its route name.
         title: Object.values(ROOTS).find((r) => r.name === route.name)?.title,
-        // A screen opened straight from a link has nothing underneath it;
-        // give it a way back to its tab rather than a dead end.
-        headerLeft:
-          route.name === root.name || navigation.canGoBack()
-            ? undefined
-            : () => (
-                <Pressable accessibilityRole="button" accessibilityLabel={`Back to ${root.title}`} hitSlop={12} onPress={() => router.replace(root.href)}>
-                  <Icon name="chevronLeft" size={22} color={t.tealText} />
-                </Pressable>
-              ),
         headerTintColor: t.tealText,
         headerTitleStyle: { fontFamily: font.bold, color: t.ink },
         headerLargeTitleStyle: { fontFamily: font.bold, color: t.ink },

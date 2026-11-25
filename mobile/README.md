@@ -1,6 +1,6 @@
 # Satisfy Volunteers: native app
 
-The volunteer app for iOS and Android, built with Expo SDK 57 and Expo Router. It covers everything a volunteer does on the web app (`/app`): Home, booking and cancelling shifts, covering gaps, training (online modules and in-person sessions), the regular slot and Mark me away, the harvest pool and the profile. Coordinator tools stay on the web.
+The volunteer app for iOS and Android, built with Expo SDK 58 and Expo Router. It covers everything a volunteer does on the web app (`/app`): Home, booking and cancelling shifts, covering gaps, training (online modules and in-person sessions), the regular slot and Mark me away, the harvest pool and the profile. Coordinator tools stay on the web.
 
 It talks to the Next.js app at the repo root through `/api/mobile/*`. The contract both sides compile against is `packages/core/src/api.ts`; see "Native app API" in the root README.
 
@@ -65,7 +65,7 @@ src/lib                  API client, auth, queries, push, deep links
 src/theme.ts             design tokens
 ```
 
-- **Its own pnpm project.** `mobile/` has its own lockfile and `pnpm-workspace.yaml`. Expo SDK 57 pins React 19.2.3 while the web app runs a newer 19.2.x, and one shared `node_modules` would load two copies of React. Shared code comes from `packages/core` through a `link:` dependency, which Metro watches (`metro.config.js`).
+- **Its own pnpm project.** `mobile/` has its own lockfile and `pnpm-workspace.yaml`. Expo SDK 58 pins React 19.3.0, which need not match the web app's React, and one shared `node_modules` would load two copies of React. Shared code comes from `packages/core` through a `link:` dependency, which Metro watches (`metro.config.js`).
 - **Data.** TanStack Query over a small `fetch` client (`src/lib/api.ts`) with the session token from the Keychain or Keystore (`expo-secure-store`). Every screen handles loading, error, empty and content, keeps showing data when a refresh fails, and refreshes when it comes back into view. After any action the whole cache is refreshed, because a booking changes Home, Shifts, Cover and the tab badges at once; the button stays busy until the screen shows the result.
 - **Rules stay on the server.** What a shift's button does (book, cover, cancel, blocked by training or a missing role, full, cancelled) arrives as `ShiftAction` from the API, so the app never re-implements the booking rules.
 - **Native controls.** Native tabs (Liquid Glass on iOS 26, Material on Android), native stack headers, form sheets, the system date picker and SwiftUI and Compose switches through `@expo/ui`. Icons are SF Symbols on iOS and Material Symbols on Android, chosen by meaning in `src/components/ui/icon.tsx`.

@@ -1,0 +1,133 @@
+diff --git a/ios/RNSScreen.mm b/ios/RNSScreen.mm
+index 049fd22427b2bde17fd7ca59b8de65d0ee07b4b5..578a3d21faf8156740ae4a675f613c13de7bb6d5 100644
+--- a/ios/RNSScreen.mm
++++ b/ios/RNSScreen.mm
+@@ -10,6 +10,7 @@
+ #import <React/RCTFabricComponentsPlugins.h>
+ #import <React/RCTRootComponentView.h>
+ #import <React/RCTScrollViewComponentView.h>
++#import <React/RCTStatusBarAppearance.h>
+ #import <React/RCTSurfaceTouchHandler.h>
+ #import <react/renderer/components/rnscreens/EventEmitters.h>
+ #import <react/renderer/components/rnscreens/Props.h>
+@@ -1953,8 +1954,14 @@ Class<RCTComponentViewProtocol> RNSScreenCls(void)
+   return vc == self ? nil : vc;
+ }
+ 
++// With view controller-based status bar appearance, which apps built with the iOS 27 SDK must use,
++// the status bar follows this controller. A screen that sets no status bar option of its own follows
++// the StatusBar component from JavaScript, as the root view controller would, rather than a default.
+ - (BOOL)prefersStatusBarHidden
+ {
++  if (!self.screenView.hasStatusBarHiddenSet) {
++    return RCTStatusBarAppearance.hidden;
++  }
+   return self.screenView.statusBarHidden;
+ }
+ 
+@@ -1966,6 +1973,9 @@ Class<RCTComponentViewProtocol> RNSScreenCls(void)
+ 
+ - (UIStatusBarStyle)preferredStatusBarStyle
+ {
++  if (!self.screenView.hasStatusBarStyleSet) {
++    return RCTStatusBarAppearance.style;
++  }
+   return [RNSScreenWindowTraits statusBarStyleForRNSStatusBarStyle:self.screenView.statusBarStyle];
+ }
+ 
+diff --git a/ios/tabs/RNSTabBarAppearanceCoordinator.mm b/ios/tabs/RNSTabBarAppearanceCoordinator.mm
+index b3bc98dd720850ed88344368162360493957f0b9..1b9e8ec273ab0a1df109109e5bd26801b082a009 100644
+--- a/ios/tabs/RNSTabBarAppearanceCoordinator.mm
++++ b/ios/tabs/RNSTabBarAppearanceCoordinator.mm
+@@ -24,6 +24,17 @@ static UIImage *_Nullable RNSImageWithSymbolRenderingMode(UIImage *_Nullable ima
+   }
+ }
+ 
++// Assigning an equal value to a tab bar item is not free on iOS 26: UIKit re-measures and
++// repositions the item (-[UITabBarItem _updateViewAndPositionItems:]) and caches the label size.
++// Every item is reconfigured whenever any tab changes (a badge, say). If that lands after the tab
++// buttons exist but before the tab bar's first layout, the labels are measured inside zero-sized
++// buttons and stay clipped and low until each tab is selected. So only real changes are assigned.
++// UIKit copies appearances, so values are compared with isEqual: rather than by identity.
++static BOOL RNSTabBarItemValuesEqual(id _Nullable a, id _Nullable b)
++{
++  return a == b || [a isEqual:b];
++}
++
+ @implementation RNSTabBarAppearanceCoordinator
+ 
+ - (void)updateAppearanceOfTabBar:(nullable UITabBar *)tabBar
+@@ -62,13 +73,16 @@ static UIImage *_Nullable RNSImageWithSymbolRenderingMode(UIImage *_Nullable ima
+                                       imageLoader:(nullable RCTImageLoader *)imageLoader
+ {
+   UITabBarItem *tabBarItem = tabScreenCtrl.tabBarItem;
++  RNSTabsScreenComponentView *screenView = tabScreenCtrl.tabScreenComponentView;
+ 
+-  tabBarItem.standardAppearance = tabScreenCtrl.tabScreenComponentView.standardAppearance;
+-  tabBarItem.scrollEdgeAppearance = tabScreenCtrl.tabScreenComponentView.scrollEdgeAppearance;
++  if (!RNSTabBarItemValuesEqual(tabBarItem.standardAppearance, screenView.standardAppearance)) {
++    tabBarItem.standardAppearance = screenView.standardAppearance;
++  }
++  if (!RNSTabBarItemValuesEqual(tabBarItem.scrollEdgeAppearance, screenView.scrollEdgeAppearance)) {
++    tabBarItem.scrollEdgeAppearance = screenView.scrollEdgeAppearance;
++  }
+ 
+-  [self setIconsForTabBarItem:tabBarItem
+-               fromScreenView:tabScreenCtrl.tabScreenComponentView
+-              withImageLoader:imageLoader];
++  [self setIconsForTabBarItem:tabBarItem fromScreenView:screenView withImageLoader:imageLoader];
+ }
+ 
+ /// Sets the normal icon on both the item (renders the iPhone bar) and the UITab (renders the
+@@ -79,12 +93,25 @@ static UIImage *_Nullable RNSImageWithSymbolRenderingMode(UIImage *_Nullable ima
+ {
+ #if RNS_UITAB_API_SDK_AVAILABLE
+   if (RNS_UITAB_API_ENABLED) {
+-    screenView.controller.tab.image = image;
++    UITab *tab = screenView.controller.tab;
++    if (!RNSTabBarItemValuesEqual(tab.image, image)) {
++      tab.image = image;
++    }
+   }
+ #endif // RNS_UITAB_API_SDK_AVAILABLE
+   // This needs to be called after tab.image assignment
+   // (see https://github.com/software-mansion/react-native-screens/pull/4813)
+-  tabBarItem.image = image;
++  if (!RNSTabBarItemValuesEqual(tabBarItem.image, image)) {
++    tabBarItem.image = image;
++  }
++}
++
++/// Sets the selected icon, only when it changed (see RNSTabBarItemValuesEqual).
++- (void)setTabSelectedImage:(nullable UIImage *)selectedImage forTabBarItem:(nonnull UITabBarItem *)tabBarItem
++{
++  if (!RNSTabBarItemValuesEqual(tabBarItem.selectedImage, selectedImage)) {
++    tabBarItem.selectedImage = selectedImage;
++  }
+ }
+ 
+ - (void)setIconsForTabBarItem:(UITabBarItem *)tabBarItem
+@@ -140,8 +167,8 @@ static UIImage *_Nullable RNSImageWithSymbolRenderingMode(UIImage *_Nullable ima
+                      screenView.selectedIconResourceName);
+         }
+       }
+-      tabBarItem.selectedImage =
+-          RNSImageWithSymbolRenderingMode(selectedImage, screenView.selectedIconSymbolRenderingMode);
++      [self setTabSelectedImage:RNSImageWithSymbolRenderingMode(selectedImage, screenView.selectedIconSymbolRenderingMode)
++                  forTabBarItem:tabBarItem];
+     } else if (screenView.systemItem != RNSTabsScreenSystemItemNone) {
+       // Restore default system item icon
+       std::optional<UITabBarSystemItem> systemItem =
+@@ -152,9 +179,10 @@ static UIImage *_Nullable RNSImageWithSymbolRenderingMode(UIImage *_Nullable ima
+             (long)screenView.systemItem);
+         return;
+       }
+-      tabBarItem.selectedImage = [[UITabBarItem alloc] initWithTabBarSystemItem:systemItem.value() tag:0].selectedImage;
++      [self setTabSelectedImage:[[UITabBarItem alloc] initWithTabBarSystemItem:systemItem.value() tag:0].selectedImage
++                  forTabBarItem:tabBarItem];
+     } else {
+-      tabBarItem.selectedImage = nil;
++      [self setTabSelectedImage:nil forTabBarItem:tabBarItem];
+     }
+   } else if (imageLoader != nil) {
+     bool isTemplate = screenView.iconImageRenderingMode == RNSTabsIconImageRenderingModeTemplate;
