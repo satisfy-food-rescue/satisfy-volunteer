@@ -177,9 +177,10 @@ export default async function TrainingPage() {
             })}
           </ul>
 
-          {/* Only for someone with in-person training still to do, or a
-              session booked: a harvester never needs the warehouse stages. */}
-          {(needsSessions || otherSessions.length > 0) && (
+          {/* Only for someone with in-person training still to do or a
+              session to offer or booked: a harvester never needs the
+              warehouse stages. */}
+          {(needsSessions || relevantSessions.length > 0 || otherSessions.length > 0) && (
           <section id="sessions" aria-labelledby="sessions-heading" className="scroll-mt-4">
             <h2 id="sessions-heading" className="mb-2 text-xl text-ink @3xl/app:mb-3 @3xl/app:text-2xl">Upcoming sessions</h2>
             {relevantSessions.length === 0 && otherSessions.length === 0 ? (

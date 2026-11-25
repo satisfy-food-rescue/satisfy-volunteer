@@ -32,7 +32,7 @@ export function TrainingScreen() {
               session booked: a harvester never needs the warehouse stages. */}
           {(training.sessions.length > 0 || training.required.some((m) => m.delivery === "IN_PERSON" && m.status !== "COMPLETE")) && (
             <Section title="Upcoming sessions">
-              {training.sessions.length === 0 ? <EmptyLine text="No sessions for your training scheduled right now. New ones show up here." /> : training.sessions.map((s) => <SessionCard key={s.id} session={s} />)}
+              {training.sessions.length === 0 ? <EmptyLine text="No sessions for your training scheduled right now. New sessions show up here as soon as they are booked in." /> : training.sessions.map((s) => <SessionCard key={s.id} session={s} />)}
             </Section>
           )}
           {training.comingSoon.length > 0 && (
