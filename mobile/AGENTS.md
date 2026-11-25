@@ -1,8 +1,8 @@
-The Satisfy Volunteers native app: Expo SDK 57, Expo Router, React Native 0.86. Read README.md first.
+The Satisfy Volunteers native app: Expo SDK 58, Expo Router, React Native 0.88. Read README.md first.
 
 ## Expo changes every SDK: do not trust memory
 
-Before using an Expo, EAS or React Native API, check the installed version's types in `node_modules` and the versioned docs (`https://docs.expo.dev/versions/v57.0.0/`). Install packages with `npx expo install <package>` so versions match the SDK, never plain `pnpm add`. Run `pnpm check:deps` after.
+Before using an Expo, EAS or React Native API, check the installed version's types in `node_modules` and the versioned docs (`https://docs.expo.dev/versions/v58.0.0/`). Install packages with `npx expo install <package>` so versions match the SDK, never plain `pnpm add`. Run `pnpm check:deps` after.
 
 ## Conventions
 

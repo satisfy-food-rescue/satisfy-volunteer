@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useRef, useState } from "react";
-import { ActivityIndicator, Platform, Pressable, TextInput, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, View, type TextInputInstance } from "react-native";
 
 import type { AuthConfig, DemoPersona, DemoPersonas } from "@satisfy/core/api";
 import { AppleMark } from "@/components/brand/apple-mark";
@@ -74,7 +74,7 @@ function SignInForm({ config }: { config: AuthConfig }) {
   const [busy, setBusy] = useState<"password" | "google" | "apple" | "passkey" | "link" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState<string | null>(null);
-  const passwordRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInputInstance>(null);
   const passkeys = config.passkeys && passkeysSupported();
   const appleOnThisPhone = useAppleSupported();
   const apple = config.apple && appleOnThisPhone;
