@@ -6,14 +6,14 @@ import { requireAdmin } from "@/lib/session";
 import { db } from "@/lib/db";
 import { ACTIVE_POOL } from "@/lib/pool";
 import { formatDate, todayISO } from "@/lib/dates";
-import { ROLE_SHORT, fullName } from "@/lib/domain";
+import { DOCUMENTS_TITLE, ROLE_SHORT, fullName } from "@/lib/domain";
 import { documentIsFor } from "@/lib/documents";
 import { PageHeader } from "@/components/shared/page-header";
 import { Chip } from "@/components/shared/status-chip";
 import { Disclosure } from "@/components/admin/disclosure";
 import { ArchiveDocumentButton, DocumentEditor, PublishVersionButton } from "@/components/admin/document-controls";
 
-export const metadata = { title: "Policies and agreements" };
+export const metadata = { title: DOCUMENTS_TITLE };
 
 type Person = { id: string; firstName: string; lastName: string | null; roles: string[] };
 
@@ -30,14 +30,14 @@ export default async function PoliciesAdminPage() {
     <div className="mx-auto flex max-w-6xl flex-col gap-8">
       <PageHeader
         eyebrow="Set-up"
-        title="Policies and agreements"
-        description="The board's documents stay in Google Drive, the single source of truth, and volunteers read them inside the app. Edits in Drive show straight away; publish a new version here when volunteers need to read or sign it again."
+        title={DOCUMENTS_TITLE}
+        description="The board's documents stay in Google Drive, the single source of truth, and volunteers read them inside the app. Edits in Drive show straight away; publish a new version here when volunteers need to read or sign it again. Coordinators can add and edit these without a developer."
       />
 
       <Section
         icon={FileSignature}
         title="Agreements"
-        intro="Signed with a tick box on the volunteer's induction page, before training or shifts. The volunteer and confidentiality agreements go here."
+        intro="Accepted with a tick box on the volunteer's induction page, before training or shifts. The volunteer and confidentiality agreements are signed (“I agree”); the job description is read and understood, not signed."
         action={<DocumentEditor kind="AGREEMENT" />}
         docs={agreements}
         pool={pool}
@@ -46,7 +46,7 @@ export default async function PoliciesAdminPage() {
       <Section
         icon={FileText}
         title="Policies"
-        intro="Under Policies in the volunteer app, to read at any time. Publishing a new version asks volunteers to read it and tick to confirm."
+        intro={`Under ${DOCUMENTS_TITLE} in the volunteer app, to read at any time. Publishing a new version asks volunteers to read it and tick to confirm.`}
         action={<DocumentEditor kind="POLICY" />}
         docs={policies}
         pool={pool}
@@ -78,6 +78,8 @@ function Section({ icon: Icon, title, intro, action, docs, pool, empty }: { icon
 
 function DocumentCard({ d, pool }: { d: Document & { acknowledgements: { volunteerId: string; version: number }[] }; pool: Person[] }) {
   const agreement = d.kind === "AGREEMENT";
+  const accept = !agreement ? "policy" : d.acceptance === "READ" ? "read" : "sign";
+  const signs = accept === "sign";
   const audience = pool.filter((v) => documentIsFor(d, v.roles));
   const current = new Set(d.acknowledgements.filter((a) => a.version === d.version).map((a) => a.volunteerId));
   const done = audience.filter((v) => current.has(v.id));
@@ -89,12 +91,13 @@ function DocumentCard({ d, pool }: { d: Document & { acknowledgements: { volunte
         <div className="min-w-0 flex-1 basis-72">
           <h3 className="flex flex-wrap items-center gap-2 text-xl text-ink">
             {d.title}
+            {agreement && <Chip tone={signs ? "info" : "neutral"} size="sm">{signs ? "Signed" : "Read and understood"}</Chip>}
             {d.archived && <Chip tone="muted" size="sm">Archived</Chip>}
           </h3>
           <p className="mt-1 text-sm text-muted-foreground">{d.summary}</p>
           <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink-soft">
             <span><span className="font-semibold text-ink">Version {d.version}</span>, {d.version > 1 ? "published" : "added"} {formatDate(todayISO(d.versionAt))}</span>
-            <span>{d.roles.length === 0 ? "For everyone" : `${agreement ? "Signed by" : "For"} ${d.roles.map((r) => ROLE_SHORT[r].toLowerCase()).join(", ")}`}</span>
+            <span>{d.roles.length === 0 ? "For everyone" : `${signs ? "Signed by" : agreement ? "Read by" : "For"} ${d.roles.map((r) => ROLE_SHORT[r].toLowerCase()).join(", ")}`}</span>
             {d.url && (
               <a href={d.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-semibold text-teal hover:underline">
                 {documentSiteLabel(d.url)} <ExternalLink className="size-3.5" aria-hidden />
@@ -106,16 +109,16 @@ function DocumentCard({ d, pool }: { d: Document & { acknowledgements: { volunte
         </div>
         {!d.archived && (
           <div className="w-full @xl/admin:w-64">
-            <p className="mb-1 flex justify-between text-xs font-semibold text-muted-foreground"><span>{audience.length} volunteers</span><span className="tabular">{pct}% {agreement ? "signed" : "read"}</span></p>
-            <div className="flex h-2.5 overflow-hidden rounded-full bg-muted" role="img" aria-label={`${done.length} of ${audience.length} have ${agreement ? "signed" : "read"} version ${d.version}`}>
+            <p className="mb-1 flex justify-between text-xs font-semibold text-muted-foreground"><span>{audience.length} volunteers</span><span className="tabular">{pct}% {signs ? "signed" : "read"}</span></p>
+            <div className="flex h-2.5 overflow-hidden rounded-full bg-muted" role="img" aria-label={`${done.length} of ${audience.length} have ${signs ? "signed" : "read"} version ${d.version}`}>
               {done.length > 0 && <span className="bg-green" style={{ width: `${pct}%` }} />}
             </div>
-            <p className="mt-1 text-xs font-semibold tabular text-ink-soft">{done.length} of {audience.length} {agreement ? "signed" : "read"} version {d.version}</p>
+            <p className="mt-1 text-xs font-semibold tabular text-ink-soft">{done.length} of {audience.length} {signs ? "signed" : "read"} version {d.version}</p>
           </div>
         )}
       </div>
       {!d.archived && waiting.length > 0 && (
-        <Disclosure size="sm" className="mt-3" label={`${waiting.length} still to ${agreement ? "sign" : "read"}`}>
+        <Disclosure size="sm" className="mt-3" label={`${waiting.length} still to ${signs ? "sign" : "read"}`}>
           <ul className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm">
             {waiting.map((v) => (
               <li key={v.id}><Link href={`/admin/volunteers/${v.id}`} className="font-semibold text-ink hover:underline">{fullName(v)}</Link></li>
@@ -124,9 +127,9 @@ function DocumentCard({ d, pool }: { d: Document & { acknowledgements: { volunte
         </Disclosure>
       )}
       <div className="mt-3 flex flex-wrap gap-2">
-        {!d.archived && <PublishVersionButton id={d.id} title={d.title} agreement={agreement} nextVersion={d.version + 1} audience={audience.length} />}
-        {!d.archived && <DocumentEditor kind={d.kind} document={{ id: d.id, kind: d.kind, title: d.title, summary: d.summary, url: d.url ?? "", body: d.body ?? "", roles: d.roles }} />}
-        <ArchiveDocumentButton id={d.id} title={d.title} archived={d.archived} agreement={agreement} />
+        {!d.archived && <PublishVersionButton id={d.id} title={d.title} accept={accept} nextVersion={d.version + 1} audience={audience.length} />}
+        {!d.archived && <DocumentEditor kind={d.kind} document={{ id: d.id, kind: d.kind, acceptance: d.acceptance, title: d.title, summary: d.summary, url: d.url ?? "", body: d.body ?? "", roles: d.roles }} />}
+        <ArchiveDocumentButton id={d.id} title={d.title} archived={d.archived} accept={accept} />
       </div>
     </article>
   );

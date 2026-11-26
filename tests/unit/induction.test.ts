@@ -9,7 +9,7 @@ const TODAY = "2026-11-05";
 const CHECK_ROLES = ["WAREHOUSE", "DRIVERS_ASSISTANT", "VOLUNTEER_DRIVER"] as const;
 
 function doc(over: Partial<Document> & Pick<Document, "id" | "title">): Document {
-  return { kind: "AGREEMENT", summary: "", url: null, body: null, roles: ["WAREHOUSE", "DRIVERS_ASSISTANT", "VOLUNTEER_DRIVER", "HARVEST"], version: 1, versionNote: null, versionAt: new Date(), order: 0, archived: false, createdAt: new Date(), updatedAt: new Date(), ...over };
+  return { kind: "AGREEMENT", acceptance: "SIGN", summary: "", url: null, body: null, roles: ["WAREHOUSE", "DRIVERS_ASSISTANT", "VOLUNTEER_DRIVER", "HARVEST"], version: 1, versionNote: null, versionAt: new Date(), order: 0, archived: false, createdAt: new Date(), updatedAt: new Date(), ...over };
 }
 const checked = (iso: string) => ({ checkedOn: isoToDate(iso) });
 const signed = (documentId: string, version: number) => ({ documentId, version, createdAt: new Date("2026-01-01T00:00:00Z") });

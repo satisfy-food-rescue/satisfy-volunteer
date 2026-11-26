@@ -87,7 +87,7 @@ function InductionBanner({ toDo }: { toDo: string }) {
       <View style={{ flex: 1, gap: 2 }}>
         <Text variant="bodyBold">Start with your induction</Text>
         <Text variant="small" tone="inkSoft">
-          Training opens once we have {toDo}.
+          Before training, we need {toDo}.
         </Text>
       </View>
       <View style={{ paddingTop: 3 }}>
@@ -141,6 +141,7 @@ function date(iso: string): string {
 }
 
 function statusLine(m: ModuleSummary, today: string): string {
+  if (m.notApplicable) return "The coordinator has marked this as not needed for you.";
   switch (m.status) {
     case "NOT_STARTED":
       return m.mandatoryBeforeFirstShift ? "Required before your first shift." : "Not yet completed.";
@@ -167,7 +168,7 @@ function ModuleRow({ module: m, today }: { module: ModuleSummary; today: string 
           <Text variant="bodyBold" style={{ flexShrink: 1 }}>
             {m.name}
           </Text>
-          <TrainingChip status={m.status} small />
+          <TrainingChip status={m.status} notApplicable={m.notApplicable} small />
         </View>
         <Text variant="small" tone="mutedText">
           {m.validityMonths ? `Valid ${m.validityMonths} months` : "Once only"} · {DELIVERY_LABEL[m.delivery]}

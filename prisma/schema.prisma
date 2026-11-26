@@ -40,8 +40,12 @@ enum VolunteerStatus {
 
 // What a volunteer can do, and the kind of a shift type. Holding the role is
 // the first half of the booking gate; current training is the second.
-// HARVEST is the harvest pool, which volunteers join and leave themselves.
+// TRAINING is where every new volunteer starts (induction and the in-person
+// stages) until a coordinator gives them a regular role; it is never a shift
+// kind. HARVEST is the harvest pool, which volunteers join and leave
+// themselves.
 enum VolunteerRole {
+  TRAINING
   WAREHOUSE
   DRIVERS_ASSISTANT
   VOLUNTEER_DRIVER
@@ -81,10 +85,13 @@ enum Delivery {
   ONLINE_CONFIRM
 }
 
+// NOT_APPLICABLE: a coordinator marked the module as not needed for this
+// volunteer. It counts as done and never expires.
 enum TrainingMethod {
   SESSION
   ONLINE
   COORDINATOR
+  NOT_APPLICABLE
 }
 
 enum RsvpStatus {
@@ -177,6 +184,14 @@ enum DocumentKind {
   POLICY
 }
 
+// How an agreement is accepted during induction: signed ("I agree"), or read
+// and understood (the job description, which volunteers do not sign).
+// Policies are always read.
+enum DocumentAcceptance {
+  SIGN
+  READ
+}
+
 enum AuthTokenPurpose {
   // Emailed when an admin creates an account: set a password and sign in.
   INVITE
@@ -222,7 +237,7 @@ model Volunteer {
   birthYear        Int?
   role             AccountRole     @default(VOLUNTEER)
   status           VolunteerStatus @default(ACTIVE)
-  roles            VolunteerRole[] @default([WAREHOUSE])
+  roles            VolunteerRole[] @default([TRAINING])
   isRegular        Boolean         @default(false)
   // Happy to be asked for last-minute cover. Feeds the push notifications and
   // the "last-minute available" list.
@@ -271,6 +286,24 @@ model Volunteer {
   recordedMojChecks MojCheck[]                @relation("MojCheckRecordedBy")
   acknowledgements  DocumentAcknowledgement[]
   editedTemplates   EmailTemplate[]
+  rolePeriods       RolePeriod[]
+}
+
+// When a volunteer held a role, so the profile and reports can say how long
+// someone has been in it. Opened when a role is added and closed when it is
+// removed (src/lib/roles.ts keeps it in step with Volunteer.roles). A
+// coordinator can correct the start date, e.g. for someone imported.
+model RolePeriod {
+  id          String        @id @default(cuid())
+  volunteerId String
+  volunteer   Volunteer     @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
+  role        VolunteerRole
+  startedOn   DateTime      @db.Date
+  // Null while they still hold the role.
+  endedOn     DateTime?     @db.Date
+  createdAt   DateTime      @default(now())
+
+  @@index([volunteerId, role])
 }
 
 // A signed-in browser or phone. Only the SHA-256 of the token is stored, so a
@@ -764,7 +797,9 @@ model Document {
   // Paragraphs separated by a blank line, shown when there is no link, or
   // as the words beside the tick box.
   body             String?
-  // Agreements: who must sign. Policies: who it is for; empty is everyone.
+  // Agreements only: signed, or read and understood.
+  acceptance       DocumentAcceptance        @default(SIGN)
+  // Agreements: who must accept it. Policies: who it is for; empty is everyone.
   roles            VolunteerRole[]
   version          Int                       @default(1)
   // What changed, from the coordinator, shown with the new version.

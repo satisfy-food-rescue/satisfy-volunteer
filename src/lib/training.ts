@@ -4,6 +4,7 @@ import { inductionBlockers, type Induction } from "./induction";
 import {
   DUE_SOON_DAYS,
   HARVEST_ROLE,
+  TRAINING_ROLE,
   ROLE_LABEL,
   SHIFT_KIND_LABEL,
   type ShiftKind,
@@ -21,6 +22,9 @@ export type ModuleStatus = {
    *  so this one waits. */
   lockedBy: TrainingModule | null;
   record: TrainingRecord | null;
+  /** A coordinator marked it as not needed for this volunteer. Its status is
+   *  Complete, so it counts as done everywhere; show it as not applicable. */
+  notApplicable: boolean;
   completedISO: string | null;
   expiresISO: string | null;
   /** Days until expiry; negative when overdue; null when no expiry applies. */
@@ -56,7 +60,7 @@ export function moduleStatuses(
       else if (daysLeft < 0) status = "OVERDUE";
       else if (daysLeft <= DUE_SOON_DAYS) status = "DUE_SOON";
       else status = "COMPLETE";
-      return { module, status, required, lockedBy, record, completedISO, expiresISO, daysLeft };
+      return { module, status, required, lockedBy, record, notApplicable: record?.method === "NOT_APPLICABLE", completedISO, expiresISO, daysLeft };
     });
 }
 
@@ -102,6 +106,8 @@ export type Blocker = { module: TrainingModule; status: TrainingStatus; message:
 export type Eligibility = {
   eligible: boolean;
   hasRole: boolean;
+  /** In training, so no regular role yet: finishing training is the way in. */
+  trainee: boolean;
   /** Induction steps in the way (the Ministry of Justice check, agreements to
    *  sign). They come before training. */
   induction: string[];
@@ -115,7 +121,7 @@ export type Eligibility = {
 export type LockFix = "induction" | "training" | "role" | "harvestPool";
 
 export function lockFix(elig: Eligibility, kind: ShiftKind): LockFix {
-  if (!elig.hasRole) return kind === HARVEST_ROLE ? "harvestPool" : "role";
+  if (!elig.hasRole) return kind === HARVEST_ROLE ? "harvestPool" : elig.trainee ? "training" : "role";
   return elig.induction.length > 0 ? "induction" : "training";
 }
 
@@ -132,17 +138,21 @@ export function eligibilityFor(
   induction: Induction | null,
 ): Eligibility {
   const hasRole = volunteer.roles.includes(kind);
+  const trainee = volunteer.roles.includes(TRAINING_ROLE);
   const kindLabel = SHIFT_KIND_LABEL[kind].toLowerCase();
   if (!hasRole) {
     return {
       eligible: false,
       hasRole: false,
+      trainee,
       induction: [],
       blockers: [],
       reason:
         kind === HARVEST_ROLE
           ? "Join the harvest pool to sign up for harvests."
-          : `${SHIFT_KIND_LABEL[kind]} shifts need the ${ROLE_LABEL[kind].toLowerCase()} role. Ask the coordinator to add it to your profile.`,
+          : trainee
+            ? "You're still in training. Once it's done, the coordinator gives you a role and its shifts open."
+            : `${SHIFT_KIND_LABEL[kind]} shifts need the ${ROLE_LABEL[kind].toLowerCase()} role. Ask the coordinator to add it to your profile.`,
     };
   }
   const blockers: Blocker[] = [];
@@ -161,5 +171,5 @@ export function eligibilityFor(
     }
   }
   const steps = induction ? inductionBlockers(induction, [kind]) : [];
-  return { eligible: steps.length === 0 && blockers.length === 0, hasRole, induction: steps, blockers, reason: steps[0] ?? blockers[0]?.message ?? null };
+  return { eligible: steps.length === 0 && blockers.length === 0, hasRole, trainee, induction: steps, blockers, reason: steps[0] ?? blockers[0]?.message ?? null };
 }

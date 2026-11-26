@@ -39,6 +39,7 @@ export const PHOTOS: Record<PhotoKey, Photo> = {
 };
 
 export const SHIFT_KIND_PHOTO: Record<ShiftKind, PhotoKey> = {
+  TRAINING: "team",
   WAREHOUSE: "warehouse",
   DRIVERS_ASSISTANT: "driverHelp",
   VOLUNTEER_DRIVER: "driver",

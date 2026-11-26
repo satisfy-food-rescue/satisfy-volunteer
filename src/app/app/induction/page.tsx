@@ -2,7 +2,7 @@ import Link from "next/link";
 import { CheckCircle2, ChevronRight, ExternalLink, FileSignature, GraduationCap, HeartHandshake, Mail, UserCheck } from "lucide-react";
 import { requireVolunteer } from "@/lib/session";
 import { formatDate, todayISO } from "@/lib/dates";
-import { MOJ_CHECK_URL, MOJ_RENEWAL_DAYS } from "@/lib/domain";
+import { DOCUMENTS_TITLE, MOJ_CHECK_URL, MOJ_RENEWAL_DAYS } from "@/lib/domain";
 import { ORG } from "@/lib/brand";
 import { inductionFor } from "@/lib/induction-data";
 import { inductionToDo, type AgreementState, type Moj } from "@/lib/induction";
@@ -26,6 +26,11 @@ export default async function InductionPage() {
   const agreements = induction.agreements.filter((a) => a.required);
   const toSign = agreements.filter((a) => a.status === "UNSIGNED" || a.status === "UPDATED");
   const showMoj = moj.required || moj.checkedISO !== null;
+  const allRead = agreements.every((a) => a.document.acceptance === "READ");
+  const allSign = agreements.every((a) => a.document.acceptance !== "READ");
+  const docsTitle = agreements.length === 1 ? agreements[0]!.document.title : allSign ? "Volunteer agreements" : allRead ? "Read and understood" : "Read and sign";
+  const doneLabel = allSign ? "Signed" : allRead ? "Read" : "Done";
+  const toDoLabel = toSign.every((a) => a.document.acceptance === "READ") ? "To read" : "To sign";
   let step = 0;
 
   return (
@@ -49,19 +54,21 @@ export default async function InductionPage() {
         )}
 
         {agreements.length > 0 && (
-          <Step n={++step} done={toSign.length === 0} icon={FileSignature} title={agreements.length === 1 ? agreements[0]!.document.title : "Volunteer agreements"} chip={toSign.length === 0 ? <Chip tone="good" size="sm" icon={CheckCircle2}>Signed</Chip> : <Chip tone="info" size="sm">To sign</Chip>}>
+          <Step n={++step} done={toSign.length === 0} icon={FileSignature} title={docsTitle} chip={toSign.length === 0 ? <Chip tone="good" size="sm" icon={CheckCircle2}>{doneLabel}</Chip> : <Chip tone="info" size="sm">{toDoLabel}</Chip>}>
             <p className="text-ink-soft">
               {toSign.length === 0
-                ? "Thanks for signing. You can read them again at any time under Policies."
+                ? `Thank you. You can read ${agreements.length === 1 ? "it" : "them"} again at any time under ${DOCUMENTS_TITLE}.`
                 : agreements.length === 1
                   ? "Please read it before you come onto the premises, even for training."
-                  : "You will see confidential information while volunteering, and these cover how we look after it and each other. Please read them before you come onto the premises, even for training."}
+                  : allRead
+                    ? "Please read them before you come onto the premises, even for training."
+                    : "You will see confidential information while volunteering, and these cover how we look after it and each other. Please read them before you come onto the premises, even for training."}
             </p>
             {agreements.map((a) => (
               <AgreementCard key={a.document.id} a={a} />
             ))}
             {toSign.length > 0 && (
-              <AgreementSigning firstName={me.firstName} agreements={toSign.map((a) => ({ id: a.document.id, version: a.document.version, title: a.document.title, updated: a.status === "UPDATED" }))} />
+              <AgreementSigning firstName={me.firstName} agreements={toSign.map((a) => ({ id: a.document.id, version: a.document.version, title: a.document.title, updated: a.status === "UPDATED", acceptance: a.document.acceptance }))} />
             )}
           </Step>
         )}
@@ -178,7 +185,7 @@ function AgreementCard({ a }: { a: AgreementState }) {
       <summary className="flex min-h-12 cursor-pointer list-none items-center gap-3 px-3 py-2 [&::-webkit-details-marker]:hidden">
         <span className="min-w-0 flex-1">
           <span className="block font-semibold text-ink">{a.document.title}</span>
-          <span className="block text-sm text-muted-foreground">{signed && a.signedAt ? `Signed ${formatDate(todayISO(a.signedAt))}` : a.document.summary}</span>
+          <span className="block text-sm text-muted-foreground">{signed && a.signedAt ? `${a.document.acceptance === "READ" ? "Read and understood" : "Signed"} ${formatDate(todayISO(a.signedAt))}` : a.document.summary}</span>
         </span>
         {a.status === "UPDATED" && <Chip tone="warn" size="sm">Updated</Chip>}
         <ChevronRight className="size-5 shrink-0 text-muted-foreground transition-transform group-open:rotate-90" aria-hidden />

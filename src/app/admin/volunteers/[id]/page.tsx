@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CalendarCheck, CalendarClock, CalendarOff, CheckCircle2, ChevronLeft, CircleDashed, Import, Mail, MapPin, Phone, PhoneCall, Power, Sprout, XCircle, Zap } from "lucide-react";
+import { CalendarCheck, CalendarClock, CalendarOff, CheckCircle2, ChevronLeft, CircleDashed, GraduationCap, Import, Mail, MapPin, Phone, PhoneCall, Power, Sprout, XCircle, Zap } from "lucide-react";
 import { APPLE } from "@/lib/apple";
 import { GOOGLE } from "@/lib/oauth";
 import { requireAdmin } from "@/lib/session";
 import { shiftName } from "@/lib/roster";
 import { db } from "@/lib/db";
-import { addDays, dateToISO, formatDate, isWeekday, formatDay, formatDayRange, formatInstant, formatInstantRange, formatTimeRange, todayISO, WEEKDAY_LONG } from "@/lib/dates";
-import { DELIVERY_LABEL, INITIAL_VISIT_CODE, ROLE_SHORT, fullName, inHarvestPool } from "@/lib/domain";
+import { addDays, dateToISO, formatDate, isWeekday, formatDay, formatDayRange, formatInstant, formatInstantRange, formatTenure, formatTimeRange, todayISO, WEEKDAY_LONG } from "@/lib/dates";
+import { DELIVERY_LABEL, INITIAL_VISIT_CODE, ROLE_LABEL, ROLE_SHORT, fullName, inHarvestPool, inTraining } from "@/lib/domain";
+import { roleTenures } from "@/lib/roles";
 import { inductionFor } from "@/lib/induction-data";
 import { getSettings } from "@/lib/settings";
 import { MOJ_STATUS_LABEL, type MojStatus } from "@/lib/induction";
@@ -15,7 +16,7 @@ import { RecordMojCheckButton, RemoveMojCheckButton } from "@/components/admin/i
 import { moduleStatuses, trainingSummary } from "@/lib/training";
 import { AvatarBadge } from "@/components/shared/avatar-badge";
 import { Chip, TrainingChip } from "@/components/shared/status-chip";
-import { AccountControls, BookInitialVisitButton, ContactLogForm, NotesEditor, ProfileEditor, RecordCompletionButton, RolesEditor, TrainingCommentButton } from "@/components/admin/volunteer-admin-controls";
+import { AccountControls, BookInitialVisitButton, ContactLogForm, NotApplicableButton, NotesEditor, ProfileEditor, RecordCompletionButton, RoleStartButton, RolesEditor, TrainingCommentButton, UndoNotApplicableButton } from "@/components/admin/volunteer-admin-controls";
 import { ContactTimeline } from "@/components/admin/contact-timeline";
 import { Disclosure } from "@/components/admin/disclosure";
 import { RecordAbsenceForm } from "@/components/admin/record-absence-form";
@@ -45,6 +46,7 @@ export default async function VolunteerProfilePage({ params, searchParams }: { p
         absences: { orderBy: { startDate: "desc" } },
         emails: { select: { id: true, channel: true, kind: true, subject: true, status: true, createdAt: true }, orderBy: { createdAt: "desc" } },
         passkeys: { select: { id: true } },
+        rolePeriods: true,
         mojChecks: { include: { recordedBy: { select: { firstName: true } } }, orderBy: [{ checkedOn: "desc" }, { createdAt: "desc" }] },
         oauthAccounts: { select: { provider: true } },
         contactLogs: { include: { author: { select: { id: true, firstName: true } } }, orderBy: { createdAt: "desc" } },
@@ -58,6 +60,7 @@ export default async function VolunteerProfilePage({ params, searchParams }: { p
   if (!v) notFound();
   const [induction, settings] = await Promise.all([inductionFor(v, today), getSettings()]);
   const statuses = moduleStatuses(v, modules, v.trainingRecords, today);
+  const tenures = roleTenures(v.rolePeriods);
   const summary = trainingSummary(statuses);
   const history = v.assignments.filter((a) => dateToISO(a.shift.date) < today);
   const attended = history.filter((a) => a.status === "ATTENDED").length;
@@ -95,6 +98,7 @@ export default async function VolunteerProfilePage({ params, searchParams }: { p
             {v.status === "INACTIVE" && <Chip tone="muted" size="sm" icon={Power}>Inactive</Chip>}
             {v.status === "DELETED" && <Chip tone="muted" size="sm" icon={Power}>Deleted</Chip>}
             <TrainingChip status={summary.worst} size="sm" />
+            {inTraining(v) && <Chip tone="info" size="sm" icon={GraduationCap}>In training</Chip>}
             {v.isRegular && <Chip tone="good" size="sm" icon={CalendarCheck}>Regular</Chip>}
             {inHarvestPool(v) && <Chip tone="info" size="sm" icon={Sprout}>Harvest pool</Chip>}
             {v.lastMinuteOk && <Chip tone="neutral" size="sm" icon={Zap}>Last-minute OK</Chip>}
@@ -169,11 +173,11 @@ export default async function VolunteerProfilePage({ params, searchParams }: { p
                   <div className="min-w-0 flex-1">
                     <p className="font-bold text-ink">{a.document.title}</p>
                     <p className="text-xs text-muted-foreground">
-                      {a.signedAt ? `Signed ${formatDate(todayISO(a.signedAt))}${a.signedVersion && a.signedVersion > 1 ? `, version ${a.signedVersion}` : ""}` : "Not signed yet"}
-                      {a.status === "UPDATED" && ` · version ${a.document.version} to sign`}
+                      {a.signedAt ? `${a.document.acceptance === "READ" ? "Read and understood" : "Signed"} ${formatDate(todayISO(a.signedAt))}${a.signedVersion && a.signedVersion > 1 ? `, version ${a.signedVersion}` : ""}` : a.document.acceptance === "READ" ? "Not read yet" : "Not signed yet"}
+                      {a.status === "UPDATED" && ` · version ${a.document.version} to ${a.document.acceptance === "READ" ? "read" : "sign"}`}
                     </p>
                   </div>
-                  {a.status === "SIGNED" ? <Chip tone="good" size="sm" icon={CheckCircle2}>Signed</Chip> : <Chip tone={a.status === "UPDATED" ? "warn" : "info"} size="sm">{a.status === "UPDATED" ? "New version" : "To sign"}</Chip>}
+                  {a.status === "SIGNED" ? <Chip tone="good" size="sm" icon={CheckCircle2}>{a.document.acceptance === "READ" ? "Read" : "Signed"}</Chip> : <Chip tone={a.status === "UPDATED" ? "warn" : "info"} size="sm">{a.status === "UPDATED" ? "New version" : a.document.acceptance === "READ" ? "To read" : "To sign"}</Chip>}
                 </li>
               ))}
             </ul>
@@ -183,24 +187,30 @@ export default async function VolunteerProfilePage({ params, searchParams }: { p
             <h2 id="tr-h" className="text-2xl text-ink">Training record</h2>
             <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
               {statuses.filter((s) => s.required).map((s) => (
-                <li key={s.module.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
-                  <div className="min-w-0 flex-1">
+                <li key={s.module.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
+                  {/* The name keeps room to read; with too many buttons beside
+                      it, they wrap below as one group. */}
+                  <div className="min-w-0 flex-1 basis-56">
                     <p className="font-bold text-ink">{s.module.name}</p>
                     <p className="text-xs text-muted-foreground">
                       {s.module.validityMonths ? `${s.module.validityMonths}-month validity` : "Once only"} · {DELIVERY_LABEL[s.module.delivery]}
-                      {s.completedISO && ` · completed ${formatDate(s.completedISO)}${s.record?.method === "SESSION" ? " (session)" : s.record?.method === "ONLINE" ? " (online)" : s.record?.method === "COORDINATOR" ? " (coordinator)" : ""}`}
+                      {s.completedISO && (s.notApplicable ? ` · marked not applicable ${formatDate(s.completedISO)}` : ` · completed ${formatDate(s.completedISO)}${s.record?.method === "SESSION" ? " (session)" : s.record?.method === "ONLINE" ? " (online)" : s.record?.method === "COORDINATOR" ? " (coordinator)" : ""}`)}
                     </p>
                     {s.module.code === INITIAL_VISIT_CODE && s.status === "NOT_STARTED" && visitBooked && <p className="text-xs font-semibold text-green-text">Booked for {formatInstant(visitBooked.startsAt)}</p>}
                     {s.expiresISO && <p className={cn("text-xs tabular", s.status === "OVERDUE" ? "text-status-bad" : s.status === "DUE_SOON" ? "text-status-warn" : "text-muted-foreground")}>{s.status === "OVERDUE" ? "Expired" : "Expires"} {formatDate(s.expiresISO)}</p>}
                     {s.record?.comment && <p className="mt-1 whitespace-pre-line text-sm text-ink-soft">{s.record.comment}</p>}
                   </div>
-                  {s.record && <TrainingCommentButton recordId={s.record.id} comment={s.record.comment} moduleName={s.module.name} firstName={v.firstName} />}
-                  <TrainingChip status={s.status} size="sm" />
-                  {s.status !== "COMPLETE" && (s.lockedBy ? (
-                    <span className="text-xs font-semibold text-muted-foreground">After {s.lockedBy.name}</span>
-                  ) : (
-                    <RecordCompletionButton volunteerId={v.id} moduleId={s.module.id} moduleName={s.module.name} firstName={v.firstName} today={today} />
-                  ))}
+                  <div className="ml-auto flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
+                    {s.record && <TrainingCommentButton recordId={s.record.id} comment={s.record.comment} moduleName={s.module.name} firstName={v.firstName} />}
+                    <TrainingChip status={s.status} notApplicable={s.notApplicable} size="sm" />
+                    {s.notApplicable && s.record && <UndoNotApplicableButton recordId={s.record.id} moduleName={s.module.name} />}
+                    {s.status === "NOT_STARTED" && <NotApplicableButton volunteerId={v.id} moduleId={s.module.id} moduleName={s.module.name} firstName={v.firstName} />}
+                    {s.status !== "COMPLETE" && (s.lockedBy ? (
+                      <span className="text-xs font-semibold text-muted-foreground">After {s.lockedBy.name}</span>
+                    ) : (
+                      <RecordCompletionButton volunteerId={v.id} moduleId={s.module.id} moduleName={s.module.name} firstName={v.firstName} today={today} />
+                    ))}
+                  </div>
                 </li>
               ))}
             </ul>
@@ -261,8 +271,27 @@ export default async function VolunteerProfilePage({ params, searchParams }: { p
 
           <section className="rounded-2xl border border-border bg-card p-4" aria-labelledby="roles-h">
             <h2 id="roles-h" className="text-xl text-ink">Roles</h2>
-            <p className="mb-3 mt-1 text-xs text-muted-foreground">Roles decide which shift types and training modules apply. Volunteers can join or leave the harvest pool themselves.</p>
+            <p className="mb-3 mt-1 text-xs text-muted-foreground">Roles decide which shift types and training modules apply. New volunteers start in training: give them a role once it is done. Volunteers can join or leave the harvest pool themselves.</p>
             <RolesEditor volunteerId={v.id} initial={v.roles} />
+            {tenures.length > 0 && (
+              <>
+                <h3 className="font-display mt-4 text-xs font-bold uppercase tracking-wide text-muted-foreground">Role history</h3>
+                <ul className="mt-1 flex flex-col">
+                  {tenures.map((t) => (
+                    <li key={t.id} className="flex items-center gap-2 py-1 text-sm">
+                      <span className="min-w-0 flex-1">
+                        <span className={cn("font-semibold", t.endedISO ? "text-ink-soft" : "text-ink")}>{ROLE_LABEL[t.role]}</span>
+                        <span className="block text-xs text-muted-foreground tabular">
+                          {t.endedISO ? `${formatDate(t.startedISO)} to ${formatDate(t.endedISO)}` : `Since ${formatDate(t.startedISO)}`}
+                          {t.startedISO < (t.endedISO ?? today) && ` · ${formatTenure(t.startedISO, t.endedISO ?? today)}`}
+                        </span>
+                      </span>
+                      {v.status !== "DELETED" && <RoleStartButton periodId={t.id} roleLabel={ROLE_LABEL[t.role]} startedISO={t.startedISO} endedISO={t.endedISO} today={today} />}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
           </section>
 
           <section className="rounded-2xl border border-border bg-card p-4" aria-labelledby="slot-h">

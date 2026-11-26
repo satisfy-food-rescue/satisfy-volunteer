@@ -5,7 +5,7 @@ import { createRef, useState } from "react";
 import { Pressable, View, type TextInputInstance } from "react-native";
 
 import type { SignUpField, SignUpInput } from "@satisfy/core/api";
-import { ROLE_DESCRIPTION, ROLE_LABEL, VOLUNTEER_ROLES, type VolunteerRole } from "@satisfy/core/domain";
+import { ROLE_DESCRIPTION, ROLE_LABEL, SHIFT_KINDS, type VolunteerRole } from "@satisfy/core/domain";
 import { SIGN_UP_HINT, SIGN_UP_INTRO, SIGN_UP_PRIVACY, SIGN_UP_THANKS, signUpSteps, type SignUpStep } from "@satisfy/core/sign-up";
 import { Notice, Panel, SignedOutFrame } from "@/components/signed-out";
 import { Button } from "@/components/ui/button";
@@ -119,12 +119,12 @@ function SignUpForm({ onSent }: { onSent: (who: { firstName: string; email: stri
 
       <Section title="How you would like to help" hint={SIGN_UP_HINT.interests}>
         <View style={{ gap: 8 }}>
-          {VOLUNTEER_ROLES.map((r) => (
+          {SHIFT_KINDS.map((r) => (
             <RoleOption
               key={r}
               role={r}
               checked={v.interests.includes(r)}
-              onChange={(on) => set("interests", on ? VOLUNTEER_ROLES.filter((x) => x === r || v.interests.includes(x)) : v.interests.filter((x) => x !== r))}
+              onChange={(on) => set("interests", on ? SHIFT_KINDS.filter((x) => x === r || v.interests.includes(x)) : v.interests.filter((x) => x !== r))}
             />
           ))}
         </View>

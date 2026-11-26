@@ -39,9 +39,16 @@ function rand(): number {
 }
 const randInt = (min: number, max: number) => min + Math.floor(rand() * (max - min + 1));
 const pick = <T,>(arr: readonly T[]): T => arr[Math.floor(rand() * arr.length)];
+/** A date no earlier than a few days after `fromISO` (when someone joined),
+ *  and no later than yesterday. */
+const afterJoining = (fromISO: string, iso: string): string => {
+  const earliest = addDays(fromISO, 3);
+  const latest = addDays(TODAY, -1);
+  return iso < earliest ? (earliest < latest ? earliest : latest) : iso > latest ? latest : iso;
+};
 
 let TODAY = "";
-const SORTING_STAGES = 4;
+const TRAINING_STAGES = 4;
 const WEEKS_BACK = 26;
 const WEEKS_FORWARD = 8;
 
@@ -70,6 +77,11 @@ type VolSpec = {
   lastMinute?: boolean;
   admin?: boolean;
   joinedYearsAgo?: number;
+  /** For someone newer than a year: overrides joinedYearsAgo. */
+  joinedDaysAgo?: number;
+  /** Still in training: since this many days ago, with this many of the T1
+   *  to T4 stages done. */
+  training?: { sinceDays: number; stagesDone: number };
   notes?: string;
   availability?: string;
 };
@@ -137,8 +149,13 @@ const VOLUNTEERS: VolSpec[] = [
   { first: "Josh", last: "Tairoa", born: 1988, roles: ["HARVEST"], joinedYearsAgo: 2, availability: "Saturdays." },
   { first: "Fiona", last: "Grant", lastMinute: true, born: 1971, roles: ["WAREHOUSE", "HARVEST"], joinedYearsAgo: 4 },
   { first: "Ravi", last: "Naidoo", lastMinute: true, born: 1979, roles: ["WAREHOUSE", "HARVEST"], joinedYearsAgo: 1 },
+  // In training: a harvest volunteer who started training for a regular role
+  // last week, and a newcomer half way through the stages (T3 marked not
+  // applicable, as she did it at another food rescue).
+  { first: "Aroha", last: "Ngata", born: 1990, roles: ["TRAINING", "HARVEST"], joinedYearsAgo: 1, training: { sinceDays: 8, stagesDone: 0 }, availability: "Weekday mornings now the kids are at school." },
+  { first: "Grace", last: "Liu", born: 1997, roles: ["TRAINING"], joinedDaysAgo: 40, training: { sinceDays: 40, stagesDone: 2 }, availability: "Monday and Wednesday mornings." },
   // Brand-new volunteer, signed up on the website and approved two days ago, no training yet
-  { key: "jess", first: "Jess", last: "Moorhouse", born: 2001, roles: ["WAREHOUSE"], joinedYearsAgo: 0, availability: "Tuesday and Thursday mornings during uni term." },
+  { key: "jess", first: "Jess", last: "Moorhouse", born: 2001, roles: ["TRAINING"], joinedYearsAgo: 0, availability: "Tuesday and Thursday mornings during uni term." },
 ];
 
 // ---------------------------------------------------------------------------
@@ -188,14 +205,15 @@ export async function seedDemo() {
   await db.meta.deleteMany();
 
   const ref = await createReferenceData(db);
-  // Demo only, until Phillipa confirms the module list: the warehouse's four
-  // in-person sorting stages, done once and in order after the initial
-  // visit, and a harvest module still being written.
-  await db.trainingModule.updateMany({ where: { order: { gte: 2 } }, data: { order: { increment: SORTING_STAGES } } });
+  // Demo only, until Phillipa sends the module names: the four in-person
+  // stages every regular role does, once and in order after the initial
+  // visit (harvest volunteers skip them), and a harvest module still being
+  // written.
+  await db.trainingModule.updateMany({ where: { order: { gte: 2 } }, data: { order: { increment: TRAINING_STAGES } } });
   let before = ref.moduleIds.get(INITIAL_VISIT_CODE)!;
-  for (let n = 1; n <= SORTING_STAGES; n++) {
+  for (let n = 1; n <= TRAINING_STAGES; n++) {
     const row = await db.trainingModule.create({
-      data: { code: `SORTING_T${n}`, name: `Sorting T${n}`, description: `In-person sorting training with the warehouse supervisor, stage ${n} of ${SORTING_STAGES}. Recorded on the day.`, validityMonths: null, requiredRoles: ["WAREHOUSE"], mandatoryBeforeFirstShift: false, delivery: "IN_PERSON", order: 1 + n, prerequisiteId: before },
+      data: { code: `T${n}`, name: `T${n} in-person training`, description: `In-person training with a supervisor, stage ${n} of ${TRAINING_STAGES}. The supervisor records it on the day.`, validityMonths: null, requiredRoles: ["TRAINING", "WAREHOUSE", "DRIVERS_ASSISTANT", "VOLUNTEER_DRIVER"], mandatoryBeforeFirstShift: false, delivery: "IN_PERSON", order: 1 + n, prerequisiteId: before },
     });
     ref.moduleIds.set(row.code, row.id);
     before = row.id;
@@ -217,14 +235,14 @@ export async function seedDemo() {
   }
 
   // Volunteers ---------------------------------------------------------------
-  const vols = new Map<string, { id: string; first: string; last: string | null; email: string; roles: VolunteerRole[]; spec: VolSpec }>();
+  const vols = new Map<string, { id: string; first: string; last: string | null; email: string; roles: VolunteerRole[]; spec: VolSpec; joinedISO: string }>();
   const syncedAt = nzInstant(TODAY, "06:00");
   let infoodleSeq = 1041;
   const personaPassword = await hashPassword(DEMO_PASSWORD);
   for (const v of VOLUNTEERS) {
     const email = (v.key && personaEmail(v.key)) || emailFor(v.first, v.last ?? "volunteer");
     const yearsAgo = v.joinedYearsAgo ?? 2;
-    const joined = v.key === "jess" ? isoToDate(addDays(TODAY, -2)) : isoToDate(addDays(TODAY, -(yearsAgo * 365 + randInt(0, 200))));
+    const joined = v.key === "jess" ? isoToDate(addDays(TODAY, -2)) : v.joinedDaysAgo !== undefined ? isoToDate(addDays(TODAY, -v.joinedDaysAgo)) : isoToDate(addDays(TODAY, -(yearsAgo * 365 + randInt(0, 200))));
     const row = await db.volunteer.create({
       data: {
         firstName: v.first,
@@ -249,8 +267,31 @@ export async function seedDemo() {
         infoodleSyncedAt: syncedAt,
       },
     });
-    vols.set(v.key ?? `${v.first}-${v.last}`, { id: row.id, first: v.first, last: v.last, email, roles: v.roles, spec: v });
+    vols.set(v.key ?? `${v.first}-${v.last}`, { id: row.id, first: v.first, last: v.last, email, roles: v.roles, spec: v, joinedISO: dateToISO(joined) });
   }
+
+  // Role history: how long each person has held each role. Regular volunteers
+  // trained for nine to twelve weeks after joining (T4 comes at nine), then
+  // sorted; driver help and driving came later.
+  const periodRows: { volunteerId: string; role: VolunteerRole; startedOn: Date; endedOn: Date | null }[] = [];
+  const latest = (iso: string) => (iso < TODAY ? iso : addDays(TODAY, -1));
+  for (const v of vols.values()) {
+    const add = (role: VolunteerRole, startISO: string, endISO: string | null = null) => periodRows.push({ volunteerId: v.id, role, startedOn: isoToDate(startISO), endedOn: endISO ? isoToDate(endISO) : null });
+    if (v.spec.training) add("TRAINING", latest(addDays(TODAY, -v.spec.training.sinceDays)));
+    else if (v.roles.includes("TRAINING")) add("TRAINING", v.joinedISO);
+    const regular = v.roles.filter((r) => r !== "TRAINING" && r !== "HARVEST");
+    let from = v.joinedISO;
+    if (regular.length > 0 && !v.spec.admin) {
+      from = latest(addDays(v.joinedISO, randInt(64, 84)));
+      add("TRAINING", v.joinedISO, from);
+    }
+    for (const [i, role] of regular.entries()) {
+      if (i > 0) from = latest(addDays(from, randInt(60, 400)));
+      add(role, from);
+    }
+    if (v.roles.includes("HARVEST")) add("HARVEST", latest(addDays(v.joinedISO, regular.length > 0 ? randInt(30, 300) : 0)));
+  }
+  await db.rolePeriod.createMany({ data: periodRows });
   const byName = (first: string, last: string) => vols.get(`${first}-${last}`)!;
   const phillipa = vols.get("phillipa")!;
   const margaret = vols.get("margaret")!;
@@ -368,7 +409,7 @@ export async function seedDemo() {
   const sessionPast = await db.trainingSession.create({ data: { moduleId: modules.get("SLIPS_TRIPS_FALLS")!.id, startsAt: nzInstant(pastSessionISO, "12:30"), endsAt: nzInstant(pastSessionISO, "13:00"), location: warehouse, capacity: 12 } });
 
   // Training records ---------------------------------------------------------
-  type Override = { daysToExpiry?: number; skip?: boolean };
+  type Override = { daysToExpiry?: number; skip?: boolean; notApplicable?: string };
   const overrides = new Map<string, Override>();
   const ov = (v: { id: string }, code: string, o: Override) => overrides.set(`${v.id}:${code}`, o);
   // Due soon
@@ -383,38 +424,55 @@ export async function seedDemo() {
   ov(tony, "MANUAL_HANDLING", { daysToExpiry: -21 });
   ov(byName("Frank", "Doyle"), "SLIPS_TRIPS_FALLS", { daysToExpiry: -40 });
   ov(byName("Norm", "Blackwell"), "ROUTE_VEHICLE_SAFETY", { daysToExpiry: -10 });
-  // Part way through the sorting stages: T3 is next, T4 waits for it.
-  ov(byName("Liz", "Stratford"), "SORTING_T3", { skip: true });
-  ov(byName("Liz", "Stratford"), "SORTING_T4", { skip: true });
+  // Part way through the stages: T3 is next, T4 waits for it.
+  ov(byName("Liz", "Stratford"), "T3", { skip: true });
+  ov(byName("Liz", "Stratford"), "T4", { skip: true });
+  // A stage that does not apply: Doug came to the Hurunui route as a driver.
+  ov(byName("Doug", "Fleming"), "T3", { notApplicable: "Drives the Hurunui route only; the sorting stage does not apply." });
   // Not started
   ov(byName("Emma", "Whitcombe"), "SLIPS_TRIPS_FALLS", { skip: true });
   ov(byName("Ravi", "Naidoo"), "FOOD_SAFETY", { skip: true });
 
-  const recordRows: { volunteerId: string; moduleId: string; completedAt: Date; expiresAt: Date | null; method: TrainingMethod; sessionId?: string | null }[] = [];
+  const recordRows: { volunteerId: string; moduleId: string; completedAt: Date; expiresAt: Date | null; method: TrainingMethod; sessionId?: string | null; comment?: string | null }[] = [];
   for (const v of vols.values()) {
     if (v.id === jess.id) continue;
+    const trainee = v.spec.training;
     for (const m of modules.values()) {
       if (!m.requiredRoles.some((r) => v.roles.includes(r))) continue;
       const code = [...modules.entries()].find(([, mm]) => mm.id === m.id)![0];
       const o = overrides.get(`${v.id}:${code}`);
       if (o?.skip) continue;
+      if (o?.notApplicable) {
+        recordRows.push({ volunteerId: v.id, moduleId: m.id, completedAt: isoToDate(addDays(TODAY, -randInt(30, 300))), expiresAt: null, method: "NOT_APPLICABLE", comment: o.notApplicable });
+        continue;
+      }
       let completedISO: string;
       let expiresISO: string | null;
-      const stage = code.match(/^SORTING_T(\d)$/);
+      const stage = code.match(/^T(\d)$/);
+      if (trainee && (stage || code === INITIAL_VISIT_CODE)) {
+        // A trainee's initial visit and stages, a week apart from when they
+        // started training. Grace's third did not apply.
+        const n = stage ? Number(stage[1]) : 0;
+        if (n > trainee.stagesDone + 1 || (n === 0 && trainee.stagesDone === 0 && trainee.sinceDays < 10)) continue;
+        if (n === trainee.stagesDone + 1) {
+          if (trainee.stagesDone === 2) recordRows.push({ volunteerId: v.id, moduleId: m.id, completedAt: isoToDate(addDays(TODAY, -3)), expiresAt: null, method: "NOT_APPLICABLE", comment: "Did this stage at another food rescue before joining." });
+          continue;
+        }
+        recordRows.push({ volunteerId: v.id, moduleId: m.id, completedAt: isoToDate(addDays(TODAY, -trainee.sinceDays + 3 + 7 * n)), expiresAt: null, method: "SESSION" });
+        continue;
+      }
       if (stage) {
         // A fortnight apart, in order, from when they joined.
-        const joined = v.spec.joinedYearsAgo ?? 2;
-        completedISO = addDays(TODAY, Math.min(-1, -(Math.max(joined, 0) * 365) + 14 * Number(stage[1]) - 60));
+        completedISO = afterJoining(v.joinedISO, addDays(v.joinedISO, 7 + 14 * Number(stage[1])));
         expiresISO = null;
       } else if (m.validityMonths === null) {
-        const yearsAgo = v.spec.joinedYearsAgo ?? 2;
-        completedISO = addDays(TODAY, -(Math.max(yearsAgo, 0) * 365 + randInt(1, 120)));
+        completedISO = afterJoining(v.joinedISO, addDays(v.joinedISO, randInt(1, 120)));
         expiresISO = null;
       } else if (o?.daysToExpiry !== undefined) {
         expiresISO = addDays(TODAY, o.daysToExpiry);
         completedISO = addMonths(expiresISO, -m.validityMonths);
       } else {
-        completedISO = addDays(TODAY, -randInt(40, m.validityMonths * 30 - 45));
+        completedISO = afterJoining(v.joinedISO, addDays(TODAY, -randInt(40, m.validityMonths * 30 - 45)));
         expiresISO = addMonths(completedISO, m.validityMonths);
       }
       const method: TrainingMethod = m.delivery === "ONLINE_CONFIRM" ? (rand() < 0.8 ? "ONLINE" : "SESSION") : code === "DRIVER_LICENCE_CHECK" ? "COORDINATOR" : "SESSION";
@@ -427,7 +485,7 @@ export async function seedDemo() {
   // The check is asked of everyone but the harvest-only pool. Most were
   // sighted when they joined; Margaret's is due for renewal, Frank's has run
   // out and Jess has not sent hers yet.
-  const MOJ_ROLES: VolunteerRole[] = ["WAREHOUSE", "DRIVERS_ASSISTANT", "VOLUNTEER_DRIVER"];
+  const MOJ_ROLES: VolunteerRole[] = ["TRAINING", "WAREHOUSE", "DRIVERS_ASSISTANT", "VOLUNTEER_DRIVER"];
   await db.settings.upsert({ where: { id: 1 }, create: { id: 1, mojCheckRoles: MOJ_ROLES }, update: { mojCheckRoles: MOJ_ROLES } });
   const frank = byName("Frank", "Doyle");
   const mojRows: { volunteerId: string; checkedOn: Date; recordedById: string; createdAt: Date }[] = [];
@@ -436,14 +494,14 @@ export async function seedDemo() {
     const checkedISO =
       v.id === margaret.id ? addDays(addMonths(TODAY, -36), 40)
       : v.id === frank.id ? addDays(addMonths(TODAY, -36), -12)
-      : addDays(TODAY, -randInt(30, 900));
+      : afterJoining(addDays(v.joinedISO, -randInt(10, 30)), addDays(TODAY, -randInt(30, 900)));
     mojRows.push({ volunteerId: v.id, checkedOn: isoToDate(checkedISO), recordedById: phillipa.id, createdAt: nzInstant(addDays(checkedISO, randInt(1, 6)), "10:00") });
   }
   await db.mojCheck.createMany({ data: mojRows });
 
   // Sample agreements and policies. The real ones live in Satisfy's Google
-  // Drive and are linked from Admin > Policies.
-  const ALL_ROLES: VolunteerRole[] = ["WAREHOUSE", "DRIVERS_ASSISTANT", "VOLUNTEER_DRIVER", "HARVEST"];
+  // Drive and are linked from Admin > Agreements and policies.
+  const ALL_ROLES: VolunteerRole[] = ["TRAINING", "WAREHOUSE", "DRIVERS_ASSISTANT", "VOLUNTEER_DRIVER", "HARVEST"];
   const agreement = await db.document.create({
     data: {
       kind: "AGREEMENT", title: "Volunteer Agreement", summary: "What we offer you, and what we ask of you as a Satisfy volunteer.", roles: ALL_ROLES, order: 1, versionAt: nzInstant(addDays(TODAY, -400), "09:00"),
@@ -454,6 +512,13 @@ export async function seedDemo() {
     data: {
       kind: "AGREEMENT", title: "Confidentiality Agreement", summary: "Keeping what you see and hear about recipients and each other private.", roles: ALL_ROLES, order: 2, version: 2, versionAt: nzInstant(addDays(TODAY, -6), "09:00"), versionNote: "Now covers photos taken at harvests and in the warehouse.",
       body: "Sample wording for the demo.\n\nWhile volunteering you may learn about the people and groups we deliver to, and about other volunteers. Keep it to yourself, during and after your time with Satisfy.\n\nPlease do not post photos of recipients, or of other volunteers without asking them first.",
+    },
+  });
+  // Read and understood, not signed.
+  const jobDescription = await db.document.create({
+    data: {
+      kind: "AGREEMENT", acceptance: "READ", title: "Volunteer Job Description", summary: "What volunteering with Satisfy involves, and what to expect on a shift.", roles: ALL_ROLES, order: 3, versionAt: nzInstant(addDays(TODAY, -21), "09:00"),
+      body: "Sample wording for the demo. Satisfy's job description lives in Google Drive and is shown here once its link is added.\n\nAs a volunteer you help rescue good food and get it to people who need it: sorting and packing at the warehouse, riding along on a pickup route, driving, or picking fruit at a harvest.\n\nShifts run on weekday mornings. You will be on your feet, lifting crates of up to 15 kg, and working alongside staff and other volunteers.",
     },
   });
   const hs = await db.document.create({
@@ -469,9 +534,10 @@ export async function seedDemo() {
   const recent = new Set([byName("Kathy", "Moriarty").id, byName("Colin", "Baxter").id, byName("Sue", "Hollander").id]);
   for (const v of vols.values()) {
     if (v.id === jess.id || v.id === phillipa.id) continue;
-    const joined = nzInstant(addDays(TODAY, -Math.min(390, (v.spec.joinedYearsAgo ?? 2) * 365)), "11:00");
+    const joined = nzInstant(v.joinedISO > addDays(TODAY, -390) ? addDays(v.joinedISO, 1) : addDays(TODAY, -390), "11:00");
     ackRows.push({ documentId: agreement.id, volunteerId: v.id, version: 1, createdAt: joined });
     ackRows.push({ documentId: confidentiality.id, volunteerId: v.id, version: 1, createdAt: joined });
+    if (!recent.has(v.id)) ackRows.push({ documentId: jobDescription.id, volunteerId: v.id, version: 1, createdAt: nzInstant(addDays(TODAY, -randInt(6, 20)), "18:00") });
     ackRows.push({ documentId: conduct.id, volunteerId: v.id, version: 1, createdAt: joined });
     ackRows.push({ documentId: hs.id, volunteerId: v.id, version: 1, createdAt: joined });
     // Most have signed and read the new versions already; a few have not.

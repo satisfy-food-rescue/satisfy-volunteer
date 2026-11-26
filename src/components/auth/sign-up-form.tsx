@@ -5,7 +5,7 @@ import Link from "next/link";
 import { CalendarCheck, Check, CheckCircle2, KeyRound, Loader2, Mail, Phone, Send, type LucideIcon } from "lucide-react";
 import type { SignUpField, SignUpInput } from "@satisfy/core/api";
 import { SIGN_UP_HINT, SIGN_UP_INTRO, SIGN_UP_PRIVACY, SIGN_UP_THANKS, signUpSteps, type SignUpStep } from "@satisfy/core/sign-up";
-import { ROLE_DESCRIPTION, ROLE_LABEL, VOLUNTEER_ROLES, type VolunteerRole } from "@/lib/domain";
+import { ROLE_DESCRIPTION, ROLE_LABEL, SHIFT_KINDS, type VolunteerRole } from "@/lib/domain";
 import { signUp } from "@/app/sign-up/actions";
 import { FieldError } from "@/components/admin/field-error";
 import { Button } from "@/components/ui/button";
@@ -130,12 +130,12 @@ export function SignUpForm() {
 
         <Section title="How you would like to help" id={FIELD_ID.interests} invalid={Boolean(errors.interests)} hint={SIGN_UP_HINT.interests}>
           <div className="grid gap-2">
-            {VOLUNTEER_ROLES.map((r) => (
+            {SHIFT_KINDS.map((r) => (
               <RoleOption
                 key={r}
                 role={r}
                 checked={v.interests.includes(r)}
-                onChange={(on) => set("interests", on ? VOLUNTEER_ROLES.filter((x) => x === r || v.interests.includes(x)) : v.interests.filter((x) => x !== r))}
+                onChange={(on) => set("interests", on ? SHIFT_KINDS.filter((x) => x === r || v.interests.includes(x)) : v.interests.filter((x) => x !== r))}
               />
             ))}
           </div>

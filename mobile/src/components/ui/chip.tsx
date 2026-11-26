@@ -63,6 +63,9 @@ const TRAINING_ICON: Record<TrainingStatus, IconName> = {
   NOT_REQUIRED: "minusCircle",
 };
 
-export function TrainingChip({ status, small }: { status: TrainingStatus; small?: boolean }) {
+/** A module's status. One a coordinator marked not applicable shows as that,
+ *  though it counts as complete. */
+export function TrainingChip({ status, notApplicable, small }: { status: TrainingStatus; notApplicable?: boolean; small?: boolean }) {
+  if (notApplicable) return <Chip tone="neutral" icon="minusCircle" label="Not applicable" small={small} />;
   return <Chip tone={TRAINING_TONE[status]} icon={TRAINING_ICON[status]} label={TRAINING_STATUS_LABEL[status]} small={small} />;
 }

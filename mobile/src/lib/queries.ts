@@ -127,6 +127,7 @@ export const actions = {
   setHarvestPool: (inPool: boolean) => api<MutationOk>("/harvest/pool", { method: "PUT", body: { inPool } }),
   updateProfile: (input: ProfileInput) => api<MutationOk>("/profile", { method: "PATCH", body: input }),
   requestRoleChange: (message: string) => api<MutationOk>("/profile/role-request", { method: "POST", body: { message } }),
+  startTraining: () => api<MutationOk>("/profile/start-training", { method: "POST" }),
   disconnectApple: () => api<MutationOk>("/apple", { method: "DELETE" }),
   deleteAccount: () => api<MutationOk>("/account", { method: "DELETE" }),
   removePasskey: (id: string) => api<MutationOk>(`/passkeys/${encodeURIComponent(id)}`, { method: "DELETE" }),

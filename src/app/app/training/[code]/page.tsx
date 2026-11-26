@@ -42,7 +42,7 @@ export default async function ModulePage({ params }: { params: Promise<{ code: s
           title={mod.name}
           description={mod.description}
         />
-        {mod.inDevelopment ? <Chip tone="neutral" size="sm" icon={Hammer} className="self-start">Coming soon</Chip> : <TrainingChip status={st.status} size="sm" className="self-start" />}
+        {mod.inDevelopment ? <Chip tone="neutral" size="sm" icon={Hammer} className="self-start">Coming soon</Chip> : <TrainingChip status={st.status} notApplicable={st.notApplicable} size="sm" className="self-start" />}
         {st.expiresISO && (
           <p className="text-sm text-muted-foreground tabular">
             {st.status === "OVERDUE" ? "Expired" : "Expires"} {formatDate(st.expiresISO)}. Confirming today records a fresh {mod.validityMonths}-month completion.

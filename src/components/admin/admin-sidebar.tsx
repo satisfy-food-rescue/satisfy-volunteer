@@ -87,7 +87,7 @@ const SECTIONS: { label: string; links: NavLink[] }[] = [
     label: "Set-up",
     links: [
       { href: "/admin/shift-types", label: "Shift types", icon: ListChecks },
-      { href: "/admin/policies", label: "Policies", icon: FileSignature },
+      { href: "/admin/policies", label: "Agreements and policies", icon: FileSignature },
       { href: "/admin/coordinators", label: "Coordinators", icon: ShieldCheck },
       { href: "/admin/settings", label: "Emails and import", icon: FileText },
     ],

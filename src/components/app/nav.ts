@@ -1,4 +1,5 @@
 import { CalendarCheck, CalendarDays, ClipboardCheck, FileText, GraduationCap, HandHelping, Home, KeyRound, Sprout, UserRound, type LucideIcon } from "lucide-react";
+import { DOCUMENTS_TITLE } from "@/lib/domain";
 
 // Where a volunteer can go, written once for the phone's tab bar and the
 // sidebar on wider screens. On a phone the pages about the volunteer sit
@@ -29,7 +30,7 @@ export const YOU_NAV: NavItem[] = [
   { href: "/app/slot", label: "Regular slot and away", icon: CalendarCheck },
   { href: "/app/harvest", label: "Harvest", icon: Sprout },
   { href: "/app/induction", label: "Induction", icon: ClipboardCheck, badgeNoun: ["induction step to do", "induction steps to do"] },
-  { href: "/app/policies", label: "Policies", icon: FileText, badgeNoun: ["policy to read", "policies to read"] },
+  { href: "/app/policies", label: DOCUMENTS_TITLE, icon: FileText, badgeNoun: ["policy to read", "policies to read"] },
   { href: "/app/profile", label: "My profile", icon: UserRound },
   { href: "/app/security", label: "Sign-in and security", icon: KeyRound },
 ];

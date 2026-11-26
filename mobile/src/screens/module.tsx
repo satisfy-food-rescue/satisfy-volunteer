@@ -81,7 +81,7 @@ function Module({ detail, readToEnd, onEndLayout }: { detail: TrainingModuleDeta
           <Text variant="eyebrow" tone="tealText">
             {online ? (detail.links.length ? "Online: read, watch and confirm" : "Online: read and confirm") : "In-person session"}
           </Text>
-          {comingSoon ? <Chip tone="neutral" icon="inDevelopment" label="Coming soon" small /> : <TrainingChip status={m.status} small />}
+          {comingSoon ? <Chip tone="neutral" icon="inDevelopment" label="Coming soon" small /> : <TrainingChip status={m.status} notApplicable={m.notApplicable} small />}
         </View>
         <Text variant="display" accessibilityRole="header">
           {m.name}

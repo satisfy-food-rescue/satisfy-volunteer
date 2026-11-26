@@ -65,9 +65,11 @@ export const SHIFT_TYPES: ShiftTypeSpec[] = [
   { key: "harvest", kind: "HARVEST", name: "Harvest", route: null, workingWith: "a Satisfy harvest lead", lastMinuteHours: 48, escalateHours: 24, startTime: "09:00", endTime: "12:00", capacity: 8, needed: 5, weekdays: [], order: 6 },
 ];
 
-// The harvest pool joins and leaves on its own, and the induction happens at
-// the first harvest, so it does not need the Initial Visit.
-const SHIFT_ROLES: VolunteerRole[] = ["WAREHOUSE", "DRIVERS_ASSISTANT", "VOLUNTEER_DRIVER"];
+// New volunteers are in training until a coordinator gives them a role, so
+// what every regular role needs is theirs to do first. The harvest pool joins
+// and leaves on its own, and the induction happens at the first harvest, so it
+// does not need the Initial Visit.
+const SHIFT_ROLES: VolunteerRole[] = ["TRAINING", "WAREHOUSE", "DRIVERS_ASSISTANT", "VOLUNTEER_DRIVER"];
 const ALL_ROLES: VolunteerRole[] = [...SHIFT_ROLES, "HARVEST"];
 
 export type ModuleSpec = {

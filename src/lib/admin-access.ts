@@ -4,6 +4,7 @@ import { Prisma, type Volunteer } from "@/generated/prisma/client";
 import { db } from "./db";
 import { isoToDate, todayISO } from "./dates";
 import { fullName, normaliseEmail } from "./domain";
+import { openRolePeriods } from "./roles";
 import { sendSignInLink } from "./auth";
 import { afterShiftReleased } from "./cover";
 import { queueEmail } from "./emails";
@@ -79,6 +80,7 @@ async function createAdmin(actor: Actor, data: { firstName: string; lastName: st
   try {
     admin = await db.$transaction(async (tx) => {
       const created = await tx.volunteer.create({ data: { ...data, role: "ADMIN", alsoVolunteers: false } });
+      await openRolePeriods(tx, created.id, created.roles);
       await tx.contactLog.create({ data: { volunteerId: created.id, authorId: actor.id, kind: "ACCOUNT_CREATED", summary: `Added as a coordinator by ${actor.firstName}.` } });
       return created;
     });

@@ -4,11 +4,12 @@
 // authenticate. Messages are written for the volunteer and shown as is.
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import type { Volunteer } from "@/generated/prisma/client";
+import type { Document, Volunteer } from "@/generated/prisma/client";
 import { db } from "./db";
 import { addMonths, daysBetween, isoToDate, todayISO, dateToISO } from "./dates";
-import { ABSENCE_REASON_LABEL, HARVEST_ROLE, fullName, sortRoles, type VolunteerRole } from "./domain";
-import { eligibilityFor, sessionUnwantedReason } from "./training";
+import { ABSENCE_REASON_LABEL, HARVEST_ROLE, TRAINING_ROLE, fullName, harvestOnly, type VolunteerRole } from "./domain";
+import { eligibilityFor, moduleStatuses, sessionUnwantedReason } from "./training";
+import { changeRoles } from "./roles";
 import { trainingLock } from "./induction";
 import { joinPoolIfCoordinator } from "./admin-access";
 import { shiftById } from "./roster";
@@ -180,21 +181,26 @@ export const signAgreementsSchema = z.object({
  *  nobody agrees to words they have not seen. */
 export async function signAgreements(me: Volunteer, input: z.infer<typeof signAgreementsSchema>): Promise<ActionResult> {
   const parsed = signAgreementsSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: "Tick each agreement you are signing." };
+  if (!parsed.success) return { ok: false, error: "Tick each box first." };
   const induction = await inductionFor(me);
-  const toSign = [];
+  const toSign: Document[] = [];
   for (const { id, version } of parsed.data.agreements) {
     const a = induction.agreements.find((x) => x.document.id === id);
     if (!a) return { ok: false, error: "That agreement is no longer in use. Reload the page.", notFound: true };
-    if (a.document.version !== version) return { ok: false, error: `The ${a.document.title} has just been updated. Read the new version, then sign it.` };
+    if (a.document.version !== version) return { ok: false, error: `The ${a.document.title} has just been updated. Read the new version, then tick it again.` };
     if (a.status === "UNSIGNED" || a.status === "UPDATED") toSign.push(a.document);
   }
-  if (toSign.length === 0) return { ok: true, message: "Already signed. Thank you." };
+  if (toSign.length === 0) return { ok: true, message: "Already done. Thank you." };
   await db.documentAcknowledgement.createMany({ data: toSign.map((d) => ({ documentId: d.id, volunteerId: me.id, version: d.version })), skipDuplicates: true });
-  const names = toSign.map((d) => (d.version > 1 ? `${d.title} (version ${d.version})` : d.title));
-  await db.contactLog.create({ data: { volunteerId: me.id, authorId: me.id, kind: "AGREEMENT_SIGNED", summary: `Signed the ${names.length === 1 ? names[0] : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`}.` } });
+  const name = (d: (typeof toSign)[number]) => (d.version > 1 ? `${d.title} (version ${d.version})` : d.title);
+  const list = (items: string[]) => (items.length === 1 ? items[0] : `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`);
+  const signed = toSign.filter((d) => d.acceptance !== "READ").map(name);
+  const read = toSign.filter((d) => d.acceptance === "READ").map(name);
+  const summary = [signed.length > 0 && `Signed the ${list(signed)}`, read.length > 0 && `${signed.length > 0 ? "read" : "Read"} and understood the ${list(read)}`].filter(Boolean).join(", and ");
+  await db.contactLog.create({ data: { volunteerId: me.id, authorId: me.id, kind: "AGREEMENT_SIGNED", summary: `${summary}.` } });
   revalidateAll();
-  return { ok: true, message: toSign.length === 1 ? `${toSign[0]!.title} signed. Thank you.` : "Agreements signed. Thank you." };
+  if (toSign.length > 1) return { ok: true, message: read.length === 0 ? "Agreements signed. Thank you." : "All done. Thank you." };
+  return { ok: true, message: `${toSign[0]!.title} ${read.length > 0 ? "confirmed" : "signed"}. Thank you.` };
 }
 
 export const acknowledgeSchema = z.object({ version: z.number().int().min(1) });
@@ -220,12 +226,30 @@ export async function setHarvestPool(me: Volunteer, inPool: boolean): Promise<Ac
   const roles = me.roles;
   const next: VolunteerRole[] = inPool ? [...roles, HARVEST_ROLE] : roles.filter((r) => r !== HARVEST_ROLE);
   if (next.length === 0) return { ok: false, error: "Harvests are your only role, so ask the coordinator if you'd like to stop volunteering." };
-  if (next.join() !== sortRoles(me.roles).join()) {
-    await db.volunteer.update({ where: { id: me.id }, data: { roles: next } });
+  const { added, removed } = await changeRoles(me.id, roles, next);
+  if (added.length + removed.length > 0) {
     await db.contactLog.create({ data: { volunteerId: me.id, authorId: me.id, kind: "ROLES_CHANGED", summary: inPool ? "Joined the harvest pool." : "Left the harvest pool." } });
   }
   revalidateAll();
   return { ok: true, message: inPool ? "You're in the harvest pool." : "You've left the harvest pool." };
+}
+
+/** A harvest volunteer who would like to become a regular volunteer starts
+ *  training themselves: the induction and the in-person stages apply, and a
+ *  coordinator gives them a role once those are done. Harvests stay open. */
+export async function startTraining(me: Volunteer): Promise<ActionResult> {
+  if (me.roles.includes(TRAINING_ROLE)) return { ok: true, message: "You're already in training." };
+  if (!harvestOnly(me)) return { ok: false, error: "You already have a regular role. Ask the coordinator if you'd like to change it." };
+  const { next } = await changeRoles(me.id, me.roles, [...me.roles, TRAINING_ROLE]);
+  const modules = await db.trainingModule.findMany({ where: { inDevelopment: false } });
+  const records = await db.trainingRecord.findMany({ where: { volunteerId: me.id } });
+  const trainingNeeded = moduleStatuses({ roles: next }, modules, records, todayISO())
+    .filter((s) => s.module.requiredRoles.includes(TRAINING_ROLE) && (s.status === "NOT_STARTED" || s.status === "OVERDUE"))
+    .map((s) => s.module.name);
+  await db.contactLog.create({ data: { volunteerId: me.id, authorId: me.id, kind: "ROLES_CHANGED", summary: "Started training for a regular role." } });
+  await queueEmail(null, T.trainingStarted({ volunteerName: fullName(me), firstName: me.firstName, volunteerId: me.id, trainingNeeded }));
+  revalidateAll();
+  return { ok: true, message: "You're in training. Your induction and training are on the Training page." };
 }
 
 export const profileSchema = z.object({

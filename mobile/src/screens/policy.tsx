@@ -23,12 +23,13 @@ export function PolicyScreen({ id }: { id: string }) {
 function Policy({ doc: d }: { doc: DocumentItem }) {
   const t = useTheme();
   const agreement = d.kind === "AGREEMENT";
+  const reads = agreement && d.acceptance === "READ";
   const updated = d.needsAction && d.readVersion !== null;
   return (
     <>
       <View style={{ gap: 8 }}>
         <Text variant="eyebrow" tone="tealText">
-          {agreement ? "Agreement" : "Policy"}
+          {reads ? "Read and understood" : agreement ? "Agreement" : "Policy"}
         </Text>
         <Text variant="display" accessibilityRole="header">
           {d.title}
@@ -45,16 +46,18 @@ function Policy({ doc: d }: { doc: DocumentItem }) {
             <Icon name="checkCircle" size={20} color={t.greenText} />
           </View>
           <Text variant="bodySemibold" tone="greenText" style={{ flex: 1 }}>
-            {agreement ? "You signed this" : "You confirmed you read this"}
+            {reads ? "You confirmed you read and understood this" : agreement ? "You signed this" : "You confirmed you read this"}
             {d.readISO ? ` on ${formatDate(d.readISO)}` : ""}.
           </Text>
         </View>
       ) : agreement ? (
         <View style={{ gap: 12, padding: 16, borderRadius: radius.card, borderCurve: "continuous", borderWidth: 1, borderColor: t.tealTint, backgroundColor: t.tealTintSoft }}>
           <Text variant="body">
-            {updated ? "This agreement has been updated. Please sign the new version." : "You have not signed this yet."} Agreements are signed together on your induction page.
+            {reads
+              ? `${updated ? "This has been updated. Please read the new version." : "You have not confirmed reading this yet."} You tick to say you have read and understood it on your induction page.`
+              : `${updated ? "This agreement has been updated. Please sign the new version." : "You have not signed this yet."} Agreements are signed together on your induction page.`}
           </Text>
-          <Button label="Read and sign" icon="signature" block onPress={() => router.push("/induction")} />
+          <Button label={reads ? "Go to my induction" : "Read and sign"} icon={reads ? "induction" : "signature"} block onPress={() => router.push("/induction")} />
         </View>
       ) : (
         <Acknowledge doc={d} updated={updated} />

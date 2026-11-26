@@ -80,7 +80,7 @@ export default async function InductionAdminPage({ searchParams }: { searchParam
           </div>
           <p className="text-sm text-ink-soft">Volunteers tick to sign these on their induction page, before training. A new version asks everyone to sign again.</p>
           {agreements.length === 0 ? (
-            <p className="text-sm text-muted-foreground">None yet. Add the volunteer and confidentiality agreements from Policies.</p>
+            <p className="text-sm text-muted-foreground">None yet. Add the volunteer and confidentiality agreements, and the job description, from Agreements and policies.</p>
           ) : (
             <ul className="flex flex-col gap-1.5 text-sm">
               {agreements.map((a) => {

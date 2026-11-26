@@ -17,9 +17,11 @@ const TYPE = [
 // "any" means no filter: it is dropped from the URL.
 const ROLE = [
   { value: "any", label: "Any role" },
+  { value: "TRAINING", label: "In training" },
   { value: "WAREHOUSE", label: "Warehouse" },
   { value: "DRIVERS_ASSISTANT", label: "Driver help" },
   { value: "VOLUNTEER_DRIVER", label: "Volunteer driver" },
+  { value: "HARVEST", label: "Harvest pool" },
 ];
 const TRAINING = [
   { value: "any", label: "Any training status" },

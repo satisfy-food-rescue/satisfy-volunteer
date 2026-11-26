@@ -472,16 +472,50 @@ const AGREEMENT_UPDATED_PUSH = spec({
   ctaLabel: "Read and sign",
 });
 
-type DocumentUpdatedParams = { firstName: string; title: string; note: string | null; agreement: boolean; documentId: string };
+const INDUCTION_READ_UPDATED = spec({
+  key: "induction-read-updated",
+  kind: "DOCUMENT_UPDATED",
+  channel: "EMAIL",
+  name: "Induction document to read",
+  audience: "volunteer",
+  when: "When you add a read-and-understood agreement, such as the job description, or publish a new version, and choose to tell volunteers.",
+  placeholders: DOCUMENT_PLACEHOLDERS,
+  sample: { firstName: "Margaret", title: "Volunteer Job Description", note: "We have added what to expect on a driver help shift." },
+  subject: "Please read: {title}",
+  preview: "Read it in the app before your next booking.",
+  body: `Kia ora {firstName},\n\nWe have published the latest {title}.\n\n{note}\n\nPlease read it in the volunteer app and tick to say you have read and understood it. Until you do, you will not be able to book new shifts. Your existing regular slot is not affected.\n\n${SIGN_OFF}`,
+  ctaLabel: "Read it now",
+});
+
+const INDUCTION_READ_UPDATED_PUSH = spec({
+  key: "induction-read-updated-push",
+  kind: "DOCUMENT_UPDATED",
+  channel: "PUSH",
+  name: "Induction document to read (push)",
+  audience: "volunteer",
+  when: "With the email, to volunteers with the app on their phone.",
+  placeholders: DOCUMENT_PLACEHOLDERS,
+  sample: INDUCTION_READ_UPDATED.sample,
+  subject: "Please read: {title}",
+  preview: "Read it in the app before your next booking.",
+  body: "We have published the latest {title}. Please read it in the app and tick to say you have read and understood it, before your next booking.\n\n{note}",
+  ctaLabel: "Read it now",
+});
+
+/** policy: read at any time. sign or read: an agreement accepted during
+ *  induction, signed or read and understood. */
+type DocumentUpdatedParams = { firstName: string; title: string; note: string | null; as: "policy" | "sign" | "read"; documentId: string };
+
+const documentHref = (p: DocumentUpdatedParams) => (p.as === "policy" ? `/app/policies/${p.documentId}` : "/app/induction");
 
 export function documentUpdated(p: DocumentUpdatedParams): EmailDraft {
   const values = { firstName: p.firstName, title: p.title, note: p.note ? sentence(p.note) : "" };
-  return build(p.agreement ? AGREEMENT_UPDATED : POLICY_UPDATED, values, { ctaHref: p.agreement ? "/app/induction" : `/app/policies/${p.documentId}` });
+  return build(p.as === "sign" ? AGREEMENT_UPDATED : p.as === "read" ? INDUCTION_READ_UPDATED : POLICY_UPDATED, values, { ctaHref: documentHref(p) });
 }
 
 export function documentUpdatedPush(p: DocumentUpdatedParams): EmailDraft {
   const values = { firstName: p.firstName, title: p.title, note: p.note ? sentence(p.note) : "" };
-  return build(p.agreement ? AGREEMENT_UPDATED_PUSH : POLICY_UPDATED_PUSH, values, { ctaHref: p.agreement ? "/app/induction" : `/app/policies/${p.documentId}` });
+  return build(p.as === "sign" ? AGREEMENT_UPDATED_PUSH : p.as === "read" ? INDUCTION_READ_UPDATED_PUSH : POLICY_UPDATED_PUSH, values, { ctaHref: documentHref(p) });
 }
 
 // ---------------------------------------------------------------------------
@@ -1165,6 +1199,27 @@ export function rolesChanged(p: { volunteerName: string; volunteerId: string; ch
   );
 }
 
+const TRAINING_STARTED = spec({
+  key: "training-started",
+  kind: "ROLES_CHANGED",
+  channel: "EMAIL",
+  name: "Harvest volunteer starting training",
+  audience: "coordinator",
+  when: "When a harvest volunteer starts training for a regular role from the app.",
+  placeholders: { volunteerName: "The volunteer's full name", firstName: "Their first name", trainingNote: "The training they now need" },
+  sample: { volunteerName: "Aroha Ngata", firstName: "Aroha", trainingNote: "Next for them: T1, T2, T3 and T4." },
+  subject: "{volunteerName} would like to become a regular volunteer",
+  preview: "{firstName} has started training for a regular role.",
+  body: `{volunteerName} has been helping with harvests and has started training for a regular role from the app. They are now in training, so their induction and training stages apply.\n\n{trainingNote}\n\nOnce it is done, give {firstName} a role from their profile. Until then they can still sign up for harvests.\n\n${COORDINATOR_SIGN_OFF}`,
+  ctaLabel: "Open their profile",
+});
+
+/** To the coordinator when a harvest-only volunteer starts training. */
+export function trainingStarted(p: { volunteerName: string; firstName: string; volunteerId: string; trainingNeeded: string[] }): EmailDraft {
+  const trainingNote = p.trainingNeeded.length ? `Next for them: ${p.trainingNeeded.length === 1 ? p.trainingNeeded[0] : `${p.trainingNeeded.slice(0, -1).join(", ")} and ${p.trainingNeeded.at(-1)}`}.` : "There is no training set up for trainees yet.";
+  return build(TRAINING_STARTED, { volunteerName: p.volunteerName, firstName: p.firstName, trainingNote }, { ctaHref: `/admin/volunteers/${p.volunteerId}` });
+}
+
 const ROLE_CHANGE_REQUEST = spec({
   key: "role-change-request",
   kind: "ROLE_CHANGE_REQUEST",
@@ -1274,6 +1329,8 @@ export const TEMPLATES = [
   POLICY_UPDATED_PUSH,
   AGREEMENT_UPDATED,
   AGREEMENT_UPDATED_PUSH,
+  INDUCTION_READ_UPDATED,
+  INDUCTION_READ_UPDATED_PUSH,
   APPLICATION_RECEIVED,
   ALREADY_REGISTERED,
   APPLICATION_APPROVED,
@@ -1290,6 +1347,7 @@ export const TEMPLATES = [
   MOJ_RENEWAL_COORDINATOR,
   ROLE_CHANGE_REQUEST,
   ROLES_CHANGED,
+  TRAINING_STARTED,
   ACCOUNT_DELETED,
 ] as const satisfies readonly TemplateSpec[];
 

@@ -1,12 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/lib/db";
+import type { VolunteerRole } from "@/lib/domain";
 import * as mailer from "@/lib/mailer";
 import { approveSignUp } from "@/lib/applications";
 import { makeVolunteer, resetDb } from "./helpers";
 
-function apply(email: string) {
+function apply(email: string, interests: VolunteerRole[] = ["WAREHOUSE"]) {
   return db.application.create({
-    data: { firstName: "Aroha", lastName: "Ngata", email, interests: ["WAREHOUSE"], availability: "Mornings", source: "WEBSITE" },
+    data: { firstName: "Aroha", lastName: "Ngata", email, interests, availability: "Mornings", source: "WEBSITE" },
   });
 }
 
@@ -23,8 +24,18 @@ describe("approving a sign-up", () => {
 
     expect(await approveSignUp(coordinator, app.id)).toMatchObject({ ok: true });
     const volunteer = await db.volunteer.findUniqueOrThrow({ where: { email: "aroha@example.org" } });
-    expect(volunteer).toMatchObject({ role: "VOLUNTEER", status: "ACTIVE", roles: ["WAREHOUSE"] });
+    expect(volunteer).toMatchObject({ role: "VOLUNTEER", status: "ACTIVE", roles: ["TRAINING"] });
     expect(await db.authToken.count({ where: { volunteerId: volunteer.id, purpose: "INVITE" } })).toBe(1);
+    expect(await db.rolePeriod.findMany({ where: { volunteerId: volunteer.id } })).toMatchObject([{ role: "TRAINING", endedOn: null }]);
+  });
+
+  it("puts harvest-only volunteers straight in the harvest pool, skipping training", async () => {
+    const coordinator = await makeVolunteer({ role: "ADMIN" });
+    const app = await apply("emma@example.org", ["HARVEST"]);
+
+    await approveSignUp(coordinator, app.id);
+    const volunteer = await db.volunteer.findUniqueOrThrow({ where: { email: "emma@example.org" } });
+    expect(volunteer.roles).toEqual(["HARVEST"]);
   });
 
   it("brings a deactivated coordinator back as a volunteer, without coordinator access", async () => {

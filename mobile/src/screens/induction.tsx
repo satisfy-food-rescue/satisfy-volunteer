@@ -5,7 +5,7 @@ import { Linking, Pressable, View } from "react-native";
 
 import type { DocumentItem, InductionOverview } from "@satisfy/core/api";
 import { formatDate } from "@satisfy/core/dates";
-import { MOJ_RENEWAL_DAYS } from "@satisfy/core/domain";
+import { MOJ_RENEWAL_DAYS, DOCUMENTS_TITLE } from "@satisfy/core/domain";
 import { agreementState, ChangeNote, DocumentBody } from "@/components/document";
 import { QueryScreen } from "@/components/screen";
 import { useToast } from "@/components/toast";
@@ -33,6 +33,11 @@ function Induction({ induction, firstName }: { induction: InductionOverview; fir
   const { moj, agreements } = induction;
   const toSign = agreements.filter((a) => a.needsAction);
   const showMoj = moj.required || moj.checkedISO !== null;
+  const allRead = agreements.every((a) => a.acceptance === "READ");
+  const allSign = agreements.every((a) => a.acceptance !== "READ");
+  const docsTitle = agreements.length === 1 ? agreements[0]!.title : allSign ? "Volunteer agreements" : allRead ? "Read and understood" : "Read and sign";
+  const doneLabel = allSign ? "Signed" : allRead ? "Read" : "Done";
+  const toDoLabel = toSign.every((a) => a.acceptance === "READ") ? "To read" : "To sign";
   let step = 0;
   return (
     <>
@@ -59,15 +64,17 @@ function Induction({ induction, firstName }: { induction: InductionOverview; fir
             n={++step}
             done={toSign.length === 0}
             icon="signature"
-            title={agreements.length === 1 ? agreements[0]!.title : "Volunteer agreements"}
-            chip={toSign.length === 0 ? <Chip tone="good" icon="checkCircle" label="Signed" small /> : <Chip tone="info" label="To sign" small />}
+            title={docsTitle}
+            chip={toSign.length === 0 ? <Chip tone="good" icon="checkCircle" label={doneLabel} small /> : <Chip tone="info" label={toDoLabel} small />}
           >
             <Text variant="body" tone="inkSoft">
               {toSign.length === 0
-                ? "Thanks for signing. You can read them again at any time under Policies."
+                ? `Thank you. You can read ${agreements.length === 1 ? "it" : "them"} again at any time under ${DOCUMENTS_TITLE}.`
                 : agreements.length === 1
                   ? "Please read it before you come onto the premises, even for training."
-                  : "You will see confidential information while volunteering, and these cover how we look after it and each other. Please read them before you come onto the premises, even for training."}
+                  : allRead
+                    ? "Please read them before you come onto the premises, even for training."
+                    : "You will see confidential information while volunteering, and these cover how we look after it and each other. Please read them before you come onto the premises, even for training."}
             </Text>
             {agreements.map((a) => (
               <AgreementCard key={a.id} doc={a} />
@@ -247,7 +254,7 @@ function AgreementCard({ doc }: { doc: DocumentItem }) {
         <View style={{ flex: 1, gap: 2 }}>
           <Text variant="bodySemibold">{doc.title}</Text>
           <Text variant="small" tone="mutedText">
-            {state === "SIGNED" && doc.readISO ? `Signed ${formatDate(doc.readISO)}` : doc.summary}
+            {state === "SIGNED" && doc.readISO ? `${doc.acceptance === "READ" ? "Read and understood" : "Signed"} ${formatDate(doc.readISO)}` : doc.summary}
           </Text>
         </View>
         {state === "UPDATED" && <Chip tone="warn" label="Updated" small />}
@@ -263,14 +270,19 @@ function AgreementCard({ doc }: { doc: DocumentItem }) {
   );
 }
 
-/** One tick box per agreement, then one button: the agreements are signed
- *  together, the way they would be on paper. */
+/** One tick box per document, then one button: they are accepted together,
+ *  the way they would be on paper. An agreement is signed ("I agree"); a
+ *  document such as the job description is read and understood, not signed. */
 function AgreementSigning({ agreements, firstName }: { agreements: DocumentItem[]; firstName: string | null }) {
   const t = useTheme();
   const [ticked, setTicked] = useState<ReadonlySet<string>>(new Set());
   const sign = useAction(actions.signAgreements);
   const all = agreements.every((a) => ticked.has(a.id));
   const one = agreements.length === 1;
+  const signing = agreements.filter((a) => a.acceptance !== "READ").length;
+  const reading = agreements.length - signing;
+  const heading = reading === 0 ? `Sign ${one ? "it" : "them"}` : signing === 0 ? `Confirm you have read ${one ? "it" : "them"}` : "Confirm and sign";
+  const button = reading === 0 ? (one ? "Sign the agreement" : `Sign ${agreements.length === 2 ? "both" : "all"} agreements`) : signing === 0 ? "Confirm" : "Confirm and sign";
   const toggle = (id: string) =>
     setTicked((current) => {
       const next = new Set(current);
@@ -281,17 +293,25 @@ function AgreementSigning({ agreements, firstName }: { agreements: DocumentItem[
   return (
     <View style={{ gap: 12, padding: 16, borderRadius: radius.card, borderCurve: "continuous", borderWidth: 1, borderColor: t.tealTint, backgroundColor: t.tealTintSoft }}>
       <Text variant="bodyBold">
-        Sign {one ? "it" : "them"}
+        {heading}
         {firstName ? `, ${firstName}` : ""}
       </Text>
       {agreements.map((a) => (
         <CheckRow key={a.id} checked={ticked.has(a.id)} onToggle={() => toggle(a.id)}>
-          I have read {a.readVersion !== null ? "the updated" : "the"} <Text variant="bodySemibold">{a.title}</Text> and agree to it.
+          {a.acceptance === "READ" ? (
+            <>
+              I have read and understood {a.readVersion !== null ? "the updated" : "the"} <Text variant="bodySemibold">{a.title}</Text>.
+            </>
+          ) : (
+            <>
+              I have read {a.readVersion !== null ? "the updated" : "the"} <Text variant="bodySemibold">{a.title}</Text> and agree to it.
+            </>
+          )}
         </CheckRow>
       ))}
       <Button
-        label={one ? "Sign the agreement" : `Sign ${agreements.length === 2 ? "both" : "all"} agreements`}
-        icon="signature"
+        label={button}
+        icon={signing === 0 ? "book" : "signature"}
         block
         disabled={!all}
         loading={sign.isPending}

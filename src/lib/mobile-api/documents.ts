@@ -10,6 +10,7 @@ export function documentItem({ document: d, readVersion, readAt, needsAction }: 
   return {
     id: d.id,
     kind: d.kind,
+    acceptance: d.acceptance,
     title: d.title,
     summary: d.summary,
     version: d.version,
